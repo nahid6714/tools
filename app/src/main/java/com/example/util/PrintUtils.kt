@@ -156,9 +156,9 @@ object PrintUtils {
         val page = pdfDocument.startPage(pageInfo)
         val canvas = page.canvas
 
-        // Off-white paper background
+        // Pure white paper background for ink-saving printing
         val bgPaint = Paint().apply {
-            color = Color.parseColor("#FFFDF9")
+            color = Color.WHITE
             style = Paint.Style.FILL
         }
         canvas.drawRect(0f, 0f, 595f, 842f, bgPaint)
@@ -231,8 +231,6 @@ object PrintUtils {
         purchaserLabel: String,
         approverLabel: String = ""
     ) {
-        val maroonColor = Color.parseColor("#123528")
-
         canvas.save()
         // Position at X=15pt, Y=startY + 423pt and rotate -90 degrees counter-clockwise
         // This maps Canvas Y to Page X (595pt width) and Canvas X to Page Y (421pt half-page height)
@@ -247,62 +245,53 @@ object PrintUtils {
         val tableWidth = tableRight - tableLeft // 400f
         val bannerCenterX = tableLeft + (tableWidth / 2f) // 210f
 
-        // 1. Header Banner (Height = 44f)
-        val headerPaint = Paint().apply {
+        // 1. Header Box (Ink-Saving B&W Outline: White background with sharp black border)
+        val headerRect = RectF(tableLeft, localStartY, tableRight, localStartY + 44f)
+        val headerBoxBorderPaint = Paint().apply {
             isAntiAlias = true
-            color = maroonColor
+            color = Color.BLACK
+            style = Paint.Style.STROKE
+            strokeWidth = 1.5f
+        }
+        val headerBgPaint = Paint().apply {
+            color = Color.WHITE
             style = Paint.Style.FILL
         }
-        val headerRect = RectF(tableLeft, localStartY, tableRight, localStartY + 44f)
-        canvas.drawRect(headerRect, headerPaint)
+        canvas.drawRect(headerRect, headerBgPaint)
+        canvas.drawRect(headerRect, headerBoxBorderPaint)
 
-        // Title
+        // Header Title (Pure Black)
         val titleTextPaint = Paint().apply {
             isAntiAlias = true
-            color = Color.WHITE
-            textSize = 19f
+            color = Color.BLACK
+            textSize = 18f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
         canvas.drawText(centerName, bannerCenterX, localStartY + 24f, titleTextPaint)
 
-        // Subtitle
+        // Subtitle (Pure Black)
         val subtitleTextPaint = Paint().apply {
             isAntiAlias = true
-            color = Color.WHITE
-            textSize = 11.5f
+            color = Color.BLACK
+            textSize = 11f
             textAlign = Paint.Align.CENTER
         }
         canvas.drawText(subtitle, bannerCenterX, localStartY + 38f, subtitleTextPaint)
 
-        // Sawtooth Teeth Bar
-        val toothWidth = 10f
-        val toothHeight = 5f
-        var toothX = tableLeft
-        val toothPaint = Paint().apply {
+        // Header Separator Line
+        val headerLinePaint = Paint().apply {
             isAntiAlias = true
-            color = maroonColor
-            style = Paint.Style.FILL
+            color = Color.BLACK
+            strokeWidth = 1.5f
         }
-        canvas.save()
-        canvas.clipRect(tableLeft, localStartY, tableRight, localStartY + 44f + toothHeight)
-        while (toothX + toothWidth <= tableRight + 0.1f) {
-            val path = android.graphics.Path().apply {
-                moveTo(toothX, localStartY + 44f)
-                lineTo(toothX + toothWidth / 2f, localStartY + 44f + toothHeight)
-                lineTo(toothX + toothWidth, localStartY + 44f)
-                close()
-            }
-            canvas.drawPath(path, toothPaint)
-            toothX += toothWidth
-        }
-        canvas.restore()
+        canvas.drawLine(tableLeft, localStartY + 48f, tableRight, localStartY + 48f, headerLinePaint)
 
-        // 2. Metadata Row (Date)
+        // 2. Metadata Row (Date - Pure Black, Bold)
         val metaPaintRight = Paint().apply {
             isAntiAlias = true
-            color = maroonColor
-            textSize = 12f
+            color = Color.BLACK
+            textSize = 11.5f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.RIGHT
         }
@@ -313,15 +302,16 @@ object PrintUtils {
         val tableTop = localStartY + 76f
         val colWidths = floatArrayOf(45f, 168f, 62f, 48f, 77f) // Total width = 400f
 
-        // Table Header Background (Height = 24f)
+        // Table Header Box (White background with sharp Black Border)
         val headerHeight = 24f
         val tableHeaderRect = RectF(tableLeft, tableTop, tableRight, tableTop + headerHeight)
-        canvas.drawRect(tableHeaderRect, headerPaint)
+        canvas.drawRect(tableHeaderRect, headerBgPaint)
+        canvas.drawRect(tableHeaderRect, headerBoxBorderPaint)
 
-        // Table Header Text
+        // Table Header Text (Pure Black, Bold)
         val headerTextPaint = Paint().apply {
             isAntiAlias = true
-            color = Color.WHITE
+            color = Color.BLACK
             textSize = 11f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.CENTER
@@ -334,11 +324,11 @@ object PrintUtils {
             currentX += colWidths[i]
         }
 
-        // Table Rows (Maximizing Table Length across Page X up to 580pt)
+        // Table Rows
         val validItems = items.filter { it.name.isNotBlank() || it.amount > 0 }
         val totalRows = maxOf(14, validItems.size.coerceAtMost(18))
-        val gridTop = tableTop + headerHeight // 76 + 24 = 100f
-        val gridBottom = 480f // Grid ends at 480f (spans across page)
+        val gridTop = tableTop + headerHeight // 100f
+        val gridBottom = 480f
         val totalGridHeight = gridBottom - gridTop // 380f
         val rowHeight = totalGridHeight / totalRows
         val itemFontSize = if (totalRows > 14) 11f else 12.5f
@@ -346,25 +336,25 @@ object PrintUtils {
 
         val gridBorderPaint = Paint().apply {
             isAntiAlias = true
-            color = maroonColor
+            color = Color.BLACK
             style = Paint.Style.STROKE
             strokeWidth = 1.2f
         }
         val rowDashPaint = Paint().apply {
             isAntiAlias = true
-            color = Color.parseColor("#C2D4CC")
-            strokeWidth = 0.8f
-            pathEffect = android.graphics.DashPathEffect(floatArrayOf(4f, 3f), 0f)
+            color = Color.BLACK
+            strokeWidth = 0.6f
+            pathEffect = android.graphics.DashPathEffect(floatArrayOf(3f, 3f), 0f)
         }
 
         val itemTextPaint = Paint().apply {
             isAntiAlias = true
-            color = Color.parseColor("#1A0D08")
+            color = Color.BLACK
             textSize = itemFontSize
         }
         val itemBoldPaint = Paint().apply {
             isAntiAlias = true
-            color = Color.parseColor("#1A0D08")
+            color = Color.BLACK
             textSize = itemFontSize
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
@@ -417,7 +407,7 @@ object PrintUtils {
         // Total Label
         val totalLabelPaint = Paint().apply {
             isAntiAlias = true
-            color = maroonColor
+            color = Color.BLACK
             textSize = 12f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.RIGHT
@@ -427,7 +417,7 @@ object PrintUtils {
         // Total Value
         val totalValPaint = Paint().apply {
             isAntiAlias = true
-            color = maroonColor
+            color = Color.BLACK
             textSize = 12.5f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.RIGHT
@@ -447,19 +437,19 @@ object PrintUtils {
             canvas.drawLine(lineX, tableTop, lineX, tableBottomY, gridBorderPaint)
         }
 
-        // 4. FOOTER BELOW TABLE - Positioned at end of voucher length
+        // 4. FOOTER BELOW TABLE
         val sigLineY = 550f
         val sigLineWidth = 150f
 
         val linePaint = Paint().apply {
             isAntiAlias = true
-            color = Color.parseColor("#1A0D08")
+            color = Color.BLACK
             strokeWidth = 1f
         }
 
         val sigPaint = Paint().apply {
             isAntiAlias = true
-            color = Color.parseColor("#1A0D08")
+            color = Color.BLACK
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             textSize = 11f
@@ -640,8 +630,8 @@ object PrintUtils {
                         font-family: 'SolaimanLipi', 'Kalpurush', 'Noto Sans Bengali', Arial, sans-serif;
                         margin: 0;
                         padding: 0;
-                        background-color: #FFFDF9;
-                        color: #2C1810;
+                        background-color: #FFFFFF;
+                        color: #000000;
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
                     }
@@ -660,41 +650,34 @@ object PrintUtils {
                     .memo-card {
                         width: 100%;
                         height: 100%;
-                        background: #FFFDF9;
+                        background: #FFFFFF;
                         box-sizing: border-box;
                     }
                     .header-banner {
-                        background-color: #123528;
-                        color: #FFFFFF;
+                        background-color: #FFFFFF;
+                        color: #000000;
                         text-align: center;
                         padding: 8px 6px 6px 6px;
+                        border: 1.5px solid #000000;
+                        border-radius: 4px;
                     }
                     .header-banner h1 {
                         margin: 0;
                         font-size: 22px;
                         font-weight: bold;
+                        color: #000000;
                         letter-spacing: 0.5px;
                     }
                     .header-banner p {
                         margin: 2px 0 0 0;
                         font-size: 12px;
                         font-weight: normal;
+                        color: #000000;
                     }
                     .sawtooth-bar {
-                        height: 6px;
-                        background-color: #123528;
-                        clip-path: polygon(
-                            0% 0%, 100% 0%,
-                            100% 50%, 98% 100%, 96% 50%, 94% 100%, 92% 50%, 90% 100%,
-                            88% 50%, 86% 100%, 84% 50%, 82% 100%, 80% 50%, 78% 100%,
-                            76% 50%, 74% 100%, 72% 50%, 70% 100%, 68% 50%, 66% 100%,
-                            64% 50%, 62% 100%, 60% 50%, 58% 100%, 56% 50%, 54% 100%,
-                            52% 50%, 50% 100%, 48% 50%, 46% 100%, 44% 50%, 42% 100%,
-                            40% 50%, 38% 100%, 36% 50%, 34% 100%, 32% 50%, 30% 100%,
-                            28% 50%, 26% 100%, 24% 50%, 22% 100%, 20% 50%, 18% 100%,
-                            16% 50%, 14% 100%, 12% 50%, 10% 100%, 8% 50%, 6% 100%,
-                            4% 50%, 2% 100%, 0% 50%
-                        );
+                        height: 2px;
+                        background-color: #000000;
+                        margin-top: 4px;
                         margin-bottom: 6px;
                     }
                     .meta-row {
@@ -704,10 +687,10 @@ object PrintUtils {
                         padding: 4px 6px;
                         font-size: 12px;
                         font-weight: bold;
-                        color: #123528;
+                        color: #000000;
                     }
                     .dashed-divider {
-                        border-bottom: 1.2px dashed #123528;
+                        border-bottom: 1.2px dashed #000000;
                         margin: 0 6px 8px 6px;
                     }
                     .table-wrapper {
@@ -716,17 +699,18 @@ object PrintUtils {
                     .memo-table {
                         width: 100%;
                         border-collapse: collapse;
-                        border: 1.8px solid #123528;
+                        border: 1.8px solid #000000;
                         border-radius: 4px;
                         overflow: hidden;
                     }
                     .memo-table th {
-                        background-color: #123528;
-                        color: #FFFFFF;
+                        background-color: #FFFFFF;
+                        color: #000000;
                         font-weight: bold;
                         font-size: 11px;
                         padding: 4px 2px;
-                        border-right: 1.5px solid #FFFFFF;
+                        border-right: 1.2px solid #000000;
+                        border-bottom: 1.8px solid #000000;
                         text-align: center;
                         white-space: nowrap;
                     }
@@ -734,11 +718,11 @@ object PrintUtils {
                         border-right: none;
                     }
                     .memo-table td {
-                        border-right: 1.5px solid #123528;
-                        border-bottom: 1px dashed #C2D4CC;
+                        border-right: 1.2px solid #000000;
+                        border-bottom: 1px dashed #666666;
                         padding: $cellPaddingCss;
                         font-size: $fontSizeCss;
-                        color: #2C1810;
+                        color: #000000;
                         height: $rowHeightCss;
                     }
                     .memo-table td:last-child {
@@ -751,27 +735,27 @@ object PrintUtils {
                     .amount-col { text-align: right; font-weight: bold; width: 18%; }
 
                     .total-row td {
-                        border-top: 1.8px solid #123528;
+                        border-top: 1.8px solid #000000;
                         border-bottom: none;
                         font-weight: bold;
                     }
                     .total-label {
                         text-align: right;
                         font-size: 12px;
-                        color: #123528;
+                        color: #000000;
                         padding-right: 10px;
-                        border-right: 1.5px solid #123528;
+                        border-right: 1.2px solid #000000;
                     }
                     .total-amount {
                         text-align: right;
                         font-size: 13px;
-                        color: #123528;
+                        color: #000000;
                         font-weight: bold;
                     }
                     .footer-section {
                         padding: 10px 6px 0 6px;
                         font-size: 11px;
-                        color: #2C1810;
+                        color: #000000;
                     }
                     .words-row {
                         margin-bottom: 16px;
@@ -785,8 +769,8 @@ object PrintUtils {
                     }
                     .sig-box {
                         font-weight: bold;
-                        color: #2C1810;
-                        border-top: 1px solid #123528;
+                        color: #000000;
+                        border-top: 1px solid #000000;
                         width: 165px;
                         text-align: center;
                         padding-top: 4px;

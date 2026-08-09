@@ -130,8 +130,8 @@ fun HomeScreen(
     }
 
     // Android System Date Picker Dialog
-    val calendar = Calendar.getInstance()
-    val datePickerDialog = remember {
+    val showDatePicker = {
+        val calendar = Calendar.getInstance()
         DatePickerDialog(
             context,
             { _, year, month, dayOfMonth ->
@@ -142,7 +142,7 @@ fun HomeScreen(
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        )
+        ).show()
     }
 
     Crossfade(
@@ -152,8 +152,8 @@ fun HomeScreen(
     ) { loading ->
         if (loading) {
             AppSplashScreen(
-                appName = "টুলস",
-                subtitle = "স্মার্ট ডিজিটাল টুলস সংগ্রহ"
+                appName = "Digital Tool",
+                subtitle = "Smart Digital Tools Hub"
             )
         } else {
             Scaffold(
@@ -197,7 +197,7 @@ fun HomeScreen(
                             }
                         },
                         actions = {
-                            if (!showGlobalSettings) {
+                            if (!showGlobalSettings && selectedTool == null) {
                                 IconButton(
                                     onClick = { showGlobalSettings = true },
                                     modifier = Modifier.testTag("global_settings_button")
@@ -333,7 +333,7 @@ fun HomeScreen(
                                         onResetDefaults = {
                                             viewModel.resetQuickPresetsToDefault()
                                         },
-                                        onUpdateDateClick = { datePickerDialog.show() },
+                                        onUpdateDateClick = { showDatePicker() },
                                         onUpdateItemName = { id, name -> viewModel.updateItemName(id, name) },
                                         onUpdateItemQty = { id, qty -> viewModel.updateItemQuantity(id, qty) },
                                         onUpdateItemRate = { id, rate -> viewModel.updateItemRate(id, rate) },

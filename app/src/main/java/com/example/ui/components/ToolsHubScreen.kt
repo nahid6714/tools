@@ -93,15 +93,6 @@ fun ToolsHubScreen(
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
             accentColor = DarkForestGreen
-        ),
-        AppToolItem(
-            id = "app_settings",
-            title = if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস",
-            subtitle = if (isEn) "Configure theme mode, language, app updates & permissions" else "অ্যাপ থিম মোড, ভাষা, আপডেট ও পারমিশনস নিয়ন্ত্রণ করুন",
-            icon = Icons.Default.Settings,
-            isAvailable = true,
-            badgeText = if (isEn) "Settings" else "সেটিংস",
-            accentColor = DarkForestGreen
         )
     )
 

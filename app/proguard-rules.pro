@@ -2,8 +2,11 @@
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 
-# Preserve Room database entities and DAOs
+# Preserve Room database entities, DAOs, and Room database
 -keep class com.example.data.** { *; }
+-keep class com.example.util.** { *; }
+-keep class com.example.ui.** { *; }
+-keep class com.example.update.** { *; }
 -keepclassmembers class * extends androidx.room.RoomDatabase {
     <init>(...);
 }
@@ -12,6 +15,10 @@
 # Preserve annotations and type metadata for serialization/Room/Moshi
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
 
+# Keep ML Kit Document Scanner
+-keep class com.google.mlkit.** { *; }
+-keep class com.google.android.gms.** { *; }
+
 # Keep Compose Runtime Owner
 -keepclassmembers class * extends androidx.compose.ui.node.Owner { *; }
 
@@ -19,4 +26,5 @@
 -keepclassmembers class * extends androidx.lifecycle.ViewModel {
     <init>(...);
 }
+
 

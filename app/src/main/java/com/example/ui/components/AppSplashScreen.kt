@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -7,6 +8,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +35,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,9 +46,17 @@ import com.example.ui.theme.DarkForestGreen
 
 @Composable
 fun AppSplashScreen(
-    appName: String = "টুলস",
-    subtitle: String = "স্মার্ট ডিজিটাল টুলস সংগ্রহ"
+    appName: String = "Digital Tool",
+    subtitle: String = "Smart Digital Tools Hub"
 ) {
+    val context = LocalContext.current
+    val logoBitmap = remember(context) {
+        try {
+            BitmapFactory.decodeResource(context.resources, com.example.R.drawable.app_logo_foreground)?.asImageBitmap()
+        } catch (e: Exception) {
+            null
+        }
+    }
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
         initialValue = 0.92f,
@@ -105,14 +118,23 @@ fun AppSplashScreen(
                         .size(90.dp)
                         .background(Color(0xFFFFF8EE), CircleShape)
                 ) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.app_logo_foreground),
-                        contentDescription = "App Logo",
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                    )
+                    if (logoBitmap != null) {
+                        Image(
+                            bitmap = logoBitmap,
+                            contentDescription = "App Logo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Restaurant,
+                            contentDescription = "App Logo",
+                            tint = DarkForestGreen,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
                 }
             }
 

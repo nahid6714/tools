@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Tools"
+rootProject.name = "Digital Tool"
 
 include(":app")

@@ -4,35 +4,10 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
-import com.example.R
 
-val fontProvider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
-)
-
-val NotoSerifBengaliFont = GoogleFont("Noto Serif Bengali")
-val HindSiliguriFont = GoogleFont("Hind Siliguri")
-
-val NotoSerifBengaliFamily = FontFamily(
-    Font(googleFont = NotoSerifBengaliFont, fontProvider = fontProvider, weight = FontWeight.Normal),
-    Font(googleFont = NotoSerifBengaliFont, fontProvider = fontProvider, weight = FontWeight.Bold),
-    Font(googleFont = NotoSerifBengaliFont, fontProvider = fontProvider, weight = FontWeight.SemiBold)
-)
-
-val HindSiliguriFamily = FontFamily(
-    Font(googleFont = HindSiliguriFont, fontProvider = fontProvider, weight = FontWeight.Normal),
-    Font(googleFont = HindSiliguriFont, fontProvider = fontProvider, weight = FontWeight.Medium),
-    Font(googleFont = HindSiliguriFont, fontProvider = fontProvider, weight = FontWeight.Bold),
-    Font(googleFont = HindSiliguriFont, fontProvider = fontProvider, weight = FontWeight.SemiBold)
-)
-
-val HeadingFontFamily = NotoSerifBengaliFamily
-val BodyFontFamily = HindSiliguriFamily
+val HeadingFontFamily = FontFamily.Serif
+val BodyFontFamily = FontFamily.SansSerif
 
 val Typography = Typography(
     displayLarge = TextStyle(
@@ -76,3 +51,4 @@ val Typography = Typography(
         fontSize = 12.sp
     )
 )
+
