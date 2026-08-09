@@ -197,7 +197,7 @@ fun HomeScreen(
                             }
                         },
                         actions = {
-                            if (!showGlobalSettings) {
+                            if (!showGlobalSettings && selectedTool == null) {
                                 IconButton(
                                     onClick = { showGlobalSettings = true },
                                     modifier = Modifier.testTag("global_settings_button")
