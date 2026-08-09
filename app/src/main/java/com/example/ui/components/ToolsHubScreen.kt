@@ -108,7 +108,7 @@ fun ToolsHubScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F4EE))
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -186,7 +186,7 @@ fun ToolsHubScreen(
             fontFamily = HeadingFontFamily,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
-            color = ForestGreenText,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
         )
 
@@ -212,7 +212,7 @@ fun ToolsHubScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFEAE2D5))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(14.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -220,7 +220,7 @@ fun ToolsHubScreen(
                 text = if (isEn) "💡 More new daily tools will be added soon!" else "💡 আরও নতুন দৈনন্দিন টুলস খুব শীঘ্রই যোগ করা হবে!",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF4A3E31)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -238,7 +238,7 @@ fun ToolCardItem(
             .clickable { onClick() }
             .testTag("tool_card_${tool.id}"),
         colors = CardDefaults.cardColors(
-            containerColor = if (tool.isAvailable) Color.White else Color(0xFFFAFAFA)
+            containerColor = if (tool.isAvailable) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = if (tool.isAvailable) 3.dp else 1.dp
@@ -286,7 +286,7 @@ fun ToolCardItem(
                         fontFamily = HeadingFontFamily,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (tool.isAvailable) Color.Black else Color.DarkGray,
+                        color = if (tool.isAvailable) MaterialTheme.colorScheme.onSurface else Color.DarkGray,
                         modifier = Modifier.weight(1f, fill = false)
                     )
 
@@ -314,7 +314,7 @@ fun ToolCardItem(
                 Text(
                     text = tool.subtitle,
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
                 )
             }

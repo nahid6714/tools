@@ -52,13 +52,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.FoodBillUiModel
-import com.example.ui.theme.CreamPaperBg
-import com.example.ui.theme.DarkForestGreen
-import com.example.ui.theme.ForestGreenText
 import com.example.ui.theme.HeadingFontFamily
 import com.example.ui.theme.LedgerRed
 import com.example.ui.theme.StampBlue
-import com.example.ui.theme.WarmBorderColor
 import com.example.util.BengaliUtils
 
 @Composable
@@ -115,13 +111,13 @@ fun BillHistoryList(
             placeholder = { Text("তারিখ বা আইটেম দিয়ে খুঁজুন...") },
             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
             singleLine = true,
-            textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 15.sp),
+            textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp),
             shape = RoundedCornerShape(24.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black,
-                focusedBorderColor = DarkForestGreen,
-                unfocusedBorderColor = WarmBorderColor
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
@@ -141,7 +137,7 @@ fun BillHistoryList(
                 .fillMaxWidth()
                 .testTag("summary_card"),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkForestGreen)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Row(
                 modifier = Modifier
@@ -245,7 +241,7 @@ fun HistoryBillItemCard(
             .fillMaxWidth()
             .testTag("history_item_card_${bill.id}"),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = CreamPaperBg),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -263,7 +259,7 @@ fun HistoryBillItemCard(
                         text = "তারিখ: ${BengaliUtils.toBengaliDigits(bill.dateString)}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = ForestGreenText
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (bill.purchaserName.isNotBlank()) {
                         Text(
@@ -278,12 +274,12 @@ fun HistoryBillItemCard(
                     text = BengaliUtils.formatBengaliCurrency(bill.totalAmount),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = DarkForestGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Divider(color = WarmBorderColor, thickness = 0.5.dp)
+            Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
             Spacer(modifier = Modifier.height(8.dp))
 
             // Items Preview (up to 3 items)
@@ -307,21 +303,21 @@ fun HistoryBillItemCard(
                     onClick = onEdit,
                     modifier = Modifier.testTag("edit_history_bill_${bill.id}")
                 ) {
-                    Icon(imageVector = Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = DarkForestGreen)
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = MaterialTheme.colorScheme.primary)
                 }
 
                 IconButton(
                     onClick = onPrint,
                     modifier = Modifier.testTag("print_history_bill_${bill.id}")
                 ) {
-                    Icon(imageVector = Icons.Default.Print, contentDescription = "প্রিন্ট করুন", tint = DarkForestGreen)
+                    Icon(imageVector = Icons.Default.Print, contentDescription = "প্রিন্ট করুন", tint = MaterialTheme.colorScheme.primary)
                 }
 
                 IconButton(
                     onClick = onSharePdf,
                     modifier = Modifier.testTag("share_history_bill_${bill.id}")
                 ) {
-                    Icon(imageVector = Icons.Default.Share, contentDescription = "পিডিএফ শেয়ার করুন", tint = DarkForestGreen)
+                    Icon(imageVector = Icons.Default.Share, contentDescription = "পিডিএফ শেয়ার করুন", tint = MaterialTheme.colorScheme.primary)
                 }
 
                 IconButton(

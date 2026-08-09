@@ -72,9 +72,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.BuildConfig
-import com.example.ui.theme.CreamPaperBg
-import com.example.ui.theme.DarkForestGreen
-import com.example.ui.theme.ForestGreenText
 import com.example.ui.theme.HeadingFontFamily
 import com.example.update.AppUpdateManager
 import com.example.update.UpdateDialog
@@ -117,7 +114,7 @@ fun GlobalSettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F4EE))
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -130,7 +127,7 @@ fun GlobalSettingsScreen(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(DarkForestGreen),
+                    .background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -147,7 +144,7 @@ fun GlobalSettingsScreen(
                     fontFamily = HeadingFontFamily,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkForestGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = if (isEn) "App update, theme, language & configurations" else "অ্যাপ আপডেট, থিম, ভাষা ও অন্যান্য কনফিগারেশন",
@@ -169,7 +166,7 @@ fun GlobalSettingsScreen(
                     "বর্তমান ভার্সন: v${BengaliUtils.toBengaliDigits(BuildConfig.VERSION_NAME)} (বিল্ড কোড: ${BengaliUtils.toBengaliDigits(BuildConfig.VERSION_CODE.toString())})",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = ForestGreenText
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -187,7 +184,7 @@ fun GlobalSettingsScreen(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = DarkForestGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -195,7 +192,7 @@ fun GlobalSettingsScreen(
                             text = noUpdateMessage!!,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkForestGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -249,7 +246,7 @@ fun GlobalSettingsScreen(
                         }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -301,14 +298,14 @@ fun GlobalSettingsScreen(
                         RadioButton(
                             selected = isSelected,
                             onClick = { onThemeModeChange(key) },
-                            colors = RadioButtonDefaults.colors(selectedColor = DarkForestGreen)
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = label,
                             fontSize = 13.5.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) DarkForestGreen else Color.DarkGray
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.DarkGray
                         )
                     }
                 }
@@ -341,14 +338,14 @@ fun GlobalSettingsScreen(
                         RadioButton(
                             selected = isSelected,
                             onClick = { onLanguageChange(key) },
-                            colors = RadioButtonDefaults.colors(selectedColor = DarkForestGreen)
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = label,
                             fontSize = 13.5.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) DarkForestGreen else Color.DarkGray
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.DarkGray
                         )
                     }
                 }
@@ -372,7 +369,7 @@ fun GlobalSettingsScreen(
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
                         contentDescription = null,
-                        tint = DarkForestGreen,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -398,7 +395,7 @@ fun GlobalSettingsScreen(
                     Icon(
                         imageVector = Icons.Default.Storage,
                         contentDescription = null,
-                        tint = DarkForestGreen,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -482,7 +479,7 @@ fun GlobalSettingsScreen(
                     text = "ডিজিটাল টুলস হাব (Digital Tools Hub)",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkForestGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = "আপনার দৈনন্দিন মেমো তৈরি, খাবার বাজার হিসাব সংরক্ষণ এবং NID বা আইডি কার্ড দ্রুত স্ক্যান ও ফিল্টার করার জন্য একটি স্মার্ট বাংলা টুলস অ্যাপ।",
@@ -514,7 +511,7 @@ fun GlobalSettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("বিল্ড স্ট্যাটাস:", fontSize = 12.5.sp, color = Color.Gray)
-                    Text("অফিশিয়াল স্টেবল রিলিজ", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen)
+                    Text("অফিশিয়াল স্টেবল রিলিজ", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -531,7 +528,7 @@ fun GlobalSettingsScreen(
                     text = "ডিজিটাল টুলস ডেভেলপমেন্ট টিম",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkForestGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = "গিটহাব রিপোজিটরি: github.com/nahid6714/tools",
@@ -609,7 +606,7 @@ private fun SettingsCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = DarkForestGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -617,7 +614,7 @@ private fun SettingsCard(
                     text = title,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkForestGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     fontFamily = HeadingFontFamily
                 )
             }

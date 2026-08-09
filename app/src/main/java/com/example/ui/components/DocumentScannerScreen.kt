@@ -495,13 +495,16 @@ fun DocumentScannerScreen(
                                 IntentSenderRequest.Builder(intentSender).build()
                             )
                         } catch (e: Exception) {
+                            onShowSnackbar("স্মার্ট স্ক্যানার চালু করা যায়নি, সাধারণ ক্যামেরা ব্যবহার হচ্ছে")
                             launchSystemCamera()
                         }
                     }
                     .addOnFailureListener {
+                        onShowSnackbar("স্মার্ট স্ক্যানার এই ডিভাইসে পাওয়া যায়নি, সাধারণ ক্যামেরা ব্যবহার হচ্ছে")
                         launchSystemCamera()
                     }
             } catch (e: Exception) {
+                onShowSnackbar("স্মার্ট স্ক্যানার চালু করা যায়নি, সাধারণ ক্যামেরা ব্যবহার হচ্ছে")
                 launchSystemCamera()
             }
         } else {
@@ -2030,8 +2033,9 @@ private fun getBitmapSize(context: Context, uri: Uri): Pair<Int, Int> {
 private fun detectCardCorners(bitmap: Bitmap): List<Offset> {
     val origW = bitmap.width
     val origH = bitmap.height
+    val fallback = listOf(Offset(0.05f, 0.05f), Offset(0.95f, 0.05f), Offset(0.95f, 0.95f), Offset(0.05f, 0.95f))
     if (origW <= 0 || origH <= 0) {
-        return listOf(Offset(0.05f, 0.05f), Offset(0.95f, 0.05f), Offset(0.95f, 0.95f), Offset(0.05f, 0.95f))
+        return fallback
     }
 
     val maxDim = 400
@@ -2052,89 +2056,177 @@ private fun detectCardCorners(bitmap: Bitmap): List<Offset> {
         lum[i] = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
     }
 
-    // Adaptive threshold: derive from the image's own gradient statistics instead of a
-    // fixed magic number, so busy/low-contrast backgrounds don't flood edgeCandidates
-    // with false positives (which previously made the corner picker snap onto background
-    // clutter instead of the actual document edges).
-    val marginX = (sampleW * 0.03f).toInt().coerceAtLeast(2)
-    val marginY = (sampleH * 0.03f).toInt().coerceAtLeast(2)
+    // --- Step 1: Otsu's method to find the best brightness threshold that splits the
+    // image into two groups (typically: document vs. surrounding background/table). This
+    // is far more robust to lighting/texture noise than a fixed or gradient-based cutoff.
+    val histogram = IntArray(256)
+    for (v in lum) histogram[v]++
+    val totalPixels = lum.size
 
-    var gradientSum = 0L
-    var gradientCount = 0
-    for (y in marginY + 1 until sampleH - marginY - 1) {
-        for (x in marginX + 1 until sampleW - marginX - 1) {
-            val gx = Math.abs(lum[y * sampleW + (x + 1)] - lum[y * sampleW + (x - 1)])
-            val gy = Math.abs(lum[(y + 1) * sampleW + x] - lum[(y - 1) * sampleW + x])
-            gradientSum += (gx + gy)
-            gradientCount++
+    var sumAll = 0L
+    for (t in 0 until 256) sumAll += t.toLong() * histogram[t]
+
+    var sumBackground = 0L
+    var weightBackground = 0L
+    var bestThreshold = 127
+    var bestVariance = -1.0
+
+    for (t in 0 until 256) {
+        weightBackground += histogram[t]
+        if (weightBackground == 0L) continue
+        val weightForeground = totalPixels - weightBackground
+        if (weightForeground == 0L) break
+
+        sumBackground += t.toLong() * histogram[t]
+        val meanBackground = sumBackground.toDouble() / weightBackground
+        val meanForeground = (sumAll - sumBackground).toDouble() / weightForeground
+
+        val betweenVariance = weightBackground.toDouble() * weightForeground.toDouble() *
+            (meanBackground - meanForeground) * (meanBackground - meanForeground)
+
+        if (betweenVariance > bestVariance) {
+            bestVariance = betweenVariance
+            bestThreshold = t
         }
     }
-    val avgGradient = if (gradientCount > 0) gradientSum.toFloat() / gradientCount else 0f
-    // Require a gradient noticeably above the image's average noise level to count as an edge.
-    val edgeThreshold = (avgGradient * 2.2f).coerceIn(20f, 70f)
 
-    val edgeCandidates = ArrayList<Offset>()
-    for (y in marginY + 1 until sampleH - marginY - 1) {
-        for (x in marginX + 1 until sampleW - marginX - 1) {
-            val gx = Math.abs(lum[y * sampleW + (x + 1)] - lum[y * sampleW + (x - 1)])
-            val gy = Math.abs(lum[(y + 1) * sampleW + x] - lum[(y - 1) * sampleW + x])
-            if (gx + gy > edgeThreshold) {
-                edgeCandidates.add(Offset(x.toFloat(), y.toFloat()))
+    // --- Step 2: Decide whether the document is the brighter region or the darker region,
+    // by comparing the average brightness near the center (likely the document) against
+    // the average brightness near the border (likely the background/table).
+    var centerSum = 0L
+    var centerCount = 0
+    val cxStart = (sampleW * 0.35f).toInt()
+    val cxEnd = (sampleW * 0.65f).toInt()
+    val cyStart = (sampleH * 0.35f).toInt()
+    val cyEnd = (sampleH * 0.65f).toInt()
+    for (y in cyStart until cyEnd) {
+        for (x in cxStart until cxEnd) {
+            centerSum += lum[y * sampleW + x]
+            centerCount++
+        }
+    }
+    val centerAvg = if (centerCount > 0) centerSum.toFloat() / centerCount else 128f
+
+    var borderSum = 0L
+    var borderCount = 0
+    for (x in 0 until sampleW) {
+        borderSum += lum[x]
+        borderSum += lum[(sampleH - 1) * sampleW + x]
+        borderCount += 2
+    }
+    for (y in 0 until sampleH) {
+        borderSum += lum[y * sampleW]
+        borderSum += lum[y * sampleW + (sampleW - 1)]
+        borderCount += 2
+    }
+    val borderAvg = if (borderCount > 0) borderSum.toFloat() / borderCount else 128f
+
+    val documentIsBright = centerAvg >= borderAvg
+
+    // --- Step 3: Flood-fill outward from the image center to find the single connected
+    // region that the document belongs to, ignoring any other bright/dark patches elsewhere
+    // in the frame (shadows, reflections, unrelated objects in the background).
+    val visited = BooleanArray(sampleW * sampleH)
+    val regionPixels = ArrayList<Int>(sampleW * sampleH / 2)
+    val stack = ArrayDeque<Int>()
+
+    fun isDocumentPixel(idx: Int): Boolean {
+        return if (documentIsBright) lum[idx] > bestThreshold else lum[idx] <= bestThreshold
+    }
+
+    // Seed the flood-fill from the nearest document-colored pixel to the center, searching
+    // outward in a small spiral if the exact center pixel doesn't match.
+    var seedIdx = -1
+    val centerX = sampleW / 2
+    val centerY = sampleH / 2
+    searchLoop@ for (radius in 0 until maxOf(sampleW, sampleH) / 2) {
+        for (dy in -radius..radius) {
+            for (dx in -radius..radius) {
+                val x = centerX + dx
+                val y = centerY + dy
+                if (x in 0 until sampleW && y in 0 until sampleH) {
+                    val idx = y * sampleW + x
+                    if (isDocumentPixel(idx)) {
+                        seedIdx = idx
+                        break@searchLoop
+                    }
+                }
             }
         }
     }
 
-    // Require a healthy number of edge points relative to image size before trusting the
-    // detection; otherwise fall back to the safe default rectangle instead of guessing wrong.
-    val minRequiredCandidates = ((sampleW + sampleH) * 0.3f).toInt().coerceAtLeast(30)
+    if (seedIdx >= 0) {
+        stack.addLast(seedIdx)
+        visited[seedIdx] = true
+        while (stack.isNotEmpty()) {
+            val idx = stack.removeLast()
+            regionPixels.add(idx)
+            val x = idx % sampleW
+            val y = idx / sampleW
 
-    if (edgeCandidates.size > minRequiredCandidates) {
-        var minSum = Float.MAX_VALUE
-        var maxSum = -Float.MAX_VALUE
-        var minDiff = Float.MAX_VALUE
-        var maxDiff = -Float.MAX_VALUE
-
-        var bestTL = Offset(sampleW * 0.05f, sampleH * 0.05f)
-        var bestTR = Offset(sampleW * 0.95f, sampleH * 0.05f)
-        var bestBR = Offset(sampleW * 0.95f, sampleH * 0.95f)
-        var bestBL = Offset(sampleW * 0.05f, sampleH * 0.95f)
-
-        for (pt in edgeCandidates) {
-            val sum = pt.x + pt.y
-            val diff = pt.x - pt.y
-
-            if (sum < minSum) {
-                minSum = sum
-                bestTL = pt
-            }
-            if (sum > maxSum) {
-                maxSum = sum
-                bestBR = pt
-            }
-            if (diff > maxDiff) {
-                maxDiff = diff
-                bestTR = pt
-            }
-            if (diff < minDiff) {
-                minDiff = diff
-                bestBL = pt
+            val neighbors = intArrayOf(
+                if (x > 0) idx - 1 else -1,
+                if (x < sampleW - 1) idx + 1 else -1,
+                if (y > 0) idx - sampleW else -1,
+                if (y < sampleH - 1) idx + sampleW else -1
+            )
+            for (n in neighbors) {
+                if (n >= 0 && !visited[n] && isDocumentPixel(n)) {
+                    visited[n] = true
+                    stack.addLast(n)
+                }
             }
         }
-
-        val normTL = Offset((bestTL.x / sampleW).coerceIn(0.01f, 0.95f), (bestTL.y / sampleH).coerceIn(0.01f, 0.95f))
-        val normTR = Offset((bestTR.x / sampleW).coerceIn(0.05f, 0.99f), (bestTR.y / sampleH).coerceIn(0.01f, 0.95f))
-        val normBR = Offset((bestBR.x / sampleW).coerceIn(0.05f, 0.99f), (bestBR.y / sampleH).coerceIn(0.05f, 0.99f))
-        val normBL = Offset((bestBL.x / sampleW).coerceIn(0.01f, 0.95f), (bestBL.y / sampleH).coerceIn(0.05f, 0.99f))
-
-        return listOf(normTL, normTR, normBR, normBL)
     }
 
-    return listOf(
-        Offset(0.05f, 0.05f),
-        Offset(0.95f, 0.05f),
-        Offset(0.95f, 0.95f),
-        Offset(0.05f, 0.95f)
-    )
+    // Require the detected region to cover a sensible portion of the frame (not a tiny
+    // speck, and not the entire frame which would mean segmentation failed to find any
+    // real boundary) before trusting it; otherwise fall back to the safe default rectangle.
+    val regionRatio = regionPixels.size.toFloat() / totalPixels
+    if (regionPixels.isEmpty() || regionRatio < 0.12f || regionRatio > 0.97f) {
+        return fallback
+    }
+
+    var minSum = Float.MAX_VALUE
+    var maxSum = -Float.MAX_VALUE
+    var minDiff = Float.MAX_VALUE
+    var maxDiff = -Float.MAX_VALUE
+
+    var bestTL = Offset(sampleW * 0.05f, sampleH * 0.05f)
+    var bestTR = Offset(sampleW * 0.95f, sampleH * 0.05f)
+    var bestBR = Offset(sampleW * 0.95f, sampleH * 0.95f)
+    var bestBL = Offset(sampleW * 0.05f, sampleH * 0.95f)
+
+    for (idx in regionPixels) {
+        val x = (idx % sampleW).toFloat()
+        val y = (idx / sampleW).toFloat()
+        val sum = x + y
+        val diff = x - y
+
+        if (sum < minSum) {
+            minSum = sum
+            bestTL = Offset(x, y)
+        }
+        if (sum > maxSum) {
+            maxSum = sum
+            bestBR = Offset(x, y)
+        }
+        if (diff > maxDiff) {
+            maxDiff = diff
+            bestTR = Offset(x, y)
+        }
+        if (diff < minDiff) {
+            minDiff = diff
+            bestBL = Offset(x, y)
+        }
+    }
+
+    val normTL = Offset((bestTL.x / sampleW).coerceIn(0.0f, 0.98f), (bestTL.y / sampleH).coerceIn(0.0f, 0.98f))
+    val normTR = Offset((bestTR.x / sampleW).coerceIn(0.02f, 1.0f), (bestTR.y / sampleH).coerceIn(0.0f, 0.98f))
+    val normBR = Offset((bestBR.x / sampleW).coerceIn(0.02f, 1.0f), (bestBR.y / sampleH).coerceIn(0.02f, 1.0f))
+    val normBL = Offset((bestBL.x / sampleW).coerceIn(0.0f, 0.98f), (bestBL.y / sampleH).coerceIn(0.02f, 1.0f))
+
+    return listOf(normTL, normTR, normBR, normBL)
 }
 
 @Composable

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -210,7 +211,7 @@ fun HomeScreen(
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = DarkForestGreen,
+                            containerColor = MaterialTheme.colorScheme.primary,
                             titleContentColor = Color.White
                         )
                     )
@@ -218,10 +219,10 @@ fun HomeScreen(
                 bottomBar = {
                     if (!showGlobalSettings && selectedTool == "food_bill") {
                         NavigationBar(
-                            containerColor = Color(0xFFEBE2D8),
-                            contentColor = DarkForestGreen
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         ) {
-                            val darkUnselectedColor = Color(0xFF2C3E35)
+                            val darkUnselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
 
                             NavigationBarItem(
                                 selected = selectedTab == 0,
@@ -230,8 +231,8 @@ fun HomeScreen(
                                 label = { Text(if (isEn) "Daily Bill" else "দৈনিক বিল", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Color.White,
-                                    selectedTextColor = DarkForestGreen,
-                                    indicatorColor = DarkForestGreen,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primary,
                                     unselectedIconColor = darkUnselectedColor,
                                     unselectedTextColor = darkUnselectedColor
                                 ),
@@ -245,8 +246,8 @@ fun HomeScreen(
                                 label = { Text(if (isEn) "Saved Records" else "সংরক্ষিত হিসাব", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Color.White,
-                                    selectedTextColor = DarkForestGreen,
-                                    indicatorColor = DarkForestGreen,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primary,
                                     unselectedIconColor = darkUnselectedColor,
                                     unselectedTextColor = darkUnselectedColor
                                 ),
@@ -260,8 +261,8 @@ fun HomeScreen(
                                 label = { Text(if (isEn) "Memo Settings" else "মেমো সেটিংস", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Color.White,
-                                    selectedTextColor = DarkForestGreen,
-                                    indicatorColor = DarkForestGreen,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primary,
                                     unselectedIconColor = darkUnselectedColor,
                                     unselectedTextColor = darkUnselectedColor
                                 ),
@@ -276,7 +277,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
-                        .background(Color(0xFFFBF8F3))
+                        .background(MaterialTheme.colorScheme.background)
                 ) {
                     if (showGlobalSettings) {
                         GlobalSettingsScreen(

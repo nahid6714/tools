@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,14 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.example.ui.theme.BrassAccent
-import com.example.ui.theme.CreamPaperBg
-import com.example.ui.theme.DarkForestGreen
-import com.example.ui.theme.ForestGreenText
 import com.example.ui.theme.HeadingFontFamily
 import com.example.ui.theme.LedgerRed
-import com.example.ui.theme.LightForestGreen
 import com.example.ui.theme.StampBlue
-import com.example.ui.theme.WarmBorderColor
 import com.example.util.BengaliUtils
 import com.example.util.QuickPreset
 
@@ -104,7 +100,7 @@ fun QuickPresetChips(
             Box {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = DarkForestGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable { expandedDropdown = true }
                         .testTag("quick_preset_dropdown_btn")
@@ -134,7 +130,7 @@ fun QuickPresetChips(
                     onDismissRequest = { expandedDropdown = false },
                     modifier = Modifier
                         .widthIn(min = 240.dp)
-                        .background(CreamPaperBg)
+                        .background(MaterialTheme.colorScheme.surface)
                 ) {
                     Text(
                         text = "— প্রিসেট লিস্ট (ট্যাপ করে সিলেক্ট / আনসেলেক্ট করুন) —",
@@ -143,7 +139,7 @@ fun QuickPresetChips(
                         color = Color.Gray,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
-                    Divider(color = WarmBorderColor, thickness = 0.5.dp)
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
                     presets.forEach { preset ->
                         val isAdded = addedItemNames.contains(preset.name.trim())
@@ -159,7 +155,7 @@ fun QuickPresetChips(
                                         text = formattedText,
                                         fontSize = 13.sp,
                                         fontWeight = if (isAdded) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isAdded) ForestGreenText else Color.Black
+                                        color = if (isAdded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface
                                     )
                                     if (isAdded) {
                                         Text(
@@ -178,7 +174,7 @@ fun QuickPresetChips(
                                         Icon(
                                             imageVector = Icons.Default.Check,
                                             contentDescription = "যোগ করা আছে",
-                                            tint = DarkForestGreen,
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(2.dp))
@@ -198,14 +194,14 @@ fun QuickPresetChips(
                         )
                     }
 
-                    Divider(color = WarmBorderColor, thickness = 0.5.dp)
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                     DropdownMenuItem(
                         text = {
                             Text(
                                 text = "+ কাস্টম প্রিসেট যোগ / এডিট করুন",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkForestGreen
+                                color = MaterialTheme.colorScheme.primary
                             )
                         },
                         onClick = {
@@ -219,7 +215,7 @@ fun QuickPresetChips(
             // Customize / Add Button
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = Color(0xFFEBE2D8),
+                color = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier
                     .clickable { showManageDialog = true }
                     .testTag("manage_quick_presets_btn")
@@ -231,7 +227,7 @@ fun QuickPresetChips(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "কাস্টমাইজ",
-                        tint = DarkForestGreen,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -239,7 +235,7 @@ fun QuickPresetChips(
                         text = "কাস্টমাইজ",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = DarkForestGreen
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -329,7 +325,7 @@ fun ManageQuickPresetsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = CreamPaperBg,
+        containerColor = MaterialTheme.colorScheme.surface,
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fillMaxWidth(0.96f),
         title = {
@@ -338,7 +334,7 @@ fun ManageQuickPresetsDialog(
                 fontFamily = HeadingFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp,
-                color = DarkForestGreen
+                color = MaterialTheme.colorScheme.primary
             )
         },
         text = {
@@ -364,7 +360,7 @@ fun ManageQuickPresetsDialog(
                                 text = "✏️ ‘${editingPreset!!.name}’ আইটেম সম্পাদনা করছেন",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkForestGreen
+                                color = MaterialTheme.colorScheme.primary
                             )
                             TextButton(
                                 onClick = {
@@ -385,7 +381,7 @@ fun ManageQuickPresetsDialog(
                         text = "নতুন প্রিসেট আইটেম যোগ করুন:",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = ForestGreenText
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -395,11 +391,11 @@ fun ManageQuickPresetsDialog(
                     value = newItemName,
                     onValueChange = { newItemName = it },
                     label = { Text("আইটেমের নাম (যেমন: পেঁয়াজ, সয়াবিন তেল)", fontSize = 12.sp) },
-                    textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        focusedBorderColor = DarkForestGreen
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(onNext = { focusQty.requestFocus() }),
@@ -417,7 +413,7 @@ fun ManageQuickPresetsDialog(
                     text = "ডিফল্ট একক সিলেক্ট করুন:",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ForestGreenText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -431,7 +427,7 @@ fun ManageQuickPresetsDialog(
                         val isSelected = selectedUnit == unit
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) DarkForestGreen else Color(0xFFE8E0D5),
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.clickable {
                                 selectedUnit = if (isSelected) "" else unit
                             }
@@ -466,11 +462,11 @@ fun ManageQuickPresetsDialog(
                             }
                         },
                         label = { Text("পরিমাণ", fontSize = 10.sp) },
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            focusedBorderColor = DarkForestGreen
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusRate.requestFocus() }),
@@ -494,11 +490,11 @@ fun ManageQuickPresetsDialog(
                             }
                         },
                         label = { Text("দর (টাকা)", fontSize = 10.sp) },
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            focusedBorderColor = DarkForestGreen
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusAmount.requestFocus() }),
@@ -516,11 +512,11 @@ fun ManageQuickPresetsDialog(
                             newItemAmountVal = bnVal
                         },
                         label = { Text("মোট টাকা", fontSize = 10.sp) },
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            focusedBorderColor = DarkForestGreen
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusName.requestFocus() }),
@@ -548,7 +544,7 @@ fun ManageQuickPresetsDialog(
 
                 if (newItemName.isNotBlank()) {
                     Surface(
-                        color = Color(0xFFF5ECE4),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -562,7 +558,7 @@ fun ManageQuickPresetsDialog(
                             text = previewStr,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = ForestGreenText,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                         )
                     }
@@ -610,7 +606,7 @@ fun ManageQuickPresetsDialog(
                             .weight(1f)
                             .height(42.dp)
                             .testTag("add_custom_preset_submit"),
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Icon(
@@ -635,7 +631,7 @@ fun ManageQuickPresetsDialog(
                     text = "বর্তমান দ্রুত আইটেমসমূহ (${presets.size} টি) [যেকোনো আইটেমে ট্যাপ করে এডিট করুন]:",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ForestGreenText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -648,7 +644,7 @@ fun ManageQuickPresetsDialog(
                         val isEditingThis = editingPreset == preset
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (isEditingThis) DarkForestGreen else Color(0xFFF2E6DC),
+                            color = if (isEditingThis) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -697,7 +693,7 @@ fun ManageQuickPresetsDialog(
                                         text = labelText,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = if (isEditingThis) Color.White else Color.Black
+                                        color = if (isEditingThis) Color.White else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
 
@@ -716,7 +712,7 @@ fun ManageQuickPresetsDialog(
                                         Icon(
                                             imageVector = Icons.Default.Edit,
                                             contentDescription = "সম্পাদনা",
-                                            tint = if (isEditingThis) Color.White else DarkForestGreen,
+                                            tint = if (isEditingThis) Color.White else MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -775,7 +771,7 @@ fun ManageQuickPresetsDialog(
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
             ) {
                 Text("বন্ধ করুন", color = Color.White, fontWeight = FontWeight.Bold)
             }
@@ -809,7 +805,7 @@ fun PromptQuantityDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = CreamPaperBg,
+        containerColor = MaterialTheme.colorScheme.surface,
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fillMaxWidth(0.96f),
         title = {
@@ -819,7 +815,7 @@ fun PromptQuantityDialog(
                     fontFamily = HeadingFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp,
-                    color = DarkForestGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = "পরিমাণ (কেজি/লিটার/পিস), দর অথবা মোট টাকা লিখুন:",
@@ -839,7 +835,7 @@ fun PromptQuantityDialog(
                     text = "একক নির্বাচন করুন (Unit):",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ForestGreenText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 FlowRow(
@@ -851,7 +847,7 @@ fun PromptQuantityDialog(
                         val isSelected = selectedUnit == unit
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) DarkForestGreen else Color(0xFFE8E0D5),
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.clickable {
                                 selectedUnit = if (isSelected) "" else unit
                             }
@@ -860,7 +856,7 @@ fun PromptQuantityDialog(
                                 text = unit,
                                 fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) Color.White else ForestGreenText,
+                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                             )
                         }
@@ -888,11 +884,11 @@ fun PromptQuantityDialog(
                         },
                         label = { Text("পরিমাণ (১,২)", fontSize = 10.sp) },
                         singleLine = true,
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            focusedBorderColor = DarkForestGreen
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusRate.requestFocus() }),
@@ -917,11 +913,11 @@ fun PromptQuantityDialog(
                         },
                         label = { Text("দর (টাকা)", fontSize = 10.sp) },
                         singleLine = true,
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            focusedBorderColor = DarkForestGreen
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusAmount.requestFocus() }),
@@ -940,11 +936,11 @@ fun PromptQuantityDialog(
                         },
                         label = { Text("মোট টাকা", fontSize = 10.sp) },
                         singleLine = true,
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            focusedBorderColor = DarkForestGreen
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusQty.requestFocus() }),
@@ -974,7 +970,7 @@ fun PromptQuantityDialog(
                         val optionText = if (option.contains("গ্রাম")) option else if (selectedUnit.isNotBlank()) "$option $selectedUnit" else option
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFF0E4D8),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.clickable {
                                 qtyVal = optionText
                                 val rateNum = BengaliUtils.parseBengaliNumber(rateVal)
@@ -989,7 +985,7 @@ fun PromptQuantityDialog(
                                 text = optionText,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = ForestGreenText,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -1008,7 +1004,7 @@ fun PromptQuantityDialog(
                     }
                     onConfirm(finalQty, rateVal.trim(), amountVal.trim())
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
             ) {
                 Text("তালিকায় যোগ করুন", fontWeight = FontWeight.Bold, color = Color.White)
             }
@@ -1029,16 +1025,16 @@ fun PresetChip(
     isAdded: Boolean = false,
     onClick: () -> Unit
 ) {
-    val bgColor = if (isAdded) Color(0xFFD4EDDA) else Color(0xFFF2E6DC)
-    val textColor = if (isAdded) DarkForestGreen else ForestGreenText
+    val bgColor = if (isAdded) Color(0xFFD4EDDA) else MaterialTheme.colorScheme.surfaceVariant
+    val textColor = if (isAdded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     val subTextColor = if (isAdded) Color(0xFF1B5E20) else Color.Gray
-    val iconColor = if (isAdded) DarkForestGreen else DarkForestGreen
+    val iconColor = if (isAdded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary
 
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = bgColor,
         shadowElevation = if (isAdded) 0.dp else 1.dp,
-        border = if (isAdded) androidx.compose.foundation.BorderStroke(1.dp, DarkForestGreen) else null,
+        border = if (isAdded) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = Modifier
             .clickable { onClick() }
             .testTag("preset_chip_${preset.name}")

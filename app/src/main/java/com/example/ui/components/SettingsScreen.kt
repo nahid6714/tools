@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -66,11 +67,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.CurrentBillState
-import com.example.ui.theme.CreamPaperBg
-import com.example.ui.theme.DarkForestGreen
-import com.example.ui.theme.ForestGreenText
 import com.example.ui.theme.MaroonHeaderColor
-import com.example.ui.theme.WarmBorderColor
 import com.example.util.QuickPreset
 
 @Composable
@@ -117,7 +114,7 @@ fun SettingsScreen(
             text = "ক্যাশ মেমো হেডার সেটিংস",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = ForestGreenText
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -125,7 +122,7 @@ fun SettingsScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = CreamPaperBg)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier
@@ -136,7 +133,7 @@ fun SettingsScreen(
                     text = "মেমোর হেডার তথ্য পরিবর্তন ও সংরক্ষণ:",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkForestGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -146,11 +143,11 @@ fun SettingsScreen(
                     onValueChange = onCenterNameChange,
                     label = { Text("মেডিকেল বা প্রতিষ্ঠানের নাম") },
                     singleLine = true,
-                    textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp),
+                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        focusedBorderColor = DarkForestGreen
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(onNext = { focusSubtitle.requestFocus() }),
@@ -167,11 +164,11 @@ fun SettingsScreen(
                     onValueChange = onSubtitleChange,
                     label = { Text("মেমোর সাবটাইটেল / শিরোনাম") },
                     singleLine = true,
-                    textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        focusedBorderColor = DarkForestGreen
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(onNext = { expandedSignatureDropdown = true }),
@@ -187,7 +184,7 @@ fun SettingsScreen(
                     text = "স্বাক্ষরের শিরোনাম নির্বাচন:",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkForestGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -203,16 +200,16 @@ fun SettingsScreen(
                                 text = "▾",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkForestGreen,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
                         },
                         singleLine = true,
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            focusedBorderColor = DarkForestGreen
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -230,7 +227,7 @@ fun SettingsScreen(
                         onDismissRequest = { expandedSignatureDropdown = false },
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
-                            .background(CreamPaperBg)
+                            .background(MaterialTheme.colorScheme.surface)
                     ) {
                         signatureOptions.forEach { option ->
                             DropdownMenuItem(
@@ -239,7 +236,7 @@ fun SettingsScreen(
                                         text = option,
                                         fontSize = 14.sp,
                                         fontWeight = if (selectedSignatureOption == option) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (selectedSignatureOption == option) DarkForestGreen else Color.Black
+                                        color = if (selectedSignatureOption == option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                     )
                                 },
                                 onClick = {
@@ -250,7 +247,7 @@ fun SettingsScreen(
                             )
                         }
 
-                        Divider(color = WarmBorderColor, thickness = 0.5.dp)
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
                         DropdownMenuItem(
                             text = {
@@ -258,7 +255,7 @@ fun SettingsScreen(
                                     text = customOption,
                                     fontSize = 14.sp,
                                     fontWeight = if (selectedSignatureOption == customOption) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selectedSignatureOption == customOption) DarkForestGreen else Color.Black
+                                    color = if (selectedSignatureOption == customOption) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
                             },
                             onClick = {
@@ -283,11 +280,11 @@ fun SettingsScreen(
                         },
                         label = { Text("কাস্টম স্বাক্ষরের শিরোনাম লিখুন") },
                         singleLine = true,
-                        textStyle = TextStyle(color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 15.sp),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            focusedBorderColor = DarkForestGreen
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = {
@@ -310,7 +307,7 @@ fun SettingsScreen(
                         val finalLabel = if (selectedSignatureOption == customOption) customSignatureText.trim() else selectedSignatureOption
                         onSaveSettings(state.centerName, state.subtitle, finalLabel)
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -333,7 +330,7 @@ fun SettingsScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = CreamPaperBg)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier
@@ -344,7 +341,7 @@ fun SettingsScreen(
                     text = "রিসেট অপশন (Reset Data):",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkForestGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
