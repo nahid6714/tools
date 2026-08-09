@@ -324,6 +324,8 @@ fun HomeScreen(
                                     MemoVoucherCard(
                                         state = currentBillState,
                                         quickPresets = quickPresets,
+                                        onCenterNameChange = { viewModel.updateCenterName(it) },
+                                        onSubtitleChange = { viewModel.updateSubtitle(it) },
                                         onPresetClick = { name, qty, rate, amount ->
                                             viewModel.addQuickPresetItem(name, qty, rate, amount)
                                         },
@@ -463,8 +465,8 @@ fun HomeScreen(
                                     onPrintBill = { bill ->
                                         previewTopMemo = PrintMemoData(
                                             memoId = bill.id,
-                                            centerName = currentBillState.centerName,
-                                            subtitle = currentBillState.subtitle,
+                                            centerName = bill.centerName,
+                                            subtitle = bill.subtitle,
                                             dateString = bill.dateString,
                                             purchaserName = bill.purchaserName,
                                             purchaserLabel = currentBillState.purchaserLabel,
@@ -477,8 +479,8 @@ fun HomeScreen(
                                     onPrintDualBills = { bill1, bill2 ->
                                         previewTopMemo = PrintMemoData(
                                             memoId = bill1.id,
-                                            centerName = currentBillState.centerName,
-                                            subtitle = currentBillState.subtitle,
+                                            centerName = bill1.centerName,
+                                            subtitle = bill1.subtitle,
                                             dateString = bill1.dateString,
                                             purchaserName = bill1.purchaserName,
                                             purchaserLabel = currentBillState.purchaserLabel,
@@ -487,8 +489,8 @@ fun HomeScreen(
                                         )
                                         previewBottomMemo = PrintMemoData(
                                             memoId = bill2.id,
-                                            centerName = currentBillState.centerName,
-                                            subtitle = currentBillState.subtitle,
+                                            centerName = bill2.centerName,
+                                            subtitle = bill2.subtitle,
                                             dateString = bill2.dateString,
                                             purchaserName = bill2.purchaserName,
                                             purchaserLabel = currentBillState.purchaserLabel,
@@ -500,8 +502,8 @@ fun HomeScreen(
                                     onSharePdfBill = { bill ->
                                         previewTopMemo = PrintMemoData(
                                             memoId = bill.id,
-                                            centerName = currentBillState.centerName,
-                                            subtitle = currentBillState.subtitle,
+                                            centerName = bill.centerName,
+                                            subtitle = bill.subtitle,
                                             dateString = bill.dateString,
                                             purchaserName = bill.purchaserName,
                                             purchaserLabel = currentBillState.purchaserLabel,

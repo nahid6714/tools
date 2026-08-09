@@ -458,24 +458,28 @@ private fun SingleMemoVoucherCard(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = memo.centerName.ifBlank { "প্রতিষ্ঠানের নাম লিখুন" },
-                        style = TextStyle(
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = memo.subtitle.ifBlank { "দৈনিক খাবার বিল" },
-                        style = TextStyle(
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.Black
-                        ),
-                        textAlign = TextAlign.Center
-                    )
+                    if (memo.centerName.isNotBlank()) {
+                        Text(
+                            text = memo.centerName,
+                            style = TextStyle(
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    if (memo.subtitle.isNotBlank()) {
+                        Text(
+                            text = memo.subtitle,
+                            style = TextStyle(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = Color.Black
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
 
@@ -818,8 +822,8 @@ private fun MemoSelectionDialog(
                                     .clickable {
                                         val printMemo = PrintMemoData(
                                             memoId = bill.id,
-                                            centerName = defaultCenterName.ifBlank { initialMemo.centerName },
-                                            subtitle = defaultSubtitle.ifBlank { initialMemo.subtitle },
+                                            centerName = bill.centerName,
+                                            subtitle = bill.subtitle,
                                             dateString = bill.dateString,
                                             purchaserName = bill.purchaserName,
                                             purchaserLabel = defaultPurchaserLabel.ifBlank { initialMemo.purchaserLabel },

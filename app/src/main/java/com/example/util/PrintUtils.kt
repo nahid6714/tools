@@ -251,23 +251,27 @@ object PrintUtils {
         canvas.drawRect(headerRect, headerBoxBorderPaint)
 
         // Header Title
-        val titleTextPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 18f
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
+        if (memo.centerName.isNotBlank()) {
+            val titleTextPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.BLACK
+                textSize = 18f
+                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText(memo.centerName, bannerCenterX, localStartY + 24f, titleTextPaint)
         }
-        canvas.drawText(memo.centerName.ifBlank { "প্রতিষ্ঠানের নাম লিখুন" }, bannerCenterX, localStartY + 24f, titleTextPaint)
 
         // Subtitle
-        val subtitleTextPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 11f
-            textAlign = Paint.Align.CENTER
+        if (memo.subtitle.isNotBlank()) {
+            val subtitleTextPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.BLACK
+                textSize = 11f
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText(memo.subtitle, bannerCenterX, localStartY + 38f, subtitleTextPaint)
         }
-        canvas.drawText(memo.subtitle.ifBlank { "দৈনিক খাবার বিল" }, bannerCenterX, localStartY + 38f, subtitleTextPaint)
 
         // Header Separator Line
         val headerLinePaint = Paint().apply {
@@ -473,8 +477,8 @@ object PrintUtils {
     }
 
     private fun renderMemoCardHtml(memo: PrintMemoData): String {
-        val safeCenterName = escapeHtml(memo.centerName.ifBlank { "প্রতিষ্ঠানের নাম লিখুন" })
-        val safeSubtitle = escapeHtml(memo.subtitle.ifBlank { "দৈনিক খাবার বিল" })
+        val safeCenterName = escapeHtml(memo.centerName)
+        val safeSubtitle = escapeHtml(memo.subtitle)
         val safePurchaserLabel = escapeHtml(memo.purchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" })
         val bengaliDate = BengaliUtils.toBengaliDigits(memo.dateString)
         val bengaliTotal = if (memo.totalAmount <= 0) "0/-" else "${BengaliUtils.formatBengaliCurrency(memo.totalAmount)}/-"
@@ -520,8 +524,8 @@ object PrintUtils {
             <div class="memo-half">
                 <div class="memo-card">
                     <div class="header-banner">
-                        <h1>$safeCenterName</h1>
-                        <p>$safeSubtitle</p>
+                        ${if (safeCenterName.isNotBlank()) "<h1>$safeCenterName</h1>" else ""}
+                        ${if (safeSubtitle.isNotBlank()) "<p>$safeSubtitle</p>" else ""}
                     </div>
                     <div class="sawtooth-bar"></div>
 

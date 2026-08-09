@@ -364,6 +364,8 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
                 dateString = currentState.dateString,
                 timestamp = timestamp,
                 purchaserName = currentState.purchaserName,
+                centerName = currentState.centerName,
+                subtitle = currentState.subtitle,
                 note = "",
                 items = validItems,
                 totalAmount = total
@@ -375,15 +377,13 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun loadBillForEditing(bill: FoodBillUiModel) {
-        val savedCenterName = prefs.getString("saved_center_name", "") ?: ""
-        val savedSubtitle = prefs.getString("saved_subtitle", "") ?: ""
         val savedPurchaserLabel = prefs.getString("saved_purchaser_label", "") ?: ""
 
         _currentBillState.value = CurrentBillState(
             editingBillId = bill.id,
             dateString = bill.dateString,
-            centerName = savedCenterName,
-            subtitle = savedSubtitle,
+            centerName = bill.centerName,
+            subtitle = bill.subtitle,
             purchaserName = bill.purchaserName,
             purchaserLabel = savedPurchaserLabel,
             items = bill.items.ifEmpty { listOf(BillItem(name = "", quantity = "", rate = "0", amount = 0.0)) }
