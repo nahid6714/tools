@@ -9,6 +9,8 @@ data class FoodBillEntity(
     val dateString: String, // e.g. "03/08/2026"
     val timestamp: Long, // epoch millis
     val purchaserName: String = "",
+    val centerName: String = "",
+    val subtitle: String = "",
     val note: String = "",
     val totalAmount: Double,
     val itemsJson: String // Serialized list of items

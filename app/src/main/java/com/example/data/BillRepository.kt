@@ -26,6 +26,8 @@ class BillRepository(private val dao: FoodBillDao) {
         dateString: String,
         timestamp: Long,
         purchaserName: String,
+        centerName: String = "",
+        subtitle: String = "",
         note: String,
         items: List<BillItem>,
         totalAmount: Double
@@ -36,6 +38,8 @@ class BillRepository(private val dao: FoodBillDao) {
             dateString = dateString,
             timestamp = timestamp,
             purchaserName = purchaserName,
+            centerName = centerName,
+            subtitle = subtitle,
             note = note,
             totalAmount = totalAmount,
             itemsJson = itemsJson
@@ -68,6 +72,8 @@ class BillRepository(private val dao: FoodBillDao) {
             dateString = dateString,
             timestamp = timestamp,
             purchaserName = purchaserName,
+            centerName = centerName,
+            subtitle = subtitle,
             note = note,
             totalAmount = totalAmount,
             items = parsedItems
@@ -80,6 +86,8 @@ data class FoodBillUiModel(
     val dateString: String,
     val timestamp: Long,
     val purchaserName: String,
+    val centerName: String = "",
+    val subtitle: String = "",
     val note: String,
     val totalAmount: Double,
     val items: List<BillItem>

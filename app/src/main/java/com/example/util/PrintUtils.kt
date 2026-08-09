@@ -15,8 +15,6 @@ import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
 import android.print.PrintManager
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.data.BillItem
@@ -27,24 +25,31 @@ import java.text.DecimalFormat
 enum class PrintPosition(val label: String, val description: String) {
     TOP("উপরে (Top)", "A4 কাগজের উপরের অর্ধেকাংশে"),
     BOTTOM("নিচে (Bottom)", "A4 কাগজের নিচের অর্ধেকাংশে"),
-    BOTH("উভয় অংশ (2 Copies)", "A4 পাতায় ২টি কপি একসাথে (উপরে ও নিচে)")
+    BOTH("উভয় অংশ (২টি মেমো)", "A4 পাতায় ২টি মেমো একসাথে (উপরে ও নিচে)")
 }
+
+data class PrintMemoData(
+    val memoId: Long = 0L,
+    val centerName: String = "",
+    val subtitle: String = "",
+    val dateString: String = "",
+    val purchaserName: String = "",
+    val purchaserLabel: String = "ক্রয়কারীর স্বাক্ষর",
+    val items: List<BillItem> = emptyList(),
+    val totalAmount: Double = 0.0
+)
 
 object PrintUtils {
 
-    fun printFoodBill(
+    fun printFoodBillDual(
         context: Context,
-        centerName: String = "প্রতিষ্ঠানের নাম লিখুন",
-        subtitle: String = "দৈনিক খাবার বিল",
-        dateString: String,
-        items: List<BillItem>,
-        totalAmount: Double,
-        purchaserLabel: String = "ক্রেতার স্বাক্ষর",
-        approverLabel: String = "অনুমোদনকারীর স্বাক্ষর",
+        topMemo: PrintMemoData?,
+        bottomMemo: PrintMemoData?,
         position: PrintPosition = PrintPosition.TOP
     ) {
         val printManager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager
-        val jobName = "Food_Bill_${dateString.replace("/", "-")}"
+        val dateLabel = topMemo?.dateString?.replace("/", "-") ?: "Bill"
+        val jobName = "Food_Bill_$dateLabel"
 
         val printAdapter = object : PrintDocumentAdapter() {
             override fun onLayout(
@@ -73,13 +78,8 @@ object PrintUtils {
             ) {
                 if (destination == null) return
                 val pdfDocument = createFoodBillPdfDocument(
-                    centerName = centerName,
-                    subtitle = subtitle,
-                    dateString = dateString,
-                    items = items,
-                    totalAmount = totalAmount,
-                    purchaserLabel = purchaserLabel,
-                    approverLabel = approverLabel,
+                    topMemo = topMemo,
+                    bottomMemo = bottomMemo,
                     position = position
                 )
                 try {
@@ -102,6 +102,57 @@ object PrintUtils {
         printManager?.print(jobName, printAdapter, builder.build())
     }
 
+    fun shareFoodBillPdfDual(
+        context: Context,
+        topMemo: PrintMemoData?,
+        bottomMemo: PrintMemoData?,
+        position: PrintPosition = PrintPosition.TOP
+    ) {
+        try {
+            val pdfDocument = createFoodBillPdfDocument(
+                topMemo = topMemo,
+                bottomMemo = bottomMemo,
+                position = position
+            )
+
+            val dateLabel = topMemo?.dateString?.replace("/", "-") ?: "Bill"
+            val cacheDir = File(context.cacheDir, "food_bills").apply { mkdirs() }
+            val pdfFile = File(cacheDir, "Food_Bill_$dateLabel.pdf")
+            if (pdfFile.exists()) pdfFile.delete()
+
+            FileOutputStream(pdfFile).use { out ->
+                pdfDocument.writeTo(out)
+            }
+            pdfDocument.close()
+
+            sharePdfFile(context, pdfFile, topMemo?.dateString ?: "", topMemo?.centerName ?: "")
+        } catch (e: Exception) {
+            Toast.makeText(context, "পিডিএফ ফাইল তৈরি ব্যর্থ: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun printFoodBill(
+        context: Context,
+        centerName: String = "প্রতিষ্ঠানের নাম লিখুন",
+        subtitle: String = "দৈনিক খাবার বিল",
+        dateString: String,
+        items: List<BillItem>,
+        totalAmount: Double,
+        purchaserLabel: String = "ক্রেতার স্বাক্ষর",
+        approverLabel: String = "অনুমোদনকারীর স্বাক্ষর",
+        position: PrintPosition = PrintPosition.TOP
+    ) {
+        val memo = PrintMemoData(
+            centerName = centerName,
+            subtitle = subtitle,
+            dateString = dateString,
+            purchaserLabel = purchaserLabel,
+            items = items,
+            totalAmount = totalAmount
+        )
+        printFoodBillDual(context, topMemo = memo, bottomMemo = memo, position = position)
+    }
+
     fun shareFoodBillPdf(
         context: Context,
         centerName: String = "প্রতিষ্ঠানের নাম লিখুন",
@@ -113,106 +164,54 @@ object PrintUtils {
         approverLabel: String = "অনুমোদনকারীর স্বাক্ষর",
         position: PrintPosition = PrintPosition.TOP
     ) {
-        try {
-            val pdfDocument = createFoodBillPdfDocument(
-                centerName = centerName,
-                subtitle = subtitle,
-                dateString = dateString,
-                items = items,
-                totalAmount = totalAmount,
-                purchaserLabel = purchaserLabel,
-                approverLabel = approverLabel,
-                position = position
-            )
-
-            val cacheDir = File(context.cacheDir, "food_bills").apply { mkdirs() }
-            val pdfFile = File(cacheDir, "Food_Bill_${dateString.replace("/", "-")}.pdf")
-            if (pdfFile.exists()) pdfFile.delete()
-
-            FileOutputStream(pdfFile).use { out ->
-                pdfDocument.writeTo(out)
-            }
-            pdfDocument.close()
-
-            sharePdfFile(context, pdfFile, dateString, centerName)
-        } catch (e: Exception) {
-            Toast.makeText(context, "পিডিএফ ফাইল তৈরি ব্যর্থ: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-        }
+        val memo = PrintMemoData(
+            centerName = centerName,
+            subtitle = subtitle,
+            dateString = dateString,
+            purchaserLabel = purchaserLabel,
+            items = items,
+            totalAmount = totalAmount
+        )
+        shareFoodBillPdfDual(context, topMemo = memo, bottomMemo = memo, position = position)
     }
 
     private fun createFoodBillPdfDocument(
-        centerName: String,
-        subtitle: String,
-        dateString: String,
-        items: List<BillItem>,
-        totalAmount: Double,
-        purchaserLabel: String,
-        approverLabel: String,
+        topMemo: PrintMemoData?,
+        bottomMemo: PrintMemoData?,
         position: PrintPosition
     ): PdfDocument {
         val pdfDocument = PdfDocument()
-        // Standard A4 dimensions in points: 595 x 842
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
         val page = pdfDocument.startPage(pageInfo)
         val canvas = page.canvas
 
-        // Pure white paper background for ink-saving printing
         val bgPaint = Paint().apply {
             color = Color.WHITE
             style = Paint.Style.FILL
         }
         canvas.drawRect(0f, 0f, 595f, 842f, bgPaint)
 
+        val resolvedTop = topMemo ?: bottomMemo
+        val resolvedBottom = bottomMemo ?: topMemo
+
         when (position) {
             PrintPosition.TOP -> {
-                drawSingleVoucherOnCanvas(
-                    canvas = canvas,
-                    startY = 0f,
-                    centerName = centerName,
-                    subtitle = subtitle,
-                    dateString = dateString,
-                    items = items,
-                    totalAmount = totalAmount,
-                    purchaserLabel = purchaserLabel,
-                    approverLabel = approverLabel
-                )
+                resolvedTop?.let {
+                    drawSingleVoucherOnCanvas(canvas = canvas, startY = 0f, memo = it)
+                }
             }
             PrintPosition.BOTTOM -> {
-                drawSingleVoucherOnCanvas(
-                    canvas = canvas,
-                    startY = 421f,
-                    centerName = centerName,
-                    subtitle = subtitle,
-                    dateString = dateString,
-                    items = items,
-                    totalAmount = totalAmount,
-                    purchaserLabel = purchaserLabel,
-                    approverLabel = approverLabel
-                )
+                resolvedBottom?.let {
+                    drawSingleVoucherOnCanvas(canvas = canvas, startY = 421f, memo = it)
+                }
             }
             PrintPosition.BOTH -> {
-                drawSingleVoucherOnCanvas(
-                    canvas = canvas,
-                    startY = 0f,
-                    centerName = centerName,
-                    subtitle = subtitle,
-                    dateString = dateString,
-                    items = items,
-                    totalAmount = totalAmount,
-                    purchaserLabel = purchaserLabel,
-                    approverLabel = approverLabel
-                )
-                drawSingleVoucherOnCanvas(
-                    canvas = canvas,
-                    startY = 421f,
-                    centerName = centerName,
-                    subtitle = subtitle,
-                    dateString = dateString,
-                    items = items,
-                    totalAmount = totalAmount,
-                    purchaserLabel = purchaserLabel,
-                    approverLabel = approverLabel
-                )
+                resolvedTop?.let {
+                    drawSingleVoucherOnCanvas(canvas = canvas, startY = 0f, memo = it)
+                }
+                resolvedBottom?.let {
+                    drawSingleVoucherOnCanvas(canvas = canvas, startY = 421f, memo = it)
+                }
             }
         }
 
@@ -223,29 +222,20 @@ object PrintUtils {
     private fun drawSingleVoucherOnCanvas(
         canvas: android.graphics.Canvas,
         startY: Float,
-        centerName: String,
-        subtitle: String,
-        dateString: String,
-        items: List<BillItem>,
-        totalAmount: Double,
-        purchaserLabel: String,
-        approverLabel: String = ""
+        memo: PrintMemoData
     ) {
         canvas.save()
-        // Position at X=15pt, Y=startY + 423pt and rotate -90 degrees counter-clockwise
-        // This maps Canvas Y to Page X (595pt width) and Canvas X to Page Y (421pt half-page height)
         canvas.translate(15f, startY + 423f)
         canvas.rotate(-90f)
 
         val localStartY = 0f
 
-        // Table horizontal bounds (Canvas X axis, maps to Page Y, max 421f height)
         val tableLeft = 10f
         val tableRight = 410f
-        val tableWidth = tableRight - tableLeft // 400f
-        val bannerCenterX = tableLeft + (tableWidth / 2f) // 210f
+        val tableWidth = tableRight - tableLeft
+        val bannerCenterX = tableLeft + (tableWidth / 2f)
 
-        // 1. Header Box (Ink-Saving B&W Outline: White background with sharp black border)
+        // Header Box
         val headerRect = RectF(tableLeft, localStartY, tableRight, localStartY + 44f)
         val headerBoxBorderPaint = Paint().apply {
             isAntiAlias = true
@@ -260,24 +250,28 @@ object PrintUtils {
         canvas.drawRect(headerRect, headerBgPaint)
         canvas.drawRect(headerRect, headerBoxBorderPaint)
 
-        // Header Title (Pure Black)
-        val titleTextPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 18f
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
+        // Header Title
+        if (memo.centerName.isNotBlank()) {
+            val titleTextPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.BLACK
+                textSize = 18f
+                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText(memo.centerName, bannerCenterX, localStartY + 24f, titleTextPaint)
         }
-        canvas.drawText(centerName, bannerCenterX, localStartY + 24f, titleTextPaint)
 
-        // Subtitle (Pure Black)
-        val subtitleTextPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 11f
-            textAlign = Paint.Align.CENTER
+        // Subtitle
+        if (memo.subtitle.isNotBlank()) {
+            val subtitleTextPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.BLACK
+                textSize = 11f
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText(memo.subtitle, bannerCenterX, localStartY + 38f, subtitleTextPaint)
         }
-        canvas.drawText(subtitle, bannerCenterX, localStartY + 38f, subtitleTextPaint)
 
         // Header Separator Line
         val headerLinePaint = Paint().apply {
@@ -287,7 +281,7 @@ object PrintUtils {
         }
         canvas.drawLine(tableLeft, localStartY + 48f, tableRight, localStartY + 48f, headerLinePaint)
 
-        // 2. Metadata Row (Date - Pure Black, Bold)
+        // Metadata Row (Date)
         val metaPaintRight = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
@@ -295,20 +289,19 @@ object PrintUtils {
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.RIGHT
         }
-        val bnDate = BengaliUtils.toBengaliDigits(dateString)
+        val bnDate = BengaliUtils.toBengaliDigits(memo.dateString)
         canvas.drawText("তারিখ : $bnDate", tableRight, localStartY + 66f, metaPaintRight)
 
-        // 3. TABLE GRID CONFIG
+        // Table Grid Config
         val tableTop = localStartY + 76f
-        val colWidths = floatArrayOf(45f, 168f, 62f, 48f, 77f) // Total width = 400f
+        val colWidths = floatArrayOf(45f, 168f, 62f, 48f, 77f)
 
-        // Table Header Box (White background with sharp Black Border)
+        // Table Header Box
         val headerHeight = 24f
         val tableHeaderRect = RectF(tableLeft, tableTop, tableRight, tableTop + headerHeight)
         canvas.drawRect(tableHeaderRect, headerBgPaint)
         canvas.drawRect(tableHeaderRect, headerBoxBorderPaint)
 
-        // Table Header Text (Pure Black, Bold)
         val headerTextPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
@@ -325,11 +318,11 @@ object PrintUtils {
         }
 
         // Table Rows
-        val validItems = items.filter { it.name.isNotBlank() || it.amount > 0 }
+        val validItems = memo.items.filter { it.name.isNotBlank() || it.amount > 0 }
         val totalRows = maxOf(14, validItems.size.coerceAtMost(18))
-        val gridTop = tableTop + headerHeight // 100f
+        val gridTop = tableTop + headerHeight
         val gridBottom = 480f
-        val totalGridHeight = gridBottom - gridTop // 380f
+        val totalGridHeight = gridBottom - gridTop
         val rowHeight = totalGridHeight / totalRows
         val itemFontSize = if (totalRows > 14) 11f else 12.5f
         val textYOffset = rowHeight * 0.68f
@@ -363,13 +356,11 @@ object PrintUtils {
         for (r in 0 until totalRows) {
             val slNo = BengaliUtils.toBengaliDigits(String.format("%02d", r + 1))
             
-            // Draw Sl No
             itemBoldPaint.textAlign = Paint.Align.CENTER
             canvas.drawText(slNo, tableLeft + colWidths[0] / 2f, rowY + textYOffset, itemBoldPaint)
 
             if (r < validItems.size) {
                 val item = validItems[r]
-                // Name
                 itemBoldPaint.textAlign = Paint.Align.LEFT
                 val origTextSize = itemBoldPaint.textSize
                 if (item.name.length > 35) {
@@ -380,31 +371,25 @@ object PrintUtils {
                 canvas.drawText(item.name, tableLeft + colWidths[0] + 6f, rowY + textYOffset, itemBoldPaint)
                 itemBoldPaint.textSize = origTextSize
 
-                // Qty
                 itemTextPaint.textAlign = Paint.Align.CENTER
                 val bnQty = BengaliUtils.toBengaliDigits(item.quantity)
                 canvas.drawText(bnQty, tableLeft + colWidths[0] + colWidths[1] + colWidths[2] / 2f, rowY + textYOffset, itemTextPaint)
 
-                // Rate
                 val bnRate = if (item.rate == "0" || item.rate.isBlank()) "" else BengaliUtils.toBengaliDigits(item.rate)
                 canvas.drawText(bnRate, tableLeft + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2f, rowY + textYOffset, itemTextPaint)
 
-                // Amount
                 itemBoldPaint.textAlign = Paint.Align.RIGHT
                 val bnAmount = if (item.amount <= 0) "—" else "${BengaliUtils.toBengaliDigits(DecimalFormat("#,##0").format(item.amount))}/-"
                 canvas.drawText(bnAmount, tableRight - 6f, rowY + textYOffset, itemBoldPaint)
             }
 
-            // Row Dashed Bottom Line
             canvas.drawLine(tableLeft, rowY + rowHeight, tableRight, rowY + rowHeight, rowDashPaint)
             rowY += rowHeight
         }
 
-        // Table Total Row
         val totalRowY = rowY
         canvas.drawLine(tableLeft, totalRowY, tableRight, totalRowY, gridBorderPaint)
 
-        // Total Label
         val totalLabelPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
@@ -414,7 +399,6 @@ object PrintUtils {
         }
         canvas.drawText("মোট —", tableLeft + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] - 6f, totalRowY + 16f, totalLabelPaint)
 
-        // Total Value
         val totalValPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
@@ -422,13 +406,12 @@ object PrintUtils {
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.RIGHT
         }
-        val bnTotal = if (totalAmount <= 0) "0/-" else "${BengaliUtils.formatBengaliCurrency(totalAmount)}/-"
+        val bnTotal = if (memo.totalAmount <= 0) "0/-" else "${BengaliUtils.formatBengaliCurrency(memo.totalAmount)}/-"
         canvas.drawText(bnTotal, tableRight - 6f, totalRowY + 16f, totalValPaint)
 
         val tableBottomY = totalRowY + 22f
         canvas.drawLine(tableLeft, tableBottomY, tableRight, tableBottomY, gridBorderPaint)
 
-        // Outer Table Rect Border & Vertical Column Grid Lines
         canvas.drawRect(tableLeft, tableTop, tableRight, tableBottomY, gridBorderPaint)
         
         var lineX = tableLeft
@@ -437,7 +420,7 @@ object PrintUtils {
             canvas.drawLine(lineX, tableTop, lineX, tableBottomY, gridBorderPaint)
         }
 
-        // 4. FOOTER BELOW TABLE
+        // Footer
         val sigLineY = 550f
         val sigLineWidth = 150f
 
@@ -455,9 +438,8 @@ object PrintUtils {
             textSize = 11f
         }
 
-        // Single Signature Line (Left side)
         canvas.drawLine(tableLeft, sigLineY, tableLeft + sigLineWidth, sigLineY, linePaint)
-        val labelText = purchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" }
+        val labelText = memo.purchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" }
         canvas.drawText(labelText, tableLeft + (sigLineWidth / 2f), sigLineY + 14f, sigPaint)
 
         canvas.restore()
@@ -485,11 +467,6 @@ object PrintUtils {
         }
     }
 
-    /**
-     * Escapes text that will be inserted into HTML, so that characters typed by the user
-     * (e.g. "<", ">", "&", quotes in an item name or center name) can never break the
-     * voucher's layout or be interpreted as markup.
-     */
     private fun escapeHtml(text: String): String {
         return text
             .replace("&", "&amp;")
@@ -499,23 +476,14 @@ object PrintUtils {
             .replace("'", "&#39;")
     }
 
-    fun generateHtmlVoucher(
-        centerName: String,
-        subtitle: String,
-        dateString: String,
-        items: List<BillItem>,
-        totalAmount: Double,
-        purchaserLabel: String,
-        approverLabel: String,
-        position: PrintPosition = PrintPosition.TOP
-    ): String {
-        val safeCenterName = escapeHtml(centerName)
-        val safeSubtitle = escapeHtml(subtitle)
-        val safePurchaserLabel = escapeHtml(purchaserLabel)
-        val bengaliDate = BengaliUtils.toBengaliDigits(dateString)
-        val bengaliTotal = if (totalAmount <= 0) "0/-" else "${BengaliUtils.formatBengaliCurrency(totalAmount)}/-"
+    private fun renderMemoCardHtml(memo: PrintMemoData): String {
+        val safeCenterName = escapeHtml(memo.centerName)
+        val safeSubtitle = escapeHtml(memo.subtitle)
+        val safePurchaserLabel = escapeHtml(memo.purchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" })
+        val bengaliDate = BengaliUtils.toBengaliDigits(memo.dateString)
+        val bengaliTotal = if (memo.totalAmount <= 0) "0/-" else "${BengaliUtils.formatBengaliCurrency(memo.totalAmount)}/-"
 
-        val validItems = items.filter { it.name.isNotBlank() || it.amount > 0 }
+        val validItems = memo.items.filter { it.name.isNotBlank() || it.amount > 0 }
         val totalRowsCount = maxOf(14, validItems.size.coerceAtMost(18))
         val rowHeightCss = if (totalRowsCount > 14) "${(350 / totalRowsCount)}px" else "25px"
         val fontSizeCss = if (totalRowsCount > 14) "10px" else "11.5px"
@@ -552,12 +520,12 @@ object PrintUtils {
             }
         }
 
-        val memoCardHtml = """
+        return """
             <div class="memo-half">
                 <div class="memo-card">
                     <div class="header-banner">
-                        <h1>$safeCenterName</h1>
-                        <p>$safeSubtitle</p>
+                        ${if (safeCenterName.isNotBlank()) "<h1>$safeCenterName</h1>" else ""}
+                        ${if (safeSubtitle.isNotBlank()) "<p>$safeSubtitle</p>" else ""}
                     </div>
                     <div class="sawtooth-bar"></div>
 
@@ -589,30 +557,39 @@ object PrintUtils {
                     <div class="footer-section">
                         <div class="signatures-row">
                             <div class="sig-box">
-                                ${safePurchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" }}
+                                $safePurchaserLabel
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         """.trimIndent()
+    }
 
-        val emptyHalfHtml = """
-            <div class="empty-half"></div>
-        """.trimIndent()
+    fun generateHtmlVoucher(
+        topMemo: PrintMemoData?,
+        bottomMemo: PrintMemoData?,
+        position: PrintPosition = PrintPosition.TOP
+    ): String {
+        val resolvedTop = topMemo ?: bottomMemo ?: PrintMemoData()
+        val resolvedBottom = bottomMemo ?: topMemo ?: PrintMemoData()
+
+        val topHtml = renderMemoCardHtml(resolvedTop)
+        val bottomHtml = renderMemoCardHtml(resolvedBottom)
+        val emptyHalfHtml = """<div class="empty-half"></div>""".trimIndent()
 
         val contentBodyHtml = when (position) {
             PrintPosition.TOP -> """
-                $memoCardHtml
+                $topHtml
                 $emptyHalfHtml
             """.trimIndent()
             PrintPosition.BOTTOM -> """
                 $emptyHalfHtml
-                $memoCardHtml
+                $bottomHtml
             """.trimIndent()
             PrintPosition.BOTH -> """
-                $memoCardHtml
-                $memoCardHtml
+                $topHtml
+                $bottomHtml
             """.trimIndent()
         }
 
@@ -689,10 +666,6 @@ object PrintUtils {
                         font-weight: bold;
                         color: #000000;
                     }
-                    .dashed-divider {
-                        border-bottom: 1.2px dashed #000000;
-                        margin: 0 6px 8px 6px;
-                    }
                     .table-wrapper {
                         padding: 0 6px;
                     }
@@ -720,10 +693,9 @@ object PrintUtils {
                     .memo-table td {
                         border-right: 1.2px solid #000000;
                         border-bottom: 1px dashed #666666;
-                        padding: $cellPaddingCss;
-                        font-size: $fontSizeCss;
+                        padding: 2px 3px;
+                        font-size: 11px;
                         color: #000000;
-                        height: $rowHeightCss;
                     }
                     .memo-table td:last-child {
                         border-right: none;
@@ -756,10 +728,6 @@ object PrintUtils {
                         padding: 10px 6px 0 6px;
                         font-size: 11px;
                         color: #000000;
-                    }
-                    .words-row {
-                        margin-bottom: 16px;
-                        font-weight: 500;
                     }
                     .signatures-row {
                         display: flex;

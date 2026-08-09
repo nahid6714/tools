@@ -8,6 +8,8 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.example.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -20,217 +22,205 @@ class AppUpdateManager(
     private val repoName: String = "tools"
 ) {
 
-    private val apiUrl = "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
+    companion object {
+        const val UPDATE_JSON_URL = "https://raw.githubusercontent.com/nahid6714/tools/main/update.json"
+        const val UPDATE_JSON_FALLBACK_URL = "https://raw.githubusercontent.com/nahid6714/tools/master/update.json"
+
+        private const val PREFS_NAME = "app_update_checker_prefs"
+        private const val KEY_LAST_CHECK_TIME = "last_check_time"
+        private const val KEY_CACHED_JSON = "cached_json"
+
+        // Minimum time interval between automated background checks (5 minutes)
+        private const val CACHE_EXPIRATION_MS = 5 * 60 * 1000L
+        // Minimum time interval between manual checks to avoid spamming network (3 seconds)
+        private const val MIN_CHECK_INTERVAL_MS = 3 * 1000L
+
+        private val checkMutex = Mutex()
+    }
 
     /**
-     * Checks for updates from GitHub Releases API.
-     * Silent fallback on network/API failure - will never throw or crash the UI.
+     * Checks for updates by fetching the static update.json file.
+     * Completely bypasses GitHub REST API to avoid rate limits and HTTP 403 errors.
+     * Silent fallback on network/parsing failure - will never throw or crash the UI.
      */
-    suspend fun checkForUpdate(context: Context): UpdateInfo = withContext(Dispatchers.IO) {
+    suspend fun checkForUpdate(context: Context, forceCheck: Boolean = true): UpdateInfo = withContext(Dispatchers.IO) {
         val currentVersionName = BuildConfig.VERSION_NAME
         val currentVersionCode = BuildConfig.VERSION_CODE
 
-        try {
-            val url = URL(apiUrl)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastCheckTime = prefs.getLong(KEY_LAST_CHECK_TIME, 0L)
+        val now = System.currentTimeMillis()
+
+        // Throttling: If checked very recently (within 3 seconds) or if cached & not forced
+        if (!forceCheck && (now - lastCheckTime < CACHE_EXPIRATION_MS)) {
+            val cachedJsonStr = prefs.getString(KEY_CACHED_JSON, null)
+            if (!cachedJsonStr.isNullOrBlank()) {
+                val cachedInfo = parseUpdateJson(cachedJsonStr, currentVersionName, currentVersionCode)
+                if (cachedInfo != null) return@withContext cachedInfo
+            }
+        } else if (now - lastCheckTime < MIN_CHECK_INTERVAL_MS) {
+            val cachedJsonStr = prefs.getString(KEY_CACHED_JSON, null)
+            if (!cachedJsonStr.isNullOrBlank()) {
+                val cachedInfo = parseUpdateJson(cachedJsonStr, currentVersionName, currentVersionCode)
+                if (cachedInfo != null) return@withContext cachedInfo
+            }
+        }
+
+        // Lock to avoid duplicate concurrent network requests
+        checkMutex.withLock {
+            try {
+                var jsonStr: String? = fetchUrl(UPDATE_JSON_URL)
+                if (jsonStr == null) {
+                    jsonStr = fetchUrl(UPDATE_JSON_FALLBACK_URL)
+                }
+
+                if (jsonStr == null) {
+                    return@withContext UpdateInfo(
+                        hasUpdate = false,
+                        currentVersionName = currentVersionName,
+                        errorMessage = "আপডেট সার্ভারে এই মুহূর্তে সংযোগ করা যাচ্ছে না।"
+                    )
+                }
+
+                val updateInfo = parseUpdateJson(jsonStr, currentVersionName, currentVersionCode)
+                if (updateInfo != null) {
+                    // Save to local cache
+                    prefs.edit()
+                        .putLong(KEY_LAST_CHECK_TIME, System.currentTimeMillis())
+                        .putString(KEY_CACHED_JSON, jsonStr)
+                        .apply()
+                    return@withContext updateInfo
+                } else {
+                    return@withContext UpdateInfo(
+                        hasUpdate = false,
+                        currentVersionName = currentVersionName,
+                        errorMessage = "আপডেট তথ্য প্রসেস করার সময় সমস্যা হয়েছে।"
+                    )
+                }
+            } catch (e: java.net.UnknownHostException) {
+                return@withContext UpdateInfo(
+                    hasUpdate = false,
+                    currentVersionName = currentVersionName,
+                    errorMessage = "ইন্টারনেট সংযোগ নেই। পরে আবার চেষ্টা করুন।"
+                )
+            } catch (e: java.net.SocketTimeoutException) {
+                return@withContext UpdateInfo(
+                    hasUpdate = false,
+                    currentVersionName = currentVersionName,
+                    errorMessage = "আপডেট সার্ভারে এই মুহূর্তে সংযোগ করা যাচ্ছে না।"
+                )
+            } catch (e: Exception) {
+                return@withContext UpdateInfo(
+                    hasUpdate = false,
+                    currentVersionName = currentVersionName,
+                    errorMessage = "আপডেট চেক করার সময় সমস্যা হয়েছে: ${e.localizedMessage ?: "অজানা ত্রুটি"}"
+                )
+            }
+        }
+    }
+
+    private fun fetchUrl(urlString: String): String? {
+        return try {
+            val url = URL(urlString)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 10000
                 readTimeout = 10000
                 useCaches = false
                 defaultUseCaches = false
-                setRequestProperty("Accept", "application/vnd.github.v3+json")
-                setRequestProperty("User-Agent", "AndroidAppUpdater")
                 setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
                 setRequestProperty("Pragma", "no-cache")
                 setRequestProperty("Expires", "0")
+                setRequestProperty("User-Agent", "AndroidAppUpdater")
             }
-
-            val responseCode = connection.responseCode
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val jsonStr = connection.inputStream.bufferedReader().use { it.readText() }
-                val json = JSONObject(jsonStr)
-
-                val rawTagName = json.optString("tag_name", "").trim()
-                val tagName = rawTagName.removePrefix("v").trim()
-                val releaseTitle = json.optString("name", "").trim()
-                val rawNotes = json.optString("body", "").trim()
-                val cleanNotes = sanitizeReleaseNotes(rawNotes)
-                val rawPublishedAt = json.optString("published_at", "")
-                val formattedDate = formatReleaseDate(rawPublishedAt)
-
-                // Try to parse remote versionCode from release notes body, release name, or tag name
-                var remoteVersionCode = 0
-                val codeRegex = Regex("(?i)(?:versionCode|code|build)\\s*[:=]?\\s*(\\d+)")
-                val bodyCodeMatch = codeRegex.find(rawNotes)
-                if (bodyCodeMatch != null) {
-                    remoteVersionCode = bodyCodeMatch.groupValues[1].toIntOrNull() ?: 0
-                }
-                if (remoteVersionCode == 0) {
-                    val titleCodeMatch = codeRegex.find(releaseTitle)
-                    if (titleCodeMatch != null) {
-                        remoteVersionCode = titleCodeMatch.groupValues[1].toIntOrNull() ?: 0
-                    }
-                }
-                if (remoteVersionCode == 0) {
-                    val tagPlusMatch = Regex("\\+(\\d+)").find(rawTagName)
-                    if (tagPlusMatch != null) {
-                        remoteVersionCode = tagPlusMatch.groupValues[1].toIntOrNull() ?: 0
-                    }
-                }
-
-                var downloadUrl = ""
-                var apkSizeBytes = 0L
-                val assets = json.optJSONArray("assets")
-                if (assets != null) {
-                    for (i in 0 until assets.length()) {
-                        val asset = assets.getJSONObject(i)
-                        val name = asset.optString("name", "")
-                        if (name.endsWith(".apk", ignoreCase = true)) {
-                            downloadUrl = asset.optString("browser_download_url", "")
-                            apkSizeBytes = asset.optLong("size", 0L)
-                            break
-                        }
-                    }
-                }
-
-                val formattedSize = formatFileSize(apkSizeBytes)
-                val isNewer = isVersionNewer(
-                    remoteTag = tagName,
-                    remoteVersionCode = remoteVersionCode,
-                    currentVersionName = currentVersionName,
-                    currentVersionCode = currentVersionCode
-                )
-
-                if (isNewer) {
-                    if (downloadUrl.isNotBlank()) {
-                        return@withContext UpdateInfo(
-                            hasUpdate = true,
-                            latestVersionName = tagName.ifBlank { rawTagName },
-                            latestVersionCode = remoteVersionCode,
-                            releaseNotes = cleanNotes,
-                            downloadUrl = downloadUrl,
-                            currentVersionName = currentVersionName,
-                            publishedAt = formattedDate,
-                            apkSizeFormatted = formattedSize
-                        )
-                    } else {
-                        return@withContext UpdateInfo(
-                            hasUpdate = false,
-                            currentVersionName = currentVersionName,
-                            errorMessage = "নতুন সংস্করণ (${tagName}) সনাক্ত হয়েছে, কিন্তু GitHub-এ কোনো APK ফাইল পাওয়া যায়নি।"
-                        )
-                    }
-                }
-            } else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-                return@withContext UpdateInfo(
-                    hasUpdate = false,
-                    currentVersionName = currentVersionName,
-                    errorMessage = "GitHub রিপ্রোজিটরি অথবা Release পাওয়া যায়নি (HTTP 404)।"
-                )
-            } else if (responseCode == 403) {
-                return@withContext UpdateInfo(
-                    hasUpdate = false,
-                    currentVersionName = currentVersionName,
-                    errorMessage = "GitHub API লিমিট শেষ হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন (HTTP 403)।"
-                )
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                connection.inputStream.bufferedReader().use { it.readText() }
             } else {
-                return@withContext UpdateInfo(
-                    hasUpdate = false,
-                    currentVersionName = currentVersionName,
-                    errorMessage = "GitHub API রেসপন্স ত্রুটি: HTTP $responseCode"
-                )
-            }
-        } catch (e: java.net.UnknownHostException) {
-            return@withContext UpdateInfo(
-                hasUpdate = false,
-                currentVersionName = currentVersionName,
-                errorMessage = "ইন্টারনেট সংযোগ নেই। ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।"
-            )
-        } catch (e: java.net.SocketTimeoutException) {
-            return@withContext UpdateInfo(
-                hasUpdate = false,
-                currentVersionName = currentVersionName,
-                errorMessage = "GitHub সার্ভার সাড়া দিতে সময় নিচ্ছে (Timeout)। পরে আবার চেষ্টা করুন।"
-            )
-        } catch (e: Exception) {
-            return@withContext UpdateInfo(
-                hasUpdate = false,
-                currentVersionName = currentVersionName,
-                errorMessage = "আপডেট চেক করার সময় সমস্যা হয়েছে: ${e.localizedMessage ?: "অজানা ত্রুটি"}"
-            )
-        }
-
-        return@withContext UpdateInfo(
-            hasUpdate = false,
-            currentVersionName = currentVersionName
-        )
-    }
-
-    private fun formatReleaseDate(rawIsoDate: String): String {
-        if (rawIsoDate.isBlank()) return "আজ"
-        return try {
-            val datePart = rawIsoDate.take(10)
-            val parts = datePart.split("-")
-            if (parts.size == 3) {
-                val year = com.example.util.BengaliUtils.toBengaliDigits(parts[0])
-                val month = com.example.util.BengaliUtils.toBengaliDigits(parts[1])
-                val day = com.example.util.BengaliUtils.toBengaliDigits(parts[2])
-                "$day/$month/$year"
-            } else {
-                com.example.util.BengaliUtils.toBengaliDigits(datePart)
+                null
             }
         } catch (e: Exception) {
-            "আজ"
+            null
         }
     }
 
-    private fun formatFileSize(sizeBytes: Long): String {
-        if (sizeBytes <= 0) return ""
-        val mb = sizeBytes.toDouble() / (1024 * 1024)
-        val formatted = String.format("%.1f MB", mb)
-        return com.example.util.BengaliUtils.toBengaliDigits(formatted)
-            .replace("MB", "মেগাবাইট")
-    }
-
-    /**
-     * Compares remote release tag and version code with current version to check if an update is available.
-     */
-    private fun isVersionNewer(
-        remoteTag: String,
-        remoteVersionCode: Int,
+    private fun parseUpdateJson(
+        jsonStr: String,
         currentVersionName: String,
         currentVersionCode: Int
-    ): Boolean {
-        // 1. If remoteVersionCode was explicitly parsed and is greater than local versionCode
-        if (remoteVersionCode > 0 && remoteVersionCode > currentVersionCode) {
-            return true
-        }
-        // 2. If remoteVersionCode was explicitly parsed and is <= local versionCode
-        if (remoteVersionCode > 0 && remoteVersionCode <= currentVersionCode) {
-            return false
-        }
+    ): UpdateInfo? {
+        return try {
+            val json = JSONObject(jsonStr)
+            val remoteVersionCode = json.optInt("versionCode", 0)
+            val remoteVersionName = json.optString("versionName", "").trim()
+            val downloadUrl = json.optString("downloadUrl", "").trim()
+            val rawNotes = json.optString("releaseNotes", "").trim()
+            val cleanNotes = sanitizeReleaseNotes(rawNotes)
 
-        if (remoteTag.isBlank()) return false
-
-        val remoteClean = remoteTag.removePrefix("v").trim()
-        val localClean = currentVersionName.removePrefix("v").trim()
-
-        // Parse versions into numeric components (e.g. "1.0.5" -> [1, 0, 5])
-        val remoteParts = remoteClean.split(".").mapNotNull { it.filter { c -> c.isDigit() }.toIntOrNull() }
-        val localParts = localClean.split(".").mapNotNull { it.filter { c -> c.isDigit() }.toIntOrNull() }
-
-        if (remoteParts.isNotEmpty() && localParts.isNotEmpty()) {
-            val maxLen = maxOf(remoteParts.size, localParts.size)
-            for (i in 0 until maxLen) {
-                val remoteNum = remoteParts.getOrElse(i) { 0 }
-                val localNum = localParts.getOrElse(i) { 0 }
-                if (remoteNum > localNum) return true
-                if (remoteNum < localNum) return false
+            if (remoteVersionCode <= 0 && remoteVersionName.isBlank()) {
+                return null
             }
-            return false
+
+            val hasUpdate = remoteVersionCode > currentVersionCode
+
+            UpdateInfo(
+                hasUpdate = hasUpdate,
+                latestVersionName = if (remoteVersionName.isNotBlank()) remoteVersionName else "v$remoteVersionCode",
+                latestVersionCode = remoteVersionCode,
+                releaseNotes = cleanNotes,
+                downloadUrl = downloadUrl,
+                currentVersionName = currentVersionName,
+                publishedAt = "",
+                apkSizeFormatted = ""
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun sanitizeReleaseNotes(rawBody: String): String {
+        if (rawBody.isBlank()) {
+            return "• অ্যাপের পারফরম্যান্স ও অভিজ্ঞতা উন্নত করা হয়েছে।\n• সাধারণ সমস্যা ও বাগ ফিক্স করা হয়েছে।"
         }
 
-        return remoteClean != localClean && remoteClean.isNotBlank()
+        val lines = rawBody.lines()
+        val cleanList = mutableListOf<String>()
+
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.isBlank()) continue
+
+            val lower = trimmed.lowercase()
+            if (lower.contains("commit:") ||
+                lower.contains("message:") ||
+                lower.contains("update appupdatemanager") ||
+                lower.contains("update build.gradle") ||
+                lower.contains("new release v") ||
+                trimmed.matches(Regex("(?i).*([0-9a-f]{7,40}).*")) ||
+                trimmed.startsWith("#")
+            ) {
+                continue
+            }
+
+            val cleanLine = trimmed
+                .replace("**", "")
+                .replace("*", "")
+                .replace("`", "")
+                .trim()
+
+            if (cleanLine.isNotBlank()) {
+                if (!cleanLine.startsWith("•") && !cleanLine.startsWith("-")) {
+                    cleanList.add("• $cleanLine")
+                } else {
+                    cleanList.add(cleanLine)
+                }
+            }
+        }
+
+        if (cleanList.isEmpty()) {
+            return "• অ্যাপের নতুন ফিচার ও বিভিন্ন উন্নতি অন্তর্ভুক্ত করা হয়েছে।\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।"
+        }
+
+        return cleanList.joinToString("\n")
     }
 
     /**
@@ -244,6 +234,13 @@ class AppUpdateManager(
         onError: (String) -> Unit
     ) = withContext(Dispatchers.IO) {
         try {
+            if (downloadUrl.isBlank()) {
+                withContext(Dispatchers.Main) {
+                    onError("ডাউনলোড লিংক পাওয়া যায়নি।")
+                }
+                return@withContext
+            }
+
             var urlStr = downloadUrl
             var connection = (URL(urlStr).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15000
@@ -308,56 +305,6 @@ class AppUpdateManager(
                 onError(e.localizedMessage ?: "ডাউনলোড করতে ব্যর্থ হয়েছে। ইন্টারনেট কানেকশন চেক করুন।")
             }
         }
-    }
-
-    /**
-     * Sanitizes raw release notes body from GitHub releases, removing commit hashes,
-     * developer commit messages, git technical tags, and formatting into clean Bengali.
-     */
-    private fun sanitizeReleaseNotes(rawBody: String): String {
-        if (rawBody.isBlank()) {
-            return "• অ্যাপের পারফরম্যান্স ও অভিজ্ঞতা উন্নত করা হয়েছে।\n• সাধারণ সমস্যা ও বাগ ফিক্স করা হয়েছে।"
-        }
-
-        val lines = rawBody.lines()
-        val cleanList = mutableListOf<String>()
-
-        for (line in lines) {
-            val trimmed = line.trim()
-            if (trimmed.isBlank()) continue
-
-            val lower = trimmed.lowercase()
-            if (lower.contains("commit:") ||
-                lower.contains("message:") ||
-                lower.contains("update appupdatemanager") ||
-                lower.contains("update build.gradle") ||
-                lower.contains("new release v") ||
-                trimmed.matches(Regex("(?i).*([0-9a-f]{7,40}).*")) ||
-                trimmed.startsWith("#")
-            ) {
-                continue
-            }
-
-            val cleanLine = trimmed
-                .replace("**", "")
-                .replace("*", "")
-                .replace("`", "")
-                .trim()
-
-            if (cleanLine.isNotBlank()) {
-                if (!cleanLine.startsWith("•") && !cleanLine.startsWith("-")) {
-                    cleanList.add("• $cleanLine")
-                } else {
-                    cleanList.add(cleanLine)
-                }
-            }
-        }
-
-        if (cleanList.isEmpty()) {
-            return "• অ্যাপের নতুন ফিচার ও বিভিন্ন উন্নতি অন্তর্ভুক্ত করা হয়েছে।\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।"
-        }
-
-        return cleanList.joinToString("\n")
     }
 
     /**

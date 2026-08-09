@@ -48,11 +48,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.BuildConfig
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.ForestGreenText
 import com.example.ui.theme.HeadingFontFamily
 import com.example.ui.theme.LightForestGreen
 import com.example.ui.theme.WarmBorderColor
+import com.example.update.UpdateInfo
+import com.example.util.BengaliUtils
 
 data class AppToolItem(
     val id: String,
@@ -67,6 +70,10 @@ data class AppToolItem(
 @Composable
 fun ToolsHubScreen(
     appLanguage: String = "bn",
+    updateInfo: UpdateInfo? = null,
+    isCheckingUpdate: Boolean = false,
+    onCheckUpdate: () -> Unit = {},
+    onOpenUpdateDialog: (UpdateInfo) -> Unit = {},
     onSelectFoodBillTool: () -> Unit,
     onSelectDocScannerTool: () -> Unit = {},
     onSelectAppSettings: () -> Unit = {},
@@ -160,6 +167,75 @@ fun ToolsHubScreen(
                         .background(Color(0x33FFFFFF))
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+
+                // Build & Auto Update Status Indicator
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0x22FFFFFF))
+                        .clickable { onCheckUpdate() }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val statusColor = when {
+                        isCheckingUpdate -> Color(0xFFFFC107) // 🟡 Yellow (Processing)
+                        updateInfo != null && updateInfo.errorMessage == null -> Color(0xFF4CAF50) // 🟢 Green (Success)
+                        else -> Color(0xFFE53935) // 🔴 Red (Failed)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(statusColor, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    val statusText = when {
+                        isCheckingUpdate -> if (isEn) "Build/Update Status: Processing..." else "আপডেট/বিল্ড স্ট্যাটাস: প্রসেসিং..."
+                        updateInfo != null && updateInfo.errorMessage == null -> {
+                            if (updateInfo.hasUpdate) {
+                                if (isEn) "Update available: v${updateInfo.latestVersionName} (Tap to update)"
+                                else "নতুন সংস্করণ উপলব্ধ: v${updateInfo.latestVersionName} (ট্যাপ করে আপডেট করুন)"
+                            } else {
+                                if (isEn) "Build Status: Up to date (v${BuildConfig.VERSION_NAME})"
+                                else "বিল্ড স্ট্যাটাস: অ্যাপ সর্বশেষ সংস্করণে আছে (v${BengaliUtils.toBengaliDigits(BuildConfig.VERSION_NAME)})"
+                            }
+                        }
+                        else -> {
+                            val err = updateInfo?.errorMessage ?: if (isEn) "Connection failed" else "সংযোগ ব্যর্থ"
+                            if (isEn) "Build/Update error: $err" else "আপডেট/বিল্ড ত্রুটি: $err"
+                        }
+                    }
+
+                    Text(
+                        text = statusText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    if (updateInfo?.hasUpdate == true && !isCheckingUpdate) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFFFC107))
+                                .clickable { onOpenUpdateDialog(updateInfo) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (isEn) "UPDATE" else "আপডেট",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
                     text = if (isEn) "Select any required tool to start:" else "প্রয়োজনীয় যেকোনো টুল নির্বাচন করে কাজ শুরু করুন:",

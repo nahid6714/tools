@@ -117,6 +117,8 @@ fun MemoVoucherCard(
     onRemoveItem: (id: String) -> Unit,
     onAddItemRow: () -> Unit,
     onPurchaserLabelChange: ((String) -> Unit)? = null,
+    onCenterNameChange: ((String) -> Unit)? = null,
+    onSubtitleChange: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
@@ -142,7 +144,7 @@ fun MemoVoucherCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Header Banner with Forest Green Gradient
+            // Header Banner with Forest Green Gradient - Editable Center Name & Subtitle
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -151,29 +153,81 @@ fun MemoVoucherCard(
                             colors = listOf(DarkForestGreen, LightForestGreen)
                         )
                     )
-                    .padding(vertical = 18.dp, horizontal = 12.dp),
+                    .padding(vertical = 16.dp, horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = state.centerName,
-                        style = TextStyle(
+                    // Center/Institution Name Field
+                    BasicTextField(
+                        value = state.centerName,
+                        onValueChange = { onCenterNameChange?.invoke(it) },
+                        textStyle = TextStyle(
                             fontFamily = HeadingFontFamily,
-                            fontSize = 22.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            textAlign = TextAlign.Center
                         ),
-                        textAlign = TextAlign.Center
+                        cursorBrush = SolidColor(Color.White),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        decorationBox = { innerTextField ->
+                            Box(contentAlignment = Alignment.Center) {
+                                if (state.centerName.isBlank()) {
+                                    Text(
+                                        text = "প্রতিষ্ঠানের নাম / টাইটেল লিখুন...",
+                                        style = TextStyle(
+                                            fontFamily = HeadingFontFamily,
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White.copy(alpha = 0.65f),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("memo_center_name_input")
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = state.subtitle,
-                        style = TextStyle(
-                            fontSize = 14.sp,
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Subtitle Field
+                    BasicTextField(
+                        value = state.subtitle,
+                        onValueChange = { onSubtitleChange?.invoke(it) },
+                        textStyle = TextStyle(
+                            fontSize = 13.5.sp,
                             fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.92f)
+                            color = Color.White.copy(alpha = 0.95f),
+                            textAlign = TextAlign.Center
                         ),
-                        textAlign = TextAlign.Center
+                        cursorBrush = SolidColor(Color.White),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        decorationBox = { innerTextField ->
+                            Box(contentAlignment = Alignment.Center) {
+                                if (state.subtitle.isBlank()) {
+                                    Text(
+                                        text = "সাব-টাইটেল (যেমন: দৈনিক খাবার বিল)...",
+                                        style = TextStyle(
+                                            fontSize = 12.5.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            color = Color.White.copy(alpha = 0.60f),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("memo_subtitle_input")
                     )
                 }
             }
