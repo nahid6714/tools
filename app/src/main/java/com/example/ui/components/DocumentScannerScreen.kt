@@ -92,6 +92,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
@@ -546,13 +547,13 @@ fun DocumentScannerScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F4EE))
+            .background(MaterialTheme.colorScheme.background)
             .padding(14.dp)
     ) {
         // Scanner Banner Card with 2 Options (General Scan & Card Scan)
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -562,7 +563,7 @@ fun DocumentScannerScreen(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                DarkForestGreen,
+                                MaterialTheme.colorScheme.primary,
                                 Color(0xFF1B4D3E)
                             )
                         )
@@ -717,7 +718,7 @@ fun DocumentScannerScreen(
                                 .height(42.dp),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color.White.copy(alpha = 0.15f),
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f),
                                 contentColor = Color.White
                             ),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
@@ -739,7 +740,7 @@ fun DocumentScannerScreen(
                                 .height(42.dp),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color.White.copy(alpha = 0.15f),
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f),
                                 contentColor = Color.White
                             ),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
@@ -766,7 +767,7 @@ fun DocumentScannerScreen(
                             .testTag("start_card_scan_button"),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.White.copy(alpha = 0.12f),
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.12f),
                             contentColor = Color.White
                         ),
                         border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0xFFFFD700))
@@ -808,7 +809,7 @@ fun DocumentScannerScreen(
                 Icon(
                     imageVector = Icons.Default.Folder,
                     contentDescription = null,
-                    tint = DarkForestGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -817,20 +818,20 @@ fun DocumentScannerScreen(
                     fontFamily = HeadingFontFamily,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ForestGreenText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
             if (scannedDocs.isNotEmpty()) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = DarkForestGreen.copy(alpha = 0.1f)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 ) {
                     Text(
                         text = "মোট: ${BengaliUtils.toBengaliDigits(scannedDocs.size.toString())} টি",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = DarkForestGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
@@ -845,8 +846,8 @@ fun DocumentScannerScreen(
                     .fillMaxWidth()
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White)
-                    .border(1.dp, WarmBorderColor, RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -856,14 +857,14 @@ fun DocumentScannerScreen(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = DarkForestGreen.copy(alpha = 0.08f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                         modifier = Modifier.size(64.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.Description,
                                 contentDescription = null,
-                                tint = DarkForestGreen,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -873,13 +874,13 @@ fun DocumentScannerScreen(
                         text = "এখনো কোনো ডকুমেন্ট স্ক্যান করা হয়নি",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = "NID কার্ড, আইডি কার্ড বা বিলের ছবি তুলতে উপরে স্ক্যান অপশনে ট্যাপ করুন",
                         fontSize = 12.5.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         lineHeight = 18.sp,
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -917,7 +918,7 @@ fun DocumentScannerScreen(
         ) {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -937,7 +938,7 @@ fun DocumentScannerScreen(
                             Icon(
                                 imageVector = Icons.Default.CreditCard,
                                 contentDescription = null,
-                                tint = DarkForestGreen,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -946,7 +947,7 @@ fun DocumentScannerScreen(
                                 fontFamily = HeadingFontFamily,
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = DarkForestGreen
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
 
@@ -958,7 +959,7 @@ fun DocumentScannerScreen(
                     Text(
                         text = "NID/আইডি কার্ডের উভয় পাশ আলাদাভাবে স্ক্যান করে এক পেজে সুন্দরভাবে সাজান।",
                         fontSize = 12.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
@@ -966,11 +967,11 @@ fun DocumentScannerScreen(
                     Card(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (cardFrontUri != null) Color(0xFFE8F5E9) else Color(0xFFF9F9F9)
+                            containerColor = if (cardFrontUri != null) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.surfaceVariant
                         ),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (cardFrontUri != null) Color(0xFF28A745) else WarmBorderColor
+                            if (cardFrontUri != null) Color(0xFF28A745) else MaterialTheme.colorScheme.outlineVariant
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -996,11 +997,11 @@ fun DocumentScannerScreen(
                                 } else {
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = DarkForestGreen.copy(alpha = 0.1f),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                         modifier = Modifier.size(46.dp)
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Text("১ম", fontWeight = FontWeight.Bold, color = DarkForestGreen)
+                                            Text("১ম", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                         }
                                     }
                                 }
@@ -1022,7 +1023,7 @@ fun DocumentScannerScreen(
                             Button(
                                 onClick = { startScan(ScanType.CARD_FRONT) },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (cardFrontUri != null) Color.Gray else DarkForestGreen
+                                    containerColor = if (cardFrontUri != null) Color.Gray else MaterialTheme.colorScheme.primary
                                 ),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
@@ -1035,11 +1036,11 @@ fun DocumentScannerScreen(
                     Card(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (cardBackUri != null) Color(0xFFE8F5E9) else Color(0xFFF9F9F9)
+                            containerColor = if (cardBackUri != null) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.surfaceVariant
                         ),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (cardBackUri != null) Color(0xFF28A745) else WarmBorderColor
+                            if (cardBackUri != null) Color(0xFF28A745) else MaterialTheme.colorScheme.outlineVariant
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1065,11 +1066,11 @@ fun DocumentScannerScreen(
                                 } else {
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = DarkForestGreen.copy(alpha = 0.1f),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                         modifier = Modifier.size(46.dp)
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Text("২য়", fontWeight = FontWeight.Bold, color = DarkForestGreen)
+                                            Text("২য়", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                         }
                                     }
                                 }
@@ -1091,7 +1092,7 @@ fun DocumentScannerScreen(
                             Button(
                                 onClick = { startScan(ScanType.CARD_BACK) },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (cardBackUri != null) Color.Gray else DarkForestGreen
+                                    containerColor = if (cardBackUri != null) Color.Gray else MaterialTheme.colorScheme.primary
                                 ),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
@@ -1117,7 +1118,7 @@ fun DocumentScannerScreen(
                             .height(48.dp),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkForestGreen,
+                            containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = Color.White
                         )
                     ) {
@@ -2732,9 +2733,9 @@ fun ScannedDocCard(
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, WarmBorderColor),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
@@ -2746,7 +2747,7 @@ fun ScannedDocCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1.25f)
-                    .background(Color(0xFFEFECE6)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 if (doc.isPdf) {
@@ -2754,7 +2755,7 @@ fun ScannedDocCard(
                         Icon(
                             imageVector = Icons.Default.Description,
                             contentDescription = null,
-                            tint = DarkForestGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(36.dp)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -2762,7 +2763,7 @@ fun ScannedDocCard(
                             text = "PDF",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkForestGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 } else {
@@ -2802,7 +2803,7 @@ fun ScannedDocCard(
                     text = doc.name,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF222222),
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -2816,18 +2817,18 @@ fun ScannedDocCard(
                     Text(
                         text = doc.formattedDate,
                         fontSize = 10.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = doc.formattedSize,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = DarkForestGreen
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
-                Divider(color = WarmBorderColor, thickness = 0.5.dp)
+                Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Actions Row
@@ -2843,7 +2844,7 @@ fun ScannedDocCard(
                         Icon(
                             imageVector = Icons.Default.Visibility,
                             contentDescription = "দেখুন",
-                            tint = DarkForestGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -2855,7 +2856,7 @@ fun ScannedDocCard(
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = "শেয়ার করুন",
-                            tint = LightForestGreen,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(16.dp)
                         )
                     }

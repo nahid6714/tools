@@ -286,7 +286,7 @@ fun ToolCardItem(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .background(
-                                if (tool.isAvailable) DarkForestGreen
+                                if (tool.isAvailable) MaterialTheme.colorScheme.primary
                                 else Color(0xFF757575)
                             )
                             .padding(horizontal = 8.dp, vertical = 2.dp)
@@ -316,7 +316,7 @@ fun ToolCardItem(
             Icon(
                 imageVector = Icons.Default.ArrowForward,
                 contentDescription = "খুলুন",
-                tint = if (tool.isAvailable) DarkForestGreen else Color.LightGray,
+                tint = if (tool.isAvailable) MaterialTheme.colorScheme.primary else Color.LightGray,
                 modifier = Modifier.size(20.dp)
             )
         }
