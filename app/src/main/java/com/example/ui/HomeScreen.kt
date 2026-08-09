@@ -78,6 +78,7 @@ import com.example.ui.theme.LightForestGreen
 import com.example.update.AppUpdateManager
 import com.example.update.UpdateDialog
 import com.example.update.UpdateInfo
+import com.example.util.PrintMemoData
 import com.example.util.PrintUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -103,6 +104,8 @@ fun HomeScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showGlobalSettings by remember { mutableStateOf(false) }
     var showPreviewDialog by remember { mutableStateOf(false) }
+    var previewTopMemo by remember { mutableStateOf<PrintMemoData?>(null) }
+    var previewBottomMemo by remember { mutableStateOf<PrintMemoData?>(null) }
     var isSplashLoading by remember { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -364,7 +367,20 @@ fun HomeScreen(
                                                         colors = listOf(DarkForestGreen, LightForestGreen)
                                                     )
                                                 )
-                                                .clickable { showPreviewDialog = true }
+                                                .clickable {
+                                                    previewTopMemo = PrintMemoData(
+                                                        memoId = currentBillState.editingBillId,
+                                                        centerName = currentBillState.centerName,
+                                                        subtitle = currentBillState.subtitle,
+                                                        dateString = currentBillState.dateString,
+                                                        purchaserName = currentBillState.purchaserName,
+                                                        purchaserLabel = currentBillState.purchaserLabel,
+                                                        items = currentBillState.items.filter { it.name.isNotBlank() || it.amount > 0 },
+                                                        totalAmount = currentBillState.totalAmount
+                                                    )
+                                                    previewBottomMemo = null
+                                                    showPreviewDialog = true
+                                                }
                                                 .testTag("print_bill_button")
                                                 .padding(horizontal = 4.dp),
                                             contentAlignment = Alignment.Center
@@ -445,11 +461,54 @@ fun HomeScreen(
                                         selectedTab = 0
                                     },
                                     onPrintBill = { bill ->
-                                        viewModel.loadBillForEditing(bill)
+                                        previewTopMemo = PrintMemoData(
+                                            memoId = bill.id,
+                                            centerName = currentBillState.centerName,
+                                            subtitle = currentBillState.subtitle,
+                                            dateString = bill.dateString,
+                                            purchaserName = bill.purchaserName,
+                                            purchaserLabel = currentBillState.purchaserLabel,
+                                            items = bill.items.filter { it.name.isNotBlank() || it.amount > 0 },
+                                            totalAmount = bill.totalAmount
+                                        )
+                                        previewBottomMemo = null
+                                        showPreviewDialog = true
+                                    },
+                                    onPrintDualBills = { bill1, bill2 ->
+                                        previewTopMemo = PrintMemoData(
+                                            memoId = bill1.id,
+                                            centerName = currentBillState.centerName,
+                                            subtitle = currentBillState.subtitle,
+                                            dateString = bill1.dateString,
+                                            purchaserName = bill1.purchaserName,
+                                            purchaserLabel = currentBillState.purchaserLabel,
+                                            items = bill1.items.filter { it.name.isNotBlank() || it.amount > 0 },
+                                            totalAmount = bill1.totalAmount
+                                        )
+                                        previewBottomMemo = PrintMemoData(
+                                            memoId = bill2.id,
+                                            centerName = currentBillState.centerName,
+                                            subtitle = currentBillState.subtitle,
+                                            dateString = bill2.dateString,
+                                            purchaserName = bill2.purchaserName,
+                                            purchaserLabel = currentBillState.purchaserLabel,
+                                            items = bill2.items.filter { it.name.isNotBlank() || it.amount > 0 },
+                                            totalAmount = bill2.totalAmount
+                                        )
                                         showPreviewDialog = true
                                     },
                                     onSharePdfBill = { bill ->
-                                        viewModel.loadBillForEditing(bill)
+                                        previewTopMemo = PrintMemoData(
+                                            memoId = bill.id,
+                                            centerName = currentBillState.centerName,
+                                            subtitle = currentBillState.subtitle,
+                                            dateString = bill.dateString,
+                                            purchaserName = bill.purchaserName,
+                                            purchaserLabel = currentBillState.purchaserLabel,
+                                            items = bill.items.filter { it.name.isNotBlank() || it.amount > 0 },
+                                            totalAmount = bill.totalAmount
+                                        )
+                                        previewBottomMemo = null
                                         showPreviewDialog = true
                                     },
                                     onDeleteBill = { id -> viewModel.deleteBill(id) }
@@ -497,32 +556,38 @@ fun HomeScreen(
 
     // Voucher Preview Modal Dialog
     if (showPreviewDialog) {
+        val defaultTop = previewTopMemo ?: PrintMemoData(
+            memoId = currentBillState.editingBillId,
+            centerName = currentBillState.centerName,
+            subtitle = currentBillState.subtitle,
+            dateString = currentBillState.dateString,
+            purchaserName = currentBillState.purchaserName,
+            purchaserLabel = currentBillState.purchaserLabel,
+            items = currentBillState.items.filter { it.name.isNotBlank() || it.amount > 0 },
+            totalAmount = currentBillState.totalAmount
+        )
+
         VoucherPreviewDialog(
-            state = currentBillState,
+            initialTopMemo = defaultTop,
+            initialBottomMemo = previewBottomMemo,
+            historyBills = historyBills,
+            defaultCenterName = currentBillState.centerName,
+            defaultSubtitle = currentBillState.subtitle,
+            defaultPurchaserLabel = currentBillState.purchaserLabel,
             onDismiss = { showPreviewDialog = false },
-            onPrint = { pos ->
-                val validItems = currentBillState.items.filter { it.name.isNotBlank() || it.amount > 0 }
-                PrintUtils.printFoodBill(
+            onPrint = { topMemo, bottomMemo, pos ->
+                PrintUtils.printFoodBillDual(
                     context = context,
-                    centerName = currentBillState.centerName,
-                    subtitle = currentBillState.subtitle,
-                    dateString = currentBillState.dateString,
-                    items = validItems,
-                    totalAmount = currentBillState.totalAmount,
-                    purchaserLabel = currentBillState.purchaserLabel,
+                    topMemo = topMemo,
+                    bottomMemo = bottomMemo,
                     position = pos
                 )
             },
-            onSharePdf = { pos ->
-                val validItems = currentBillState.items.filter { it.name.isNotBlank() || it.amount > 0 }
-                PrintUtils.shareFoodBillPdf(
+            onSharePdf = { topMemo, bottomMemo, pos ->
+                PrintUtils.shareFoodBillPdfDual(
                     context = context,
-                    centerName = currentBillState.centerName,
-                    subtitle = currentBillState.subtitle,
-                    dateString = currentBillState.dateString,
-                    items = validItems,
-                    totalAmount = currentBillState.totalAmount,
-                    purchaserLabel = currentBillState.purchaserLabel,
+                    topMemo = topMemo,
+                    bottomMemo = bottomMemo,
                     position = pos
                 )
             }

@@ -10,25 +10,34 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,33 +48,45 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.BillItem
-import com.example.ui.CurrentBillState
+import com.example.data.FoodBillUiModel
 import com.example.ui.theme.CreamPaperBg
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.ForestGreenText
-import com.example.ui.theme.StampBlue
 import com.example.util.BengaliUtils
+import com.example.util.PrintMemoData
 import com.example.util.PrintPosition
 
 @Composable
 fun VoucherPreviewDialog(
-    state: CurrentBillState,
+    initialTopMemo: PrintMemoData,
+    initialBottomMemo: PrintMemoData? = null,
+    historyBills: List<FoodBillUiModel> = emptyList(),
+    defaultCenterName: String = "",
+    defaultSubtitle: String = "",
+    defaultPurchaserLabel: String = "",
     onDismiss: () -> Unit,
-    onPrint: (PrintPosition) -> Unit,
-    onSharePdf: (PrintPosition) -> Unit
+    onPrint: (PrintMemoData, PrintMemoData?, PrintPosition) -> Unit,
+    onSharePdf: (PrintMemoData, PrintMemoData?, PrintPosition) -> Unit
 ) {
-    val validItems = state.items.filter { it.name.isNotBlank() || it.amount > 0 }
-    var selectedPosition by remember { mutableStateOf(PrintPosition.TOP) }
+    var selectedPosition by remember {
+        mutableStateOf(if (initialBottomMemo != null) PrintPosition.BOTH else PrintPosition.TOP)
+    }
+
+    var topMemoState by remember { mutableStateOf(initialTopMemo) }
+    var bottomMemoState by remember { mutableStateOf(initialBottomMemo) }
+
+    var showTopPicker by remember { mutableStateOf(false) }
+    var showBottomPicker by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -96,7 +117,7 @@ fun VoucherPreviewDialog(
                             color = ForestGreenText
                         )
                         Text(
-                            text = "A4 পেপারে প্রিন্ট/পিডিএফ পজিশন সিলেক্ট করুন:",
+                            text = "A4 পেপারে প্রিন্ট/পিডিএফ পজিশন ও মেমো নির্বাচন করুন:",
                             fontSize = 12.sp,
                             color = Color.DarkGray
                         )
@@ -110,7 +131,7 @@ fun VoucherPreviewDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Position Selection Bar (Segmented Controls)
                 Row(
@@ -130,13 +151,33 @@ fun VoucherPreviewDialog(
                                     if (isSelected) DarkForestGreen else Color.Transparent,
                                     shape = RoundedCornerShape(8.dp)
                                 )
-                                .clickable { selectedPosition = pos }
-                                .padding(horizontal = 4.dp),
+                                .clickable {
+                                    selectedPosition = pos
+                                    if (pos == PrintPosition.BOTH && bottomMemoState == null) {
+                                        // Auto-suggest a second memo if available or duplicate
+                                        val otherBill = historyBills.firstOrNull { it.id != topMemoState.memoId }
+                                        bottomMemoState = if (otherBill != null) {
+                                            PrintMemoData(
+                                                memoId = otherBill.id,
+                                                centerName = defaultCenterName.ifBlank { topMemoState.centerName },
+                                                subtitle = defaultSubtitle.ifBlank { topMemoState.subtitle },
+                                                dateString = otherBill.dateString,
+                                                purchaserName = otherBill.purchaserName,
+                                                purchaserLabel = defaultPurchaserLabel.ifBlank { topMemoState.purchaserLabel },
+                                                items = otherBill.items,
+                                                totalAmount = otherBill.totalAmount
+                                            )
+                                        } else {
+                                            topMemoState
+                                        }
+                                    }
+                                }
+                                .padding(horizontal = 2.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = pos.label,
-                                fontSize = 12.sp,
+                                fontSize = 11.5.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 color = if (isSelected) Color.White else ForestGreenText,
                                 textAlign = TextAlign.Center
@@ -145,7 +186,94 @@ fun VoucherPreviewDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Dual Memo Selectors (When BOTH position is active or to allow changing top/bottom memo)
+                if (selectedPosition == PrintPosition.BOTH) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White, RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0xFFD0C8B8), RoundedCornerShape(10.dp))
+                            .padding(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "A4 পেজে মেমো সেটআপ (উপরে ও নিচে আলাদা মেমো)",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkForestGreen
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            // Top Memo Selector Button
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { showTopPicker = true },
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFFF4EFE6),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, DarkForestGreen)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(text = "১. উপরে (Top Slot):", fontSize = 10.sp, color = Color.Gray)
+                                        val labelText = if (topMemoState.memoId > 0) "মেমো #${BengaliUtils.toBengaliDigits(topMemoState.memoId.toString())} (${topMemoState.dateString})" else "চলতি মেমো (${topMemoState.dateString})"
+                                        Text(
+                                            text = labelText,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.Black,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = DarkForestGreen)
+                                }
+                            }
+
+                            // Bottom Memo Selector Button
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { showBottomPicker = true },
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFFF4EFE6),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, DarkForestGreen)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(text = "২. নিচে (Bottom Slot):", fontSize = 10.sp, color = Color.Gray)
+                                        val bMemo = bottomMemoState ?: topMemoState
+                                        val labelText = if (bMemo.memoId > 0) "মেমো #${BengaliUtils.toBengaliDigits(bMemo.memoId.toString())} (${bMemo.dateString})" else if (bottomMemoState == null || bMemo == topMemoState) "একই মেমো (কপি)" else "চলতি মেমো (${bMemo.dateString})"
+                                        Text(
+                                            text = labelText,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.Black,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = DarkForestGreen)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
                 // Interactive A4 Paper Representation Scroll Area
                 Box(
@@ -153,7 +281,7 @@ fun VoucherPreviewDialog(
                         .weight(1f)
                         .fillMaxWidth()
                         .background(Color(0xFFEDE7DC), shape = RoundedCornerShape(8.dp))
-                        .padding(12.dp)
+                        .padding(10.dp)
                         .verticalScroll(rememberScrollState()),
                     contentAlignment = Alignment.TopCenter
                 ) {
@@ -163,27 +291,43 @@ fun VoucherPreviewDialog(
                             .background(Color.White, RoundedCornerShape(6.dp))
                             .padding(8.dp)
                     ) {
+                        val activeBottom = bottomMemoState ?: topMemoState
+
                         when (selectedPosition) {
                             PrintPosition.TOP -> {
-                                SingleMemoVoucherCard(state = state, validItems = validItems)
+                                SingleMemoVoucherCard(
+                                    memo = topMemoState,
+                                    slotLabel = "উপরে (Top Position)"
+                                )
                                 Spacer(modifier = Modifier.height(10.dp))
                                 EmptyPaperHalfPlaceholder()
                             }
                             PrintPosition.BOTTOM -> {
                                 EmptyPaperHalfPlaceholder()
                                 Spacer(modifier = Modifier.height(10.dp))
-                                SingleMemoVoucherCard(state = state, validItems = validItems)
+                                SingleMemoVoucherCard(
+                                    memo = activeBottom,
+                                    slotLabel = "নিচে (Bottom Position)"
+                                )
                             }
                             PrintPosition.BOTH -> {
-                                SingleMemoVoucherCard(state = state, validItems = validItems)
-                                Spacer(modifier = Modifier.height(10.dp))
-                                SingleMemoVoucherCard(state = state, validItems = validItems)
+                                SingleMemoVoucherCard(
+                                    memo = topMemoState,
+                                    slotLabel = "১. উপরের মেমো (Top Slot)"
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                CutLineSeparator()
+                                Spacer(modifier = Modifier.height(8.dp))
+                                SingleMemoVoucherCard(
+                                    memo = activeBottom,
+                                    slotLabel = "২. নিচের মেমো (Bottom Slot)"
+                                )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Bottom Action Buttons
                 Row(
@@ -192,7 +336,9 @@ fun VoucherPreviewDialog(
                 ) {
                     // Direct System Print Button
                     Button(
-                        onClick = { onPrint(selectedPosition) },
+                        onClick = {
+                            onPrint(topMemoState, bottomMemoState ?: topMemoState, selectedPosition)
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
@@ -207,7 +353,9 @@ fun VoucherPreviewDialog(
 
                     // Share PDF / WhatsApp Button
                     Button(
-                        onClick = { onSharePdf(selectedPosition) },
+                        onClick = {
+                            onSharePdf(topMemoState, bottomMemoState ?: topMemoState, selectedPosition)
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
@@ -223,14 +371,51 @@ fun VoucherPreviewDialog(
             }
         }
     }
+
+    // Top Memo Picker Modal Dialog
+    if (showTopPicker) {
+        MemoSelectionDialog(
+            title = "উপরের মেমো নির্বাচন করুন (Top Slot)",
+            historyBills = historyBills,
+            initialMemo = initialTopMemo,
+            defaultCenterName = defaultCenterName,
+            defaultSubtitle = defaultSubtitle,
+            defaultPurchaserLabel = defaultPurchaserLabel,
+            onDismiss = { showTopPicker = false },
+            onSelect = { selectedMemo ->
+                topMemoState = selectedMemo
+                showTopPicker = false
+            }
+        )
+    }
+
+    // Bottom Memo Picker Modal Dialog
+    if (showBottomPicker) {
+        MemoSelectionDialog(
+            title = "নিচের মেমো নির্বাচন করুন (Bottom Slot)",
+            historyBills = historyBills,
+            initialMemo = initialTopMemo,
+            defaultCenterName = defaultCenterName,
+            defaultSubtitle = defaultSubtitle,
+            defaultPurchaserLabel = defaultPurchaserLabel,
+            allowSameCopy = true,
+            onDismiss = { showBottomPicker = false },
+            onSelect = { selectedMemo ->
+                bottomMemoState = selectedMemo
+                showBottomPicker = false
+            }
+        )
+    }
 }
 
 @Composable
 private fun SingleMemoVoucherCard(
-    state: CurrentBillState,
-    validItems: List<BillItem>,
+    memo: PrintMemoData,
+    slotLabel: String,
     modifier: Modifier = Modifier
 ) {
+    val validItems = memo.items.filter { it.name.isNotBlank() || it.amount > 0 }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(6.dp),
@@ -239,27 +424,51 @@ private fun SingleMemoVoucherCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Header Banner (Ink-saving: White background with sharp Black border and Black text)
+            // Slot Label Indicator
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFE8E0D5))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = slotLabel,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkForestGreen
+                )
+                val memoTag = if (memo.memoId > 0) "মেমো #${BengaliUtils.toBengaliDigits(memo.memoId.toString())}" else "চলতি মেমো"
+                Text(
+                    text = memoTag,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.DarkGray
+                )
+            }
+
+            // Header Banner
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(1.5.dp, Color.Black, RoundedCornerShape(4.dp))
                     .background(Color.White)
-                    .padding(vertical = 10.dp, horizontal = 8.dp),
+                    .padding(vertical = 8.dp, horizontal = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = state.centerName,
+                        text = memo.centerName.ifBlank { "প্রতিষ্ঠানের নাম লিখুন" },
                         style = TextStyle(
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
                         ),
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = state.subtitle,
+                        text = memo.subtitle.ifBlank { "দৈনিক খাবার বিল" },
                         style = TextStyle(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Normal,
@@ -270,19 +479,19 @@ private fun SingleMemoVoucherCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.5.dp)
                     .background(Color.Black)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(3.dp))
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(10.dp)
+                    .padding(8.dp)
             ) {
                 // Metadata Row
                 Row(
@@ -291,7 +500,7 @@ private fun SingleMemoVoucherCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "তারিখ: ${BengaliUtils.toBengaliDigits(state.dateString)}",
+                        text = "তারিখ: ${BengaliUtils.toBengaliDigits(memo.dateString)}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
@@ -302,21 +511,22 @@ private fun SingleMemoVoucherCard(
 
                 // Table Grid
                 val totalRows = maxOf(14, validItems.size.coerceAtMost(18))
-                val rowPaddingY = if (totalRows > 14) 3.5.dp else 7.5.dp
-                val dividerBoxHeight = if (totalRows > 14) 14.dp else 19.dp
+                val rowPaddingY = if (totalRows > 14) 3.5.dp else 6.5.dp
+                val dividerBoxHeight = if (totalRows > 14) 14.dp else 18.dp
                 val itemTextSize = if (totalRows > 14) 9.sp else 10.sp
                 val memoThemeBorder = Color.Black
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(1.5.dp, memoThemeBorder, RoundedCornerShape(4.dp))
                 ) {
-                    // Table Header Row (Ink-saving: White background with Black text & Black borders)
+                    // Table Header Row
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Color.White)
-                            .padding(vertical = 5.dp, horizontal = 2.dp),
+                            .padding(vertical = 4.dp, horizontal = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -354,7 +564,6 @@ private fun SingleMemoVoucherCard(
                         )
                     }
 
-                    // Divider below Header
                     Box(modifier = Modifier.fillMaxWidth().height(1.5.dp).background(Color.Black))
 
                     // Table Body Rows
@@ -444,14 +653,14 @@ private fun SingleMemoVoucherCard(
                         )
                         Box(modifier = Modifier.width(1.2.dp).height(16.dp).background(memoThemeBorder))
                         Text(
-                            text = "${BengaliUtils.formatBengaliCurrency(state.totalAmount)}/-",
+                            text = "${BengaliUtils.formatBengaliCurrency(memo.totalAmount)}/-",
                             modifier = Modifier.weight(1.2f).padding(end = 4.dp),
                             style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.End)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -469,7 +678,7 @@ private fun SingleMemoVoucherCard(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = state.purchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" },
+                            text = memo.purchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" },
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black,
@@ -483,19 +692,189 @@ private fun SingleMemoVoucherCard(
 }
 
 @Composable
+private fun CutLineSeparator() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Canvas(modifier = Modifier.weight(1f).height(1.dp)) {
+            drawLine(
+                color = Color.Gray,
+                start = Offset(0f, 0f),
+                end = Offset(size.width, 0f),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+            )
+        }
+        Text(
+            text = " ✂ কাটিং লাইন (A4 হাফ পেজ) ",
+            fontSize = 10.sp,
+            color = Color.Gray,
+            fontWeight = FontWeight.Bold
+        )
+        Canvas(modifier = Modifier.weight(1f).height(1.dp)) {
+            drawLine(
+                color = Color.Gray,
+                start = Offset(0f, 0f),
+                end = Offset(size.width, 0f),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+            )
+        }
+    }
+}
+
+@Composable
 private fun EmptyPaperHalfPlaceholder() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp)
-            .background(Color(0xFFFBF9F4), RoundedCornerShape(4.dp)),
+            .height(160.dp)
+            .background(Color(0xFFFBF9F4), RoundedCornerShape(4.dp))
+            .border(1.dp, Color(0xFFE5DFD3), RoundedCornerShape(4.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "খালি পেজ (ফাঁকা থাকবে)",
+            text = "খালি পজিশন (প্রিন্ট পেজে ফাঁকা থাকবে)",
             fontSize = 11.sp,
-            color = Color.LightGray,
+            color = Color.Gray,
             fontWeight = FontWeight.Bold
         )
     }
+}
+
+@Composable
+private fun MemoSelectionDialog(
+    title: String,
+    historyBills: List<FoodBillUiModel>,
+    initialMemo: PrintMemoData,
+    defaultCenterName: String,
+    defaultSubtitle: String,
+    defaultPurchaserLabel: String,
+    allowSameCopy: Boolean = false,
+    onDismiss: () -> Unit,
+    onSelect: (PrintMemoData) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(350.dp)
+            ) {
+                if (historyBills.isEmpty() && !allowSameCopy) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("সংরক্ষিত কোনো মেমো নেই।", fontSize = 13.sp, color = Color.Gray)
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // Current Draft Memo option
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onSelect(initialMemo)
+                                    },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(imageVector = Icons.Default.Receipt, contentDescription = null, tint = DarkForestGreen)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = "চলতি মেমো (সম্পাদিত বিল)",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = DarkForestGreen
+                                        )
+                                        Text(
+                                            text = "তারিখ: ${initialMemo.dateString} | মোট: ${BengaliUtils.formatBengaliCurrency(initialMemo.totalAmount)}",
+                                            fontSize = 11.sp,
+                                            color = Color.DarkGray
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Saved History Bills
+                        items(historyBills, key = { it.id }) { bill ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val printMemo = PrintMemoData(
+                                            memoId = bill.id,
+                                            centerName = defaultCenterName.ifBlank { initialMemo.centerName },
+                                            subtitle = defaultSubtitle.ifBlank { initialMemo.subtitle },
+                                            dateString = bill.dateString,
+                                            purchaserName = bill.purchaserName,
+                                            purchaserLabel = defaultPurchaserLabel.ifBlank { initialMemo.purchaserLabel },
+                                            items = bill.items,
+                                            totalAmount = bill.totalAmount
+                                        )
+                                        onSelect(printMemo)
+                                    },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "মেমো #${BengaliUtils.toBengaliDigits(bill.id.toString())} — ${BengaliUtils.toBengaliDigits(bill.dateString)}",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.Black
+                                        )
+                                        if (bill.purchaserName.isNotBlank()) {
+                                            Text(
+                                                text = "ক্রেতা: ${bill.purchaserName}",
+                                                fontSize = 11.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                        Text(
+                                            text = "${bill.items.size}টি আইটেম",
+                                            fontSize = 11.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+
+                                    Text(
+                                        text = BengaliUtils.formatBengaliCurrency(bill.totalAmount),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = DarkForestGreen
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("বাতিল", color = Color.Gray)
+            }
+        }
+    )
 }

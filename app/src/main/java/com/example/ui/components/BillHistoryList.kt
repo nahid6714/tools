@@ -18,26 +18,33 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,14 +54,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.FoodBillUiModel
-import com.example.ui.theme.HeadingFontFamily
+import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.LedgerRed
-import com.example.ui.theme.StampBlue
 import com.example.util.BengaliUtils
 
 @Composable
@@ -64,11 +71,13 @@ fun BillHistoryList(
     onSearchQueryChange: (String) -> Unit,
     onEditBill: (FoodBillUiModel) -> Unit,
     onPrintBill: (FoodBillUiModel) -> Unit,
+    onPrintDualBills: (FoodBillUiModel, FoodBillUiModel) -> Unit,
     onSharePdfBill: (FoodBillUiModel) -> Unit,
     onDeleteBill: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var billToDelete by remember { mutableStateOf<FoodBillUiModel?>(null) }
+    val selectedBillIds = remember { mutableStateListOf<Long>() }
 
     val filteredBills = remember(bills, searchQuery) {
         if (searchQuery.isBlank()) {
@@ -78,6 +87,8 @@ fun BillHistoryList(
             val englishQ = BengaliUtils.toEnglishDigits(q)
             val bengaliQ = BengaliUtils.toBengaliDigits(q)
             bills.filter { bill ->
+                bill.id.toString().contains(q) ||
+                bill.id.toString().contains(englishQ) ||
                 bill.dateString.lowercase().contains(q) ||
                 bill.dateString.lowercase().contains(englishQ) ||
                 bill.dateString.lowercase().contains(bengaliQ) ||
@@ -108,7 +119,7 @@ fun BillHistoryList(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text("তারিখ বা আইটেম দিয়ে খুঁজুন...") },
+            placeholder = { Text("মেমো নম্বর, তারিখ বা আইটেম দিয়ে খুঁজুন...") },
             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
             singleLine = true,
             textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp),
@@ -129,9 +140,72 @@ fun BillHistoryList(
                 .testTag("search_history_input")
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // Monthly / Total spending summary card
+        // Dual Selection Action Banner (When bills are selected for A4 Dual Print)
+        if (selectedBillIds.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("dual_selection_banner"),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        val countText = BengaliUtils.toBengaliDigits(selectedBillIds.size.toString())
+                        Text(
+                            text = "$countText টি মেমো সিলেক্টেড (A4 ডাবল পেজ)",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkForestGreen
+                        )
+                        Text(
+                            text = if (selectedBillIds.size == 1) "অন্য যেকোনো ১টি মেমো সিলেক্ট করুন (উপরে/নিচে সেট করতে)" else "উপরে ও নিচে ২টি মেমো একসাথে প্রিন্ট করা যাবে",
+                            fontSize = 11.sp,
+                            color = Color.DarkGray
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (selectedBillIds.size == 2) {
+                            Button(
+                                onClick = {
+                                    val b1 = bills.firstOrNull { it.id == selectedBillIds[0] }
+                                    val b2 = bills.firstOrNull { it.id == selectedBillIds[1] }
+                                    if (b1 != null && b2 != null) {
+                                        onPrintDualBills(b1, b2)
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White)
+                            ) {
+                                Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("A4 প্রিন্ট", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = { selectedBillIds.clear() },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("বাতিল", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+
+        // Spending summary card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -142,13 +216,13 @@ fun BillHistoryList(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
-                        text = "মোট খরচের হিসাব (${BengaliUtils.toBengaliDigits(filteredBills.size.toString())}টি বিল)",
+                        text = "মোট খরচের হিসাব (${BengaliUtils.toBengaliDigits(filteredBills.size.toString())}টি মেমো)",
                         fontSize = 13.sp,
                         color = Color.White.copy(alpha = 0.85f)
                     )
@@ -164,12 +238,12 @@ fun BillHistoryList(
                     imageVector = Icons.Default.Receipt,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.height(36.dp).width(36.dp)
+                    modifier = Modifier.height(34.dp).width(34.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         if (filteredBills.isEmpty()) {
             Box(
@@ -179,7 +253,7 @@ fun BillHistoryList(
                 contentAlignment = Alignment.TopCenter
             ) {
                 Text(
-                    text = if (searchQuery.isBlank()) "এখনো কোনো বিল সংরক্ষণ করা হয়নি।" else "কোনো সম্পর্কিত বিল পাওয়া যায়নি।",
+                    text = if (searchQuery.isBlank()) "এখনো কোনো মেমো সংরক্ষণ করা হয়নি।" else "কোনো সম্পর্কিত মেমো পাওয়া যায়নি।",
                     fontSize = 15.sp,
                     color = Color.Gray,
                     fontWeight = FontWeight.Medium
@@ -191,8 +265,21 @@ fun BillHistoryList(
                 modifier = Modifier.fillMaxSize().testTag("history_list_column")
             ) {
                 items(filteredBills, key = { it.id }) { bill ->
+                    val isSelectedForDual = selectedBillIds.contains(bill.id)
+
                     HistoryBillItemCard(
                         bill = bill,
+                        isSelected = isSelectedForDual,
+                        onToggleSelect = {
+                            if (isSelectedForDual) {
+                                selectedBillIds.remove(bill.id)
+                            } else {
+                                if (selectedBillIds.size >= 2) {
+                                    selectedBillIds.removeAt(0)
+                                }
+                                selectedBillIds.add(bill.id)
+                            }
+                        },
                         onEdit = { onEditBill(bill) },
                         onPrint = { onPrintBill(bill) },
                         onSharePdf = { onSharePdfBill(bill) },
@@ -207,12 +294,13 @@ fun BillHistoryList(
     billToDelete?.let { bill ->
         AlertDialog(
             onDismissRequest = { billToDelete = null },
-            title = { Text("বিল মুছে ফেলুন") },
-            text = { Text("${bill.dateString} তারিখের বিলটি মুছে ফেলতে চান?") },
+            title = { Text("মেমো মুছে ফেলুন") },
+            text = { Text("মেমো #${BengaliUtils.toBengaliDigits(bill.id.toString())} (${bill.dateString}) মুছে ফেলতে চান?") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         onDeleteBill(bill.id)
+                        selectedBillIds.remove(bill.id)
                         billToDelete = null
                     }
                 ) {
@@ -231,6 +319,8 @@ fun BillHistoryList(
 @Composable
 fun HistoryBillItemCard(
     bill: FoodBillUiModel,
+    isSelected: Boolean,
+    onToggleSelect: () -> Unit,
     onEdit: () -> Unit,
     onPrint: () -> Unit,
     onSharePdf: () -> Unit,
@@ -241,7 +331,9 @@ fun HistoryBillItemCard(
             .fillMaxWidth()
             .testTag("history_item_card_${bill.id}"),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -254,77 +346,116 @@ fun HistoryBillItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "তারিখ: ${BengaliUtils.toBengaliDigits(bill.dateString)}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleSelect() },
+                        colors = CheckboxDefaults.colors(checkedColor = DarkForestGreen)
                     )
-                    if (bill.purchaserName.isNotBlank()) {
+
+                    Column {
                         Text(
-                            text = "ক্রয়কারী: ${bill.purchaserName}",
-                            fontSize = 12.sp,
-                            color = Color.DarkGray
+                            text = "মেমো #${BengaliUtils.toBengaliDigits(bill.id.toString())}",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkForestGreen
                         )
+                        Text(
+                            text = "তারিখ: ${BengaliUtils.toBengaliDigits(bill.dateString)}",
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (bill.purchaserName.isNotBlank()) {
+                            Text(
+                                text = "ক্রয়কারী: ${bill.purchaserName}",
+                                fontSize = 11.5.sp,
+                                color = Color.DarkGray
+                            )
+                        }
                     }
                 }
 
                 Text(
                     text = BengaliUtils.formatBengaliCurrency(bill.totalAmount),
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            // Items Preview (up to 3 items)
+            // Items Preview (up to 4 items)
             val previewItems = bill.items.take(4)
             Text(
                 text = previewItems.joinToString(", ") { "${it.name} (${BengaliUtils.toBengaliDigits(it.quantity)})" } +
                         if (bill.items.size > 4) " এবং আরও ${BengaliUtils.toBengaliDigits((bill.items.size - 4).toString())}টি" else "",
-                fontSize = 13.sp,
+                fontSize = 12.5.sp,
                 color = Color.Gray
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Action Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onEdit,
-                    modifier = Modifier.testTag("edit_history_bill_${bill.id}")
+                // Select for A4 Dual Print button
+                TextButton(
+                    onClick = onToggleSelect,
+                    modifier = Modifier.testTag("select_dual_bill_${bill.id}")
                 ) {
-                    Icon(imageVector = Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Check,
+                        contentDescription = null,
+                        tint = DarkForestGreen,
+                        modifier = Modifier.height(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (isSelected) "A4 ডাবলে যুক্ত" else "A4 ডাবলে নির্বাচন",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkForestGreen
+                    )
                 }
 
-                IconButton(
-                    onClick = onPrint,
-                    modifier = Modifier.testTag("print_history_bill_${bill.id}")
-                ) {
-                    Icon(imageVector = Icons.Default.Print, contentDescription = "প্রিন্ট করুন", tint = MaterialTheme.colorScheme.primary)
-                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.testTag("edit_history_bill_${bill.id}")
+                    ) {
+                        Icon(imageVector = Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = MaterialTheme.colorScheme.primary)
+                    }
 
-                IconButton(
-                    onClick = onSharePdf,
-                    modifier = Modifier.testTag("share_history_bill_${bill.id}")
-                ) {
-                    Icon(imageVector = Icons.Default.Share, contentDescription = "পিডিএফ শেয়ার করুন", tint = MaterialTheme.colorScheme.primary)
-                }
+                    IconButton(
+                        onClick = onPrint,
+                        modifier = Modifier.testTag("print_history_bill_${bill.id}")
+                    ) {
+                        Icon(imageVector = Icons.Default.Print, contentDescription = "প্রিন্ট করুন", tint = MaterialTheme.colorScheme.primary)
+                    }
 
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.testTag("delete_history_bill_${bill.id}")
-                ) {
-                    Icon(imageVector = Icons.Default.Delete, contentDescription = "মুছুন", tint = LedgerRed)
+                    IconButton(
+                        onClick = onSharePdf,
+                        modifier = Modifier.testTag("share_history_bill_${bill.id}")
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = "পিডিএফ শেয়ার করুন", tint = MaterialTheme.colorScheme.primary)
+                    }
+
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.testTag("delete_history_bill_${bill.id}")
+                    ) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = "মুছুন", tint = LedgerRed)
+                    }
                 }
             }
         }
