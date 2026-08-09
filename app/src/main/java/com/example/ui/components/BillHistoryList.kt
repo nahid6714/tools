@@ -60,6 +60,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.FoodBillUiModel
+import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.LedgerRed
 import com.example.util.BengaliUtils
 
@@ -163,7 +164,7 @@ fun BillHistoryList(
                             text = "$countText টি মেমো সিলেক্টেড (A4 ডাবল পেজ)",
                             fontSize = 13.5.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = DarkForestGreen
                         )
                         Text(
                             text = if (selectedBillIds.size == 1) "অন্য যেকোনো ১টি মেমো সিলেক্ট করুন (উপরে/নিচে সেট করতে)" else "উপরে ও নিচে ২টি মেমো একসাথে প্রিন্ট করা যাবে",
@@ -183,7 +184,7 @@ fun BillHistoryList(
                                     }
                                 },
                                 shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
+                                colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White)
                             ) {
                                 Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.height(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -352,7 +353,7 @@ fun HistoryBillItemCard(
                     Checkbox(
                         checked = isSelected,
                         onCheckedChange = { onToggleSelect() },
-                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                        colors = CheckboxDefaults.colors(checkedColor = DarkForestGreen)
                     )
 
                     Column {
@@ -360,7 +361,7 @@ fun HistoryBillItemCard(
                             text = "মেমো #${BengaliUtils.toBengaliDigits(bill.id.toString())}",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = DarkForestGreen
                         )
                         Text(
                             text = "তারিখ: ${BengaliUtils.toBengaliDigits(bill.dateString)}",
@@ -415,7 +416,7 @@ fun HistoryBillItemCard(
                     Icon(
                         imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Check,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = DarkForestGreen,
                         modifier = Modifier.height(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -423,7 +424,7 @@ fun HistoryBillItemCard(
                         text = if (isSelected) "A4 ডাবলে যুক্ত" else "A4 ডাবলে নির্বাচন",
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = DarkForestGreen
                     )
                 }
 
