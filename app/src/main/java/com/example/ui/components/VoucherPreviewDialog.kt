@@ -111,13 +111,13 @@ fun VoucherPreviewDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "বিল প্রিভিউ & A4 পজিশন",
+                            text = "মেমো শেয়ার ও প্রিন্ট প্রিভিউ",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = ForestGreenText
                         )
                         Text(
-                            text = "A4 পেপারে প্রিন্ট/পিডিএফ পজিশন ও মেমো নির্বাচন করুন:",
+                            text = "শেয়ার বা প্রিন্ট করার জন্য A4 পজিশন ও মেমো নির্বাচন করুন:",
                             fontSize = 12.sp,
                             color = Color.DarkGray
                         )

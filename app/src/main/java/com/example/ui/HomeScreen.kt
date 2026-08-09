@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -391,10 +392,10 @@ fun HomeScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.Center
                                             ) {
-                                                Icon(Icons.Default.Print, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                                Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(
-                                                    text = "প্রিন্ট / প্রিভিউ",
+                                                    text = "শেয়ার / প্রিভিউ",
                                                     fontSize = 13.5.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = Color.White,
