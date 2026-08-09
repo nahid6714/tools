@@ -1,0 +1,6 @@
+{
+  "name": "Digital Tool",
+  "description": "Digital Tool - Smart Digital Tools Hub (Food Bill Memo, Smart Document & NID Scanner, History Log)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
