@@ -13,6 +13,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -90,6 +92,10 @@ import com.example.ui.theme.LightForestGreen
 import com.example.ui.theme.WarmBorderColor
 import com.example.util.BengaliUtils
 import com.example.util.QuickPreset
+import com.example.util.DragDropListState
+import com.example.util.dragReorderHandle
+import com.example.util.dragReorderVisuals
+import com.example.util.rememberDragDropListState
 
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
@@ -109,6 +115,7 @@ fun MemoVoucherCard(
     onAddCustomPreset: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
     onRemovePreset: (preset: QuickPreset) -> Unit = {},
     onResetDefaults: () -> Unit = {},
+    onReorderPresets: (from: Int, to: Int) -> Unit = { _, _ -> },
     onUpdateDateClick: () -> Unit,
     onUpdateItemName: (id: String, name: String) -> Unit,
     onUpdateItemQty: (id: String, qty: String) -> Unit,
@@ -116,6 +123,7 @@ fun MemoVoucherCard(
     onUpdateItemAmount: (id: String, amount: String) -> Unit,
     onRemoveItem: (id: String) -> Unit,
     onAddItemRow: () -> Unit,
+    onReorderItems: (from: Int, to: Int) -> Unit = { _, _ -> },
     onPurchaserLabelChange: ((String) -> Unit)? = null,
     onCenterNameChange: ((String) -> Unit)? = null,
     onSubtitleChange: ((String) -> Unit)? = null,
@@ -132,6 +140,9 @@ fun MemoVoucherCard(
         }
     }
     val purchaserLabelFocusRequester = remember { FocusRequester() }
+    val itemsDragState = rememberDragDropListState(orientation = Orientation.Vertical) { from, to ->
+        onReorderItems(from, to)
+    }
 
     Card(
         modifier = modifier
@@ -332,6 +343,7 @@ fun MemoVoucherCard(
                                 addedItemNames = addedItemNames,
                                 onPresetClick = onPresetClick,
                                 onManagePresetsClick = { showManagePresetsDialog = true },
+                                onReorderPresets = onReorderPresets,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -376,6 +388,7 @@ fun MemoVoucherCard(
                                 addedItemNames = addedItemNames,
                                 onPresetClick = onPresetClick,
                                 onManagePresetsClick = { showManagePresetsDialog = true },
+                                onReorderPresets = onReorderPresets,
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -388,7 +401,8 @@ fun MemoVoucherCard(
                         onDismiss = { showManagePresetsDialog = false },
                         onAddPreset = onAddCustomPreset,
                         onRemovePreset = onRemovePreset,
-                        onResetDefaults = onResetDefaults
+                        onResetDefaults = onResetDefaults,
+                        onReorder = onReorderPresets
                     )
                 }
 
@@ -460,6 +474,7 @@ fun MemoVoucherCard(
                     MemoItemRow(
                         index = index,
                         item = item,
+                        dragState = itemsDragState,
                         nameFocusRequester = rowRequesters?.getOrNull(0) ?: remember { FocusRequester() },
                         qtyFocusRequester = rowRequesters?.getOrNull(1) ?: remember { FocusRequester() },
                         rateFocusRequester = rowRequesters?.getOrNull(2) ?: remember { FocusRequester() },
@@ -590,6 +605,7 @@ fun MemoVoucherCard(
 fun MemoItemRow(
     index: Int,
     item: BillItem,
+    dragState: DragDropListState? = null,
     nameFocusRequester: FocusRequester,
     qtyFocusRequester: FocusRequester,
     rateFocusRequester: FocusRequester,
@@ -607,9 +623,24 @@ fun MemoItemRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 6.dp)
+            .let { if (dragState != null) it.dragReorderVisuals(dragState, index) else it },
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Drag handle - long-press and drag to reorder this item
+        if (dragState != null) {
+            Icon(
+                imageVector = Icons.Default.DragIndicator,
+                contentDescription = "আইটেমের অবস্থান পরিবর্তন করুন (ধরে টানুন)",
+                tint = Color.Gray.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .padding(end = 2.dp)
+                    .size(20.dp)
+                    .dragReorderHandle(dragState, index)
+                    .testTag("item_drag_handle_$index")
+            )
+        }
+
         // Description (Name)
         Box(
             modifier = Modifier
@@ -894,9 +925,13 @@ fun QuickItemSelectorButton(
     addedItemNames: Set<String>,
     onPresetClick: (name: String, qty: String, rate: String, amount: String) -> Unit,
     onManagePresetsClick: () -> Unit,
+    onReorderPresets: (from: Int, to: Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var expandedDropdown by remember { mutableStateOf(false) }
+    val presetsDragState = rememberDragDropListState(orientation = Orientation.Vertical) { from, to ->
+        onReorderPresets(from, to)
+    }
     val transitionState = remember {
         MutableTransitionState(false).apply { targetState = false }
     }
@@ -1076,7 +1111,7 @@ fun QuickItemSelectorButton(
                                             .verticalScroll(rememberScrollState()),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        presets.forEach { preset ->
+                                        presets.forEachIndexed { presetIndex, preset ->
                                             val isAdded = addedItemNames.contains(preset.name.trim())
                                             val formattedText = BengaliUtils.formatPresetDisplayText(preset)
 
@@ -1089,6 +1124,7 @@ fun QuickItemSelectorButton(
                                                 ),
                                                 modifier = Modifier
                                                     .fillMaxWidth()
+                                                    .dragReorderVisuals(presetsDragState, presetIndex)
                                                     .clickable {
                                                         onPresetClick(
                                                             preset.name,
@@ -1097,6 +1133,7 @@ fun QuickItemSelectorButton(
                                                             preset.defaultAmount
                                                         )
                                                     }
+                                                    .testTag("quick_preset_row_$presetIndex")
                                             ) {
                                                 Row(
                                                     modifier = Modifier
@@ -1105,6 +1142,15 @@ fun QuickItemSelectorButton(
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.DragIndicator,
+                                                        contentDescription = "অবস্থান পরিবর্তন করুন (ধরে টানুন)",
+                                                        tint = Color.Gray.copy(alpha = 0.6f),
+                                                        modifier = Modifier
+                                                            .padding(end = 6.dp)
+                                                            .size(18.dp)
+                                                            .dragReorderHandle(presetsDragState, presetIndex)
+                                                    )
                                                     Text(
                                                         text = formattedText,
                                                         fontSize = 13.5.sp,

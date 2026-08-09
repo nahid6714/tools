@@ -366,6 +366,7 @@ fun HomeScreen(
                                         onResetDefaults = {
                                             viewModel.resetQuickPresetsToDefault()
                                         },
+                                        onReorderPresets = { from, to -> viewModel.reorderQuickPresets(from, to) },
                                         onUpdateDateClick = { showDatePicker() },
                                         onUpdateItemName = { id, name -> viewModel.updateItemName(id, name) },
                                         onUpdateItemQty = { id, qty -> viewModel.updateItemQuantity(id, qty) },
@@ -373,6 +374,7 @@ fun HomeScreen(
                                         onUpdateItemAmount = { id, amount -> viewModel.updateItemAmount(id, amount) },
                                         onRemoveItem = { id -> viewModel.removeItemRow(id) },
                                         onAddItemRow = { viewModel.addItemRow() },
+                                        onReorderItems = { from, to -> viewModel.reorderItems(from, to) },
                                         onPurchaserLabelChange = { viewModel.updatePurchaserLabel(it) }
                                     )
 

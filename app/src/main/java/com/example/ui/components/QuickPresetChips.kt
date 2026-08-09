@@ -2,6 +2,7 @@ package com.example.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.foundation.text.KeyboardActions
@@ -70,6 +72,10 @@ import com.example.ui.theme.LedgerRed
 import com.example.ui.theme.StampBlue
 import com.example.util.BengaliUtils
 import com.example.util.QuickPreset
+import com.example.util.dragReorderHandle
+import com.example.util.dragReorderVisuals
+import com.example.util.dragToReorder
+import com.example.util.rememberDragDropListState
 
 @Composable
 fun QuickPresetChips(
@@ -79,11 +85,15 @@ fun QuickPresetChips(
     onAddCustomPreset: (name: String, qty: String, rate: String, amount: String) -> Unit,
     onRemovePreset: (preset: QuickPreset) -> Unit,
     onResetDefaults: () -> Unit,
+    onReorderPresets: (from: Int, to: Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var showManageDialog by remember { mutableStateOf(false) }
     var promptPreset by remember { mutableStateOf<QuickPreset?>(null) }
     var expandedDropdown by remember { mutableStateOf(false) }
+    val chipsDragState = rememberDragDropListState(orientation = Orientation.Horizontal) { from, to ->
+        onReorderPresets(from, to)
+    }
 
     Column(
         modifier = modifier
@@ -247,14 +257,15 @@ fun QuickPresetChips(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             contentPadding = PaddingValues(horizontal = 2.dp)
         ) {
-            items(presets) { preset ->
+            itemsIndexed(presets, key = { _, preset -> preset.name }) { chipIndex, preset ->
                 val isAdded = addedItemNames.contains(preset.name.trim())
                 PresetChip(
                     preset = preset,
                     isAdded = isAdded,
                     onClick = {
                         onPresetClick(preset.name, preset.defaultQty, preset.defaultRate, preset.defaultAmount)
-                    }
+                    },
+                    modifier = Modifier.dragToReorder(chipsDragState, chipIndex)
                 )
             }
         }
@@ -268,7 +279,8 @@ fun QuickPresetChips(
                 onAddCustomPreset(name, qty, rate, amount)
             },
             onRemovePreset = onRemovePreset,
-            onResetDefaults = onResetDefaults
+            onResetDefaults = onResetDefaults,
+            onReorder = onReorderPresets
         )
     }
 
@@ -304,8 +316,12 @@ fun ManageQuickPresetsDialog(
     onDismiss: () -> Unit,
     onAddPreset: (name: String, qty: String, rate: String, amount: String) -> Unit,
     onRemovePreset: (preset: QuickPreset) -> Unit,
-    onResetDefaults: () -> Unit
+    onResetDefaults: () -> Unit,
+    onReorder: (from: Int, to: Int) -> Unit = { _, _ -> }
 ) {
+    val presetsDragState = rememberDragDropListState(
+        orientation = Orientation.Vertical
+    ) { from, to -> onReorder(from, to) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -640,13 +656,14 @@ fun ManageQuickPresetsDialog(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    presets.forEach { preset ->
+                    presets.forEachIndexed { presetIndex, preset ->
                         val isEditingThis = editingPreset == preset
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = if (isEditingThis) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .dragReorderVisuals(presetsDragState, presetIndex)
                                 .clickable {
                                     editingPreset = preset
                                     newItemName = preset.name
@@ -667,6 +684,15 @@ fun ManageQuickPresetsDialog(
                                     modifier = Modifier.weight(1f),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DragIndicator,
+                                        contentDescription = "অবস্থান পরিবর্তন করুন (ধরে টানুন)",
+                                        tint = if (isEditingThis) Color.White.copy(alpha = 0.85f) else Color.Gray.copy(alpha = 0.7f),
+                                        modifier = Modifier
+                                            .padding(end = 6.dp)
+                                            .size(18.dp)
+                                            .dragReorderHandle(presetsDragState, presetIndex)
+                                    )
                                     val labelText = buildString {
                                         append(preset.name)
                                         val hasDetails = preset.defaultQty.isNotBlank() || preset.defaultRate.isNotBlank() || preset.defaultAmount.isNotBlank()
@@ -1023,7 +1049,8 @@ fun PromptQuantityDialog(
 fun PresetChip(
     preset: QuickPreset,
     isAdded: Boolean = false,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val bgColor = if (isAdded) Color(0xFFD4EDDA) else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (isAdded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
@@ -1035,7 +1062,7 @@ fun PresetChip(
         color = bgColor,
         shadowElevation = if (isAdded) 0.dp else 1.dp,
         border = if (isAdded) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
-        modifier = Modifier
+        modifier = modifier
             .clickable { onClick() }
             .testTag("preset_chip_${preset.name}")
     ) {
