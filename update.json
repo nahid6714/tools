@@ -1,7 +1,7 @@
 {
-  "versionCode": 97,
-  "versionName": "1.0.97",
-  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.97/app-release.apk",
-  "releaseNotes": "• Change logo/icon background to white\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.1/app-release.apk",
+  "releaseNotes": "• নতুন আপডেট ও বাগ ফিক্স\n• অ্যাপের স্থায়িত্ব বৃদ্ধি",
   "minSupportedVersion": 1
 }

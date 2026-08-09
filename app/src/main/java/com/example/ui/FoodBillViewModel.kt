@@ -166,39 +166,6 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { _uiEvent.emit("প্রিসেট তালিকা রিসেট করা হয়েছে") }
     }
 
-    /**
-     * Reorders the Quick Preset list (used by both the Quick Preset selection
-     * popup and the Preset Manager dialog) and persists the new order to
-     * SharedPreferences immediately, so it survives app restarts.
-     */
-    fun reorderQuickPresets(fromIndex: Int, toIndex: Int) {
-        if (fromIndex == toIndex) return
-        val currentList = _quickPresets.value.toMutableList()
-        if (fromIndex !in currentList.indices || toIndex !in currentList.indices) return
-        val moved = currentList.removeAt(fromIndex)
-        currentList.add(toIndex, moved)
-        _quickPresets.value = currentList
-        saveQuickPresetsToPrefs(currentList)
-    }
-
-    /**
-     * Reorders the items of the bill currently being edited. This only
-     * updates in-memory state (like every other item edit); the new order is
-     * persisted to the database the next time the bill is saved, and is
-     * already reflected everywhere the items list is read (print/PDF preview).
-     */
-    fun reorderItems(fromIndex: Int, toIndex: Int) {
-        _currentBillState.update { state ->
-            if (fromIndex == toIndex || fromIndex !in state.items.indices || toIndex !in state.items.indices) {
-                return@update state
-            }
-            val updatedItems = state.items.toMutableList()
-            val moved = updatedItems.removeAt(fromIndex)
-            updatedItems.add(toIndex, moved)
-            state.copy(items = updatedItems)
-        }
-    }
-
     fun saveSettings(centerName: String, subtitle: String, purchaserLabel: String) {
         prefs.edit()
             .putString("saved_center_name", centerName.trim())
