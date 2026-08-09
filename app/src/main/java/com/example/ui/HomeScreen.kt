@@ -113,6 +113,15 @@ fun HomeScreen(
 
     val updateManager = remember { AppUpdateManager() }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateDialogInfoToShow by remember { mutableStateOf<UpdateInfo?>(null) }
+
+    LaunchedEffect(Unit) {
+        isCheckingUpdate = true
+        val info = updateManager.checkForUpdate(context, forceCheck = false)
+        updateInfo = info
+        isCheckingUpdate = false
+    }
 
     BackHandler(enabled = showGlobalSettings || selectedTool != null) {
         if (showGlobalSettings) {
@@ -293,6 +302,24 @@ fun HomeScreen(
                     } else if (selectedTool == null) {
                         ToolsHubScreen(
                             appLanguage = appLanguage,
+                            updateInfo = updateInfo,
+                            isCheckingUpdate = isCheckingUpdate,
+                            onCheckUpdate = {
+                                if (!isCheckingUpdate) {
+                                    coroutineScope.launch {
+                                        isCheckingUpdate = true
+                                        val info = updateManager.checkForUpdate(context, forceCheck = true)
+                                        updateInfo = info
+                                        isCheckingUpdate = false
+                                        if (info.hasUpdate) {
+                                            updateDialogInfoToShow = info
+                                        }
+                                    }
+                                }
+                            },
+                            onOpenUpdateDialog = { info ->
+                                updateDialogInfoToShow = info
+                            },
                             onSelectFoodBillTool = {
                                 selectedTool = "food_bill"
                                 selectedTab = 0
@@ -594,6 +621,14 @@ fun HomeScreen(
                     position = pos
                 )
             }
+        )
+    }
+
+    if (updateDialogInfoToShow != null) {
+        UpdateDialog(
+            updateInfo = updateDialogInfoToShow!!,
+            updateManager = updateManager,
+            onDismiss = { updateDialogInfoToShow = null }
         )
     }
 }
