@@ -239,11 +239,12 @@ private fun SingleMemoVoucherCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Header Banner
+            // Header Banner (Ink-saving: White background with sharp Black border and Black text)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaroonHeaderColor)
+                    .border(1.5.dp, Color.Black, RoundedCornerShape(4.dp))
+                    .background(Color.White)
                     .padding(vertical = 10.dp, horizontal = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -253,7 +254,7 @@ private fun SingleMemoVoucherCard(
                         style = TextStyle(
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.Black
                         ),
                         textAlign = TextAlign.Center
                     )
@@ -262,14 +263,21 @@ private fun SingleMemoVoucherCard(
                         style = TextStyle(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.95f)
+                            color = Color.Black
                         ),
                         textAlign = TextAlign.Center
                     )
                 }
             }
 
-            SawtoothDivider()
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.5.dp)
+                    .background(Color.Black)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
 
             Column(
                 modifier = Modifier
@@ -286,7 +294,7 @@ private fun SingleMemoVoucherCard(
                         text = "তারিখ: ${BengaliUtils.toBengaliDigits(state.dateString)}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaroonHeaderColor
+                        color = Color.Black
                     )
                 }
 
@@ -297,54 +305,57 @@ private fun SingleMemoVoucherCard(
                 val rowPaddingY = if (totalRows > 14) 3.5.dp else 7.5.dp
                 val dividerBoxHeight = if (totalRows > 14) 14.dp else 19.dp
                 val itemTextSize = if (totalRows > 14) 9.sp else 10.sp
-                val memoThemeBorder = DarkForestGreen
+                val memoThemeBorder = Color.Black
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(1.5.dp, memoThemeBorder, RoundedCornerShape(4.dp))
                 ) {
-                    // Table Header Row
+                    // Table Header Row (Ink-saving: White background with Black text & Black borders)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(memoThemeBorder)
+                            .background(Color.White)
                             .padding(vertical = 5.dp, horizontal = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "ক্র. নং",
                             modifier = Modifier.weight(1.0f),
-                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center),
+                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center),
                             maxLines = 1,
                             softWrap = false
                         )
-                        Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.White))
+                        Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.Black))
                         Text(
                             text = "খাবারের নাম / বিবরণ",
                             modifier = Modifier.weight(2.5f).padding(start = 4.dp),
-                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Start),
+                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Start),
                             maxLines = 1,
                             softWrap = false
                         )
-                        Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.White))
+                        Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.Black))
                         Text(
                             text = "পরিমাণ",
                             modifier = Modifier.weight(1.2f),
-                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
+                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
                         )
-                        Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.White))
+                        Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.Black))
                         Text(
                             text = "দর",
                             modifier = Modifier.weight(0.9f),
-                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
+                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
                         )
-                        Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.White))
+                        Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.Black))
                         Text(
                             text = "টাকা",
                             modifier = Modifier.weight(1.2f).padding(end = 4.dp),
-                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.End)
+                            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.End)
                         )
                     }
+
+                    // Divider below Header
+                    Box(modifier = Modifier.fillMaxWidth().height(1.5.dp).background(Color.Black))
 
                     // Table Body Rows
                     for (r in 0 until totalRows) {
@@ -360,7 +371,7 @@ private fun SingleMemoVoucherCard(
                             Text(
                                 text = slNo,
                                 modifier = Modifier.weight(1.0f),
-                                style = TextStyle(fontSize = itemTextSize, fontWeight = FontWeight.Bold, color = Color(0xFF2C1810), textAlign = TextAlign.Center)
+                                style = TextStyle(fontSize = itemTextSize, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
                             )
                             Box(modifier = Modifier.width(1.2.dp).height(dividerBoxHeight).background(memoThemeBorder))
 
@@ -376,7 +387,7 @@ private fun SingleMemoVoucherCard(
                                 style = TextStyle(
                                     fontSize = dynamicFontSize,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF2C1810),
+                                    color = Color.Black,
                                     lineHeight = (dynamicFontSize.value * 1.2f).sp
                                 ),
                                 softWrap = true
@@ -386,14 +397,14 @@ private fun SingleMemoVoucherCard(
                             Text(
                                 text = if (item != null) BengaliUtils.toBengaliDigits(item.quantity) else "",
                                 modifier = Modifier.weight(1.2f),
-                                style = TextStyle(fontSize = itemTextSize, color = Color(0xFF2C1810), textAlign = TextAlign.Center)
+                                style = TextStyle(fontSize = itemTextSize, color = Color.Black, textAlign = TextAlign.Center)
                             )
                             Box(modifier = Modifier.width(1.2.dp).height(dividerBoxHeight).background(memoThemeBorder))
 
                             Text(
                                 text = if (item != null && item.rate != "0" && item.rate.isNotBlank()) BengaliUtils.toBengaliDigits(item.rate) else "",
                                 modifier = Modifier.weight(0.9f),
-                                style = TextStyle(fontSize = itemTextSize, color = Color(0xFF2C1810), textAlign = TextAlign.Center)
+                                style = TextStyle(fontSize = itemTextSize, color = Color.Black, textAlign = TextAlign.Center)
                             )
                             Box(modifier = Modifier.width(1.2.dp).height(dividerBoxHeight).background(memoThemeBorder))
 
@@ -403,13 +414,13 @@ private fun SingleMemoVoucherCard(
                             Text(
                                 text = bnAmount,
                                 modifier = Modifier.weight(1.2f).padding(end = 4.dp),
-                                style = TextStyle(fontSize = itemTextSize, fontWeight = FontWeight.Bold, color = Color(0xFF2C1810), textAlign = TextAlign.End)
+                                style = TextStyle(fontSize = itemTextSize, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.End)
                             )
                         }
 
                         Canvas(modifier = Modifier.fillMaxWidth().height(0.8.dp)) {
                             drawLine(
-                                color = Color(0xFFC2D4CC),
+                                color = Color.Black,
                                 start = Offset(0f, 0f),
                                 end = Offset(size.width, 0f),
                                 strokeWidth = 0.8.dp.toPx(),
@@ -422,20 +433,20 @@ private fun SingleMemoVoucherCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFFF0F5F2))
+                            .background(Color.White)
                             .padding(vertical = 5.dp, horizontal = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "মোট —",
                             modifier = Modifier.weight(5.6f).padding(end = 6.dp),
-                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = memoThemeBorder, textAlign = TextAlign.End)
+                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.End)
                         )
                         Box(modifier = Modifier.width(1.2.dp).height(16.dp).background(memoThemeBorder))
                         Text(
                             text = "${BengaliUtils.formatBengaliCurrency(state.totalAmount)}/-",
                             modifier = Modifier.weight(1.2f).padding(end = 4.dp),
-                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = memoThemeBorder, textAlign = TextAlign.End)
+                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.End)
                         )
                     }
                 }
@@ -454,14 +465,14 @@ private fun SingleMemoVoucherCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(1.dp)
-                                .background(Color(0xFF2C1810))
+                                .background(Color.Black)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = state.purchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" },
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2C1810),
+                            color = Color.Black,
                             textAlign = TextAlign.Center
                         )
                     }
