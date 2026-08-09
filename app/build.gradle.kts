@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example"
-    compileSdk { version = release(36) { minorApiLevel = 1 } }
+    compileSdk = 36
 
     val envVersionCode = System.getenv("VERSION_CODE")?.toIntOrNull()
         ?: System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = "com.example"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = envVersionCode
         versionName = envVersionName
 
