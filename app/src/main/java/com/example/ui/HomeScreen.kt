@@ -152,8 +152,8 @@ fun HomeScreen(
     ) { loading ->
         if (loading) {
             AppSplashScreen(
-                appName = "টুলস",
-                subtitle = "স্মার্ট ডিজিটাল টুলস সংগ্রহ"
+                appName = "Digital Tool",
+                subtitle = "Smart Digital Tools Hub"
             )
         } else {
             Scaffold(

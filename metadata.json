@@ -1,6 +1,6 @@
 {
-  "name": "টুলস",
-  "description": "দৈনন্দিন ও ব্যবসায়িক ডিজিটাল টুলস হাব - খাবার বিল মেমো, স্মার্ট ডকুমেন্ট স্ক্যানার (NID/কার্ড), হিসাব সংরক্ষণ",
+  "name": "Digital Tool",
+  "description": "Digital Tool - Smart Digital Tools Hub (Food Bill Memo, Smart Document & NID Scanner, History Log)",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
