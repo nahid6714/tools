@@ -129,10 +129,8 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
             repository.seedDefaultsIfEmpty()
         }
 
-        // Initialize default generator items if empty
-        if (_editableItems.value.isEmpty()) {
-            loadDefaultSampleGeneratorItems()
-        }
+        // Generator list starts empty for user input
+        _editableItems.value = emptyList()
 
         // Recalculate analysis summary whenever filters or records change
         val dateFiltersFlow = combine(

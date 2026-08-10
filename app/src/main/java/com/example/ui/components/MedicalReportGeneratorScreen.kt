@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,6 +53,7 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
@@ -139,26 +141,25 @@ fun MedicalReportGeneratorScreen(
     val activity = remember(context) { context.findActivity() }
 
     var newPatientId by remember { mutableStateOf("") }
-    var newCode by remember { mutableStateOf("101") }
+    var newCode by remember { mutableStateOf("") }
     var showReportPreviewDialog by remember { mutableStateOf(false) }
     var showPasteRawTextDialog by remember { mutableStateOf(false) }
     var showBatchCodeDialog by remember { mutableStateOf(false) }
     var showAutoSequenceDialog by remember { mutableStateOf(false) }
     var showPresetCodeManagerDialog by remember { mutableStateOf(false) }
     var rawInputText by remember { mutableStateOf("") }
-    var batchTargetCode by remember { mutableStateOf("101") }
+    var batchTargetCode by remember { mutableStateOf("") }
     var sequencePrefix by remember { mutableStateOf("") }
 
-    // List of active codes available for cycling
-    val availableCodeList = remember(presetCodes) {
+    // List of active codes available for selection & cycling
+    val availableCodeList = remember(presetCodes, editableItems) {
         val list = presetCodes.map { it.code }.toMutableList()
-        if (!list.contains("101")) list.add(0, "101")
-        if (!list.contains("102")) list.add("102")
-        if (!list.contains("104")) list.add("104")
-        if (!list.contains("105")) list.add("105")
-        if (!list.contains("CBC")) list.add("CBC")
-        if (!list.contains("USG")) list.add("USG")
-        list.distinct()
+        editableItems.forEach { item ->
+            if (item.code.isNotBlank() && !list.contains(item.code)) {
+                list.add(item.code)
+            }
+        }
+        list.filter { it.isNotBlank() }.distinct()
     }
 
     // Helper to load bitmap from Uri
@@ -851,53 +852,134 @@ fun MedicalReportGeneratorScreen(
     // Daily Report Printable Preview Dialog
     if (showReportPreviewDialog && editableItems.isNotEmpty()) {
         val records = editableItems.map { MedicalRecordEntity(date = reportDate, patientId = it.patientId, code = it.code) }
+        val formattedDate = try {
+            if (reportDate.contains("-")) {
+                val p = reportDate.split("-")
+                if (p.size == 3) "${p[2].padStart(2, '0')}/${p[1].padStart(2, '0')}/${p[0].takeLast(2)}" else reportDate
+            } else reportDate
+        } catch (e: Exception) { reportDate }
 
         AlertDialog(
             onDismissRequest = { showReportPreviewDialog = false },
             title = {
-                Text("মেডিকেল ডেইলি রিপোর্ট - $reportDate", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("ডেইলি রিপোর্ট প্রিভিউ", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             },
             text = {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
+                        .background(Color.White)
+                        .padding(8.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFE3F2FD),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("তারিখ: $reportDate", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = DarkForestGreen)
-                            Text("মোট কাজের সংখ্যা: ${BengaliUtils.toBengaliDigits(records.size.toString())} টি", fontSize = 12.sp)
-                        }
+                    // Date Header Top Right
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "তারিখ: $formattedDate",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        )
                     }
 
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Divider(color = Color.Black, thickness = 1.5.dp)
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Clean Printable Preview Table
-                    records.forEachIndexed { i, r ->
+                    // Clean Grid Table
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color.Black)
+                    ) {
+                        // Header Row
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(if (i % 2 == 1) Color(0xFFF5F5F5) else Color.White)
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .height(38.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("${i + 1}.", fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.width(30.dp))
-                            Text(r.patientId, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                            Text("কোড: ${r.code}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = DarkForestGreen)
+                            Text(
+                                "ক্রমিক",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.weight(0.7f)
+                            )
+                            Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color.Black)
+                            Text(
+                                "ID",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.weight(1.3f)
+                            )
+                            Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color.Black)
+                            Text(
+                                "কোড",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.weight(1.3f)
+                            )
+                        }
+
+                        Divider(color = Color.Black, thickness = 1.dp)
+
+                        // Data Rows
+                        records.forEachIndexed { i, r ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(36.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "${i + 1}",
+                                    fontSize = 12.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.weight(0.7f)
+                                )
+                                Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color.Black)
+                                Text(
+                                    r.patientId,
+                                    fontSize = 12.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.weight(1.3f)
+                                )
+                                Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color.Black)
+                                Text(
+                                    r.code,
+                                    fontSize = 12.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.weight(1.3f)
+                                )
+                            }
+                            if (i < records.size - 1) {
+                                Divider(color = Color.Black, thickness = 1.dp)
+                            }
                         }
                     }
                 }
             },
             confirmButton = {
-                Row {
-                    IconButton(onClick = { MedicalPrintUtils.shareDailyReportAsImage(context, reportDate, records) }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", tint = DarkForestGreen)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { MedicalPrintUtils.shareDailyReportAsImage(context, reportDate, records) }
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = "Share Image", tint = DarkForestGreen)
                     }
-                    IconButton(onClick = { MedicalPrintUtils.printDailyReport(context, reportDate, records) }) {
+                    IconButton(
+                        onClick = { MedicalPrintUtils.shareDailyReportAsPdf(context, reportDate, records) }
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = "Share PDF", tint = DarkForestGreen)
+                    }
+                    IconButton(
+                        onClick = { MedicalPrintUtils.printDailyReport(context, reportDate, records) }
+                    ) {
                         Icon(Icons.Default.Print, contentDescription = "Print", tint = DarkForestGreen)
                     }
                     TextButton(onClick = { showReportPreviewDialog = false }) {
