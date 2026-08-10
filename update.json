@@ -1,7 +1,7 @@
 {
-  "versionCode": 113,
-  "versionName": "1.0.113",
-  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.113/app-release.apk",
-  "releaseNotes": "• Add drag-to-reorder for quick presets and bill items\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
+  "versionCode": 118,
+  "versionName": "1.0.118",
+  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.118/app-release.apk",
+  "releaseNotes": "• feat: add medical records module\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
   "minSupportedVersion": 1
 }
