@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -51,10 +53,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
@@ -109,12 +116,14 @@ fun MemoVoucherCard(
     onAddCustomPreset: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
     onRemovePreset: (preset: QuickPreset) -> Unit = {},
     onResetDefaults: () -> Unit = {},
+    onReorderPreset: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
     onUpdateDateClick: () -> Unit,
     onUpdateItemName: (id: String, name: String) -> Unit,
     onUpdateItemQty: (id: String, qty: String) -> Unit,
     onUpdateItemRate: (id: String, rate: String) -> Unit,
     onUpdateItemAmount: (id: String, amount: String) -> Unit,
     onRemoveItem: (id: String) -> Unit,
+    onMoveItem: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
     onAddItemRow: () -> Unit,
     onPurchaserLabelChange: ((String) -> Unit)? = null,
     onCenterNameChange: ((String) -> Unit)? = null,
@@ -388,7 +397,8 @@ fun MemoVoucherCard(
                         onDismiss = { showManagePresetsDialog = false },
                         onAddPreset = onAddCustomPreset,
                         onRemovePreset = onRemovePreset,
-                        onResetDefaults = onResetDefaults
+                        onResetDefaults = onResetDefaults,
+                        onReorderPreset = onReorderPreset
                     )
                 }
 
@@ -402,9 +412,10 @@ fun MemoVoucherCard(
                         .padding(vertical = 8.dp, horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Spacer(modifier = Modifier.width(20.dp))
                     Text(
                         text = "বিবরণ",
-                        modifier = Modifier.weight(2.0f),
+                        modifier = Modifier.weight(1.8f),
                         style = TextStyle(
                             fontFamily = HeadingFontFamily,
                             fontSize = 14.sp,
@@ -451,26 +462,74 @@ fun MemoVoucherCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Item Rows
+                var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
+                var itemDragOffsetY by remember { mutableStateOf(0f) }
+                val itemRowHeights = remember { mutableStateMapOf<Int, Int>() }
+
                 state.items.forEachIndexed { index, item ->
                     val rowRequesters = itemFocusRequesters.getOrNull(index)
                     val nextItemRowNameRequester = itemFocusRequesters.getOrNull(index + 1)?.getOrNull(0)
                     val nextTargetRequester = nextItemRowNameRequester
                         ?: if (onPurchaserLabelChange != null) purchaserLabelFocusRequester else null
+                    val isBeingDragged = draggedItemIndex == index
 
-                    MemoItemRow(
-                        index = index,
-                        item = item,
-                        nameFocusRequester = rowRequesters?.getOrNull(0) ?: remember { FocusRequester() },
-                        qtyFocusRequester = rowRequesters?.getOrNull(1) ?: remember { FocusRequester() },
-                        rateFocusRequester = rowRequesters?.getOrNull(2) ?: remember { FocusRequester() },
-                        amountFocusRequester = rowRequesters?.getOrNull(3) ?: remember { FocusRequester() },
-                        nextTargetRequester = nextTargetRequester,
-                        onNameChange = { onUpdateItemName(item.id, it) },
-                        onQtyChange = { onUpdateItemQty(item.id, it) },
-                        onRateChange = { onUpdateItemRate(item.id, it) },
-                        onAmountChange = { onUpdateItemAmount(item.id, it) },
-                        onRemove = { onRemoveItem(item.id) }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onSizeChanged { itemRowHeights[index] = it.height }
+                            .graphicsLayer {
+                                translationY = if (isBeingDragged) itemDragOffsetY else 0f
+                            }
+                            .zIndex(if (isBeingDragged) 1f else 0f)
+                            .background(if (isBeingDragged) Color(0xFFF0E8DF) else Color.Transparent)
+                    ) {
+                        MemoItemRow(
+                            index = index,
+                            item = item,
+                            nameFocusRequester = rowRequesters?.getOrNull(0) ?: remember { FocusRequester() },
+                            qtyFocusRequester = rowRequesters?.getOrNull(1) ?: remember { FocusRequester() },
+                            rateFocusRequester = rowRequesters?.getOrNull(2) ?: remember { FocusRequester() },
+                            amountFocusRequester = rowRequesters?.getOrNull(3) ?: remember { FocusRequester() },
+                            nextTargetRequester = nextTargetRequester,
+                            onNameChange = { onUpdateItemName(item.id, it) },
+                            onQtyChange = { onUpdateItemQty(item.id, it) },
+                            onRateChange = { onUpdateItemRate(item.id, it) },
+                            onAmountChange = { onUpdateItemAmount(item.id, it) },
+                            onRemove = { onRemoveItem(item.id) },
+                            dragHandleModifier = Modifier.pointerInput(index, state.items.size) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        draggedItemIndex = index
+                                        itemDragOffsetY = 0f
+                                    },
+                                    onDragEnd = {
+                                        draggedItemIndex = null
+                                        itemDragOffsetY = 0f
+                                    },
+                                    onDragCancel = {
+                                        draggedItemIndex = null
+                                        itemDragOffsetY = 0f
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        itemDragOffsetY += dragAmount.y
+                                        val currentIndex = draggedItemIndex ?: return@detectDragGesturesAfterLongPress
+                                        val rowHeight = (itemRowHeights[currentIndex] ?: 0).toFloat()
+                                        if (rowHeight <= 0f) return@detectDragGesturesAfterLongPress
+                                        if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
+                                            onMoveItem(currentIndex, currentIndex + 1)
+                                            draggedItemIndex = currentIndex + 1
+                                            itemDragOffsetY -= rowHeight
+                                        } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                            onMoveItem(currentIndex, currentIndex - 1)
+                                            draggedItemIndex = currentIndex - 1
+                                            itemDragOffsetY += rowHeight
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                    }
                     Divider(color = Color(0xFFECE3D8), thickness = 0.5.dp)
                 }
 
@@ -599,7 +658,8 @@ fun MemoItemRow(
     onQtyChange: (String) -> Unit,
     onRateChange: (String) -> Unit,
     onAmountChange: (String) -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    dragHandleModifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -610,10 +670,21 @@ fun MemoItemRow(
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Drag handle: long-press and drag to reorder this item
+        Icon(
+            imageVector = Icons.Default.DragHandle,
+            contentDescription = "টেনে অবস্থান পরিবর্তন করুন",
+            tint = Color.Gray,
+            modifier = dragHandleModifier
+                .size(18.dp)
+                .testTag("drag_handle_item_$index")
+        )
+        Spacer(modifier = Modifier.width(2.dp))
+
         // Description (Name)
         Box(
             modifier = Modifier
-                .weight(2.0f)
+                .weight(1.8f)
                 .background(Color.White, shape = RoundedCornerShape(4.dp))
                 .border(0.5.dp, WarmBorderColor, RoundedCornerShape(4.dp))
                 .padding(horizontal = 6.dp, vertical = 6.dp)

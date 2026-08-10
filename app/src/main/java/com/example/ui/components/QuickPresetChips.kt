@@ -2,6 +2,13 @@ package com.example.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -304,7 +311,8 @@ fun ManageQuickPresetsDialog(
     onDismiss: () -> Unit,
     onAddPreset: (name: String, qty: String, rate: String, amount: String) -> Unit,
     onRemovePreset: (preset: QuickPreset) -> Unit,
-    onResetDefaults: () -> Unit
+    onResetDefaults: () -> Unit,
+    onReorderPreset: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> }
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -628,7 +636,7 @@ fun ManageQuickPresetsDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "বর্তমান দ্রুত আইটেমসমূহ (${presets.size} টি) [যেকোনো আইটেমে ট্যাপ করে এডিট করুন]:",
+                    text = "বর্তমান দ্রুত আইটেমসমূহ (${presets.size} টি) [ট্যাপ করে এডিট, চেপে ধরে টেনে সাজান]:",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -636,17 +644,28 @@ fun ManageQuickPresetsDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                var draggedPresetIndex by remember { mutableStateOf<Int?>(null) }
+                var presetDragOffsetY by remember { mutableStateOf(0f) }
+                val presetRowHeights = remember { mutableStateMapOf<Int, Int>() }
+
                 Column(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    presets.forEach { preset ->
+                    presets.forEachIndexed { index, preset ->
                         val isEditingThis = editingPreset == preset
+                        val isBeingDragged = draggedPresetIndex == index
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = if (isEditingThis) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            shadowElevation = if (isBeingDragged) 6.dp else 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .onSizeChanged { presetRowHeights[index] = it.height }
+                                .graphicsLayer {
+                                    translationY = if (isBeingDragged) presetDragOffsetY else 0f
+                                }
+                                .zIndex(if (isBeingDragged) 1f else 0f)
                                 .clickable {
                                     editingPreset = preset
                                     newItemName = preset.name
@@ -659,10 +678,50 @@ fun ManageQuickPresetsDialog(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    .padding(horizontal = 6.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
+                                Icon(
+                                    Icons.Default.DragHandle,
+                                    contentDescription = "টেনে অবস্থান পরিবর্তন করুন",
+                                    tint = if (isEditingThis) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .padding(end = 4.dp)
+                                        .pointerInput(index, presets.size) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = {
+                                                    draggedPresetIndex = index
+                                                    presetDragOffsetY = 0f
+                                                },
+                                                onDragEnd = {
+                                                    draggedPresetIndex = null
+                                                    presetDragOffsetY = 0f
+                                                },
+                                                onDragCancel = {
+                                                    draggedPresetIndex = null
+                                                    presetDragOffsetY = 0f
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    presetDragOffsetY += dragAmount.y
+                                                    val currentIndex = draggedPresetIndex ?: return@detectDragGesturesAfterLongPress
+                                                    val rowHeight = (presetRowHeights[currentIndex] ?: 0).toFloat()
+                                                    if (rowHeight <= 0f) return@detectDragGesturesAfterLongPress
+                                                    if (presetDragOffsetY > rowHeight / 2 && currentIndex < presets.lastIndex) {
+                                                        onReorderPreset(currentIndex, currentIndex + 1)
+                                                        draggedPresetIndex = currentIndex + 1
+                                                        presetDragOffsetY -= rowHeight
+                                                    } else if (presetDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                                        onReorderPreset(currentIndex, currentIndex - 1)
+                                                        draggedPresetIndex = currentIndex - 1
+                                                        presetDragOffsetY += rowHeight
+                                                    }
+                                                }
+                                            )
+                                        }
+                                )
                                 Row(
                                     modifier = Modifier.weight(1f),
                                     verticalAlignment = Alignment.CenterVertically

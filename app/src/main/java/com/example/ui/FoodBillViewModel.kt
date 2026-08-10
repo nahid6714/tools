@@ -160,6 +160,17 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { _uiEvent.emit("'${preset.name}' দ্রুত তালিকা থেকে সরানো হয়েছে") }
     }
 
+    /** Reorders a quick preset from [fromIndex] to [toIndex], used for drag-to-reorder in the management dialog. */
+    fun reorderQuickPresets(fromIndex: Int, toIndex: Int) {
+        val list = _quickPresets.value
+        if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return
+        val mutableList = list.toMutableList()
+        val moved = mutableList.removeAt(fromIndex)
+        mutableList.add(toIndex, moved)
+        _quickPresets.value = mutableList
+        saveQuickPresetsToPrefs(mutableList)
+    }
+
     fun resetQuickPresetsToDefault() {
         _quickPresets.value = emptyList()
         saveQuickPresetsToPrefs(emptyList())
@@ -237,6 +248,20 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
             val updatedItems = state.items.toMutableList()
             updatedItems.add(BillItem(name = "", quantity = "", rate = "0", amount = 0.0))
             state.copy(items = updatedItems)
+        }
+    }
+
+    /** Reorders a bill item from [fromIndex] to [toIndex], used for drag-to-reorder in the UI. */
+    fun moveItem(fromIndex: Int, toIndex: Int) {
+        _currentBillState.update { state ->
+            val list = state.items
+            if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) {
+                return@update state
+            }
+            val mutableList = list.toMutableList()
+            val moved = mutableList.removeAt(fromIndex)
+            mutableList.add(toIndex, moved)
+            state.copy(items = mutableList)
         }
     }
 
