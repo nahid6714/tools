@@ -341,7 +341,6 @@ fun MemoVoucherCard(
                                 addedItemNames = addedItemNames,
                                 onPresetClick = onPresetClick,
                                 onManagePresetsClick = { showManagePresetsDialog = true },
-                                onReorderPreset = onReorderPreset,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -386,7 +385,6 @@ fun MemoVoucherCard(
                                 addedItemNames = addedItemNames,
                                 onPresetClick = onPresetClick,
                                 onManagePresetsClick = { showManagePresetsDialog = true },
-                                onReorderPreset = onReorderPreset,
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -967,7 +965,6 @@ fun QuickItemSelectorButton(
     addedItemNames: Set<String>,
     onPresetClick: (name: String, qty: String, rate: String, amount: String) -> Unit,
     onManagePresetsClick: () -> Unit,
-    onReorderPreset: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var expandedDropdown by remember { mutableStateOf(false) }
@@ -1116,15 +1113,6 @@ fun QuickItemSelectorButton(
                                     }
                                 }
 
-                                if (presets.isNotEmpty()) {
-                                    Text(
-                                        text = "[চেপে ধরে টেনে অবস্থান পরিবর্তন করুন]",
-                                        fontSize = 10.5.sp,
-                                        color = Color.Gray,
-                                        modifier = Modifier.padding(bottom = 6.dp)
-                                    )
-                                }
-
                                 Divider(color = WarmBorderColor, thickness = 1.dp)
                                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -1152,10 +1140,6 @@ fun QuickItemSelectorButton(
                                         }
                                     }
                                 } else {
-                                    var draggedPresetIndex by remember { mutableStateOf<Int?>(null) }
-                                    var presetDragOffsetY by remember { mutableStateOf(0f) }
-                                    val presetRowHeights = remember { mutableStateMapOf<Int, Int>() }
-
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -1163,26 +1147,19 @@ fun QuickItemSelectorButton(
                                             .verticalScroll(rememberScrollState()),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        presets.forEachIndexed { index, preset ->
+                                        presets.forEach { preset ->
                                             val isAdded = addedItemNames.contains(preset.name.trim())
                                             val formattedText = BengaliUtils.formatPresetDisplayText(preset)
-                                            val isBeingDragged = draggedPresetIndex == index
 
                                             Surface(
                                                 shape = RoundedCornerShape(10.dp),
                                                 color = if (isAdded) DarkForestGreen.copy(alpha = 0.10f) else Color.White,
-                                                shadowElevation = if (isBeingDragged) 6.dp else 0.dp,
                                                 border = BorderStroke(
                                                     width = if (isAdded) 1.2.dp else 1.dp,
                                                     color = if (isAdded) DarkForestGreen.copy(alpha = 0.45f) else WarmBorderColor
                                                 ),
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .onSizeChanged { presetRowHeights[index] = it.height }
-                                                    .graphicsLayer {
-                                                        translationY = if (isBeingDragged) presetDragOffsetY else 0f
-                                                    }
-                                                    .zIndex(if (isBeingDragged) 1f else 0f)
                                                     .clickable {
                                                         onPresetClick(
                                                             preset.name,
@@ -1195,51 +1172,10 @@ fun QuickItemSelectorButton(
                                                 Row(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .padding(horizontal = 6.dp, vertical = 10.dp),
+                                                        .padding(horizontal = 12.dp, vertical = 10.dp),
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.DragHandle,
-                                                        contentDescription = "টেনে অবস্থান পরিবর্তন করুন",
-                                                        tint = Color.Gray,
-                                                        modifier = Modifier
-                                                            .size(18.dp)
-                                                            .padding(end = 4.dp)
-                                                            .testTag("drag_handle_preset_${preset.name}")
-                                                            .pointerInput(index, presets.size) {
-                                                                detectDragGesturesAfterLongPress(
-                                                                    onDragStart = {
-                                                                        draggedPresetIndex = index
-                                                                        presetDragOffsetY = 0f
-                                                                    },
-                                                                    onDragEnd = {
-                                                                        draggedPresetIndex = null
-                                                                        presetDragOffsetY = 0f
-                                                                    },
-                                                                    onDragCancel = {
-                                                                        draggedPresetIndex = null
-                                                                        presetDragOffsetY = 0f
-                                                                    },
-                                                                    onDrag = { change, dragAmount ->
-                                                                        change.consume()
-                                                                        presetDragOffsetY += dragAmount.y
-                                                                        val currentIndex = draggedPresetIndex ?: return@detectDragGesturesAfterLongPress
-                                                                        val rowHeight = (presetRowHeights[currentIndex] ?: 0).toFloat()
-                                                                        if (rowHeight <= 0f) return@detectDragGesturesAfterLongPress
-                                                                        if (presetDragOffsetY > rowHeight / 2 && currentIndex < presets.lastIndex) {
-                                                                            onReorderPreset(currentIndex, currentIndex + 1)
-                                                                            draggedPresetIndex = currentIndex + 1
-                                                                            presetDragOffsetY -= rowHeight
-                                                                        } else if (presetDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
-                                                                            onReorderPreset(currentIndex, currentIndex - 1)
-                                                                            draggedPresetIndex = currentIndex - 1
-                                                                            presetDragOffsetY += rowHeight
-                                                                        }
-                                                                    }
-                                                                )
-                                                            }
-                                                    )
                                                     Text(
                                                         text = formattedText,
                                                         fontSize = 13.5.sp,

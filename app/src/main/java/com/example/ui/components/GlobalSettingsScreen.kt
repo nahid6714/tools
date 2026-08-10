@@ -591,7 +591,7 @@ private fun SettingsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -619,7 +619,7 @@ private fun SettingsCard(
                 )
             }
 
-            Divider(color = Color(0xFFEEEEEE), thickness = 1.dp)
+            Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
             Spacer(modifier = Modifier.height(10.dp))
 
             content()

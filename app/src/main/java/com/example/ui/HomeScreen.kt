@@ -398,7 +398,7 @@ fun HomeScreen(
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(
                                                     brush = Brush.horizontalGradient(
-                                                        colors = listOf(DarkForestGreen, LightForestGreen)
+                                                        colors = listOf(Color(0xFF0D47A1), Color(0xFF1565C0))
                                                     )
                                                 )
                                                 .clickable {
@@ -444,7 +444,7 @@ fun HomeScreen(
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(
                                                     brush = Brush.horizontalGradient(
-                                                        colors = listOf(Color(0xFF1B5E20), Color(0xFF2E7D32))
+                                                        colors = listOf(Color(0xFF1565C0), Color(0xFF03A9F4))
                                                     )
                                                 )
                                                 .clickable { viewModel.saveCurrentBill() }
