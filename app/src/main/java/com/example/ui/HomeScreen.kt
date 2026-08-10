@@ -342,16 +342,18 @@ fun HomeScreen(
                         when (selectedTab) {
                             0 -> {
                                 // Daily Bill Voucher Editor
+                                val mainScrollState = rememberScrollState()
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .verticalScroll(rememberScrollState())
+                                        .verticalScroll(mainScrollState)
                                         .padding(12.dp)
                                 ) {
                                     // Memo Paper Cash Voucher
                                     MemoVoucherCard(
                                         state = currentBillState,
                                         quickPresets = quickPresets,
+                                        scrollState = mainScrollState,
                                         onCenterNameChange = { viewModel.updateCenterName(it) },
                                         onSubtitleChange = { viewModel.updateSubtitle(it) },
                                         onPresetClick = { name, qty, rate, amount ->

@@ -106,6 +106,16 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.isActive
+
 val MaroonHeaderColor = DarkForestGreen
 val MaroonTextColor = ForestGreenText
 
@@ -113,6 +123,7 @@ val MaroonTextColor = ForestGreenText
 fun MemoVoucherCard(
     state: CurrentBillState,
     quickPresets: List<QuickPreset> = emptyList(),
+    scrollState: ScrollState? = null,
     onPresetClick: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
     onAddCustomPreset: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
     onRemovePreset: (preset: QuickPreset) -> Unit = {},
@@ -143,9 +154,18 @@ fun MemoVoucherCard(
     }
     val purchaserLabelFocusRequester = remember { FocusRequester() }
 
+    var containerBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                val pos = coords.positionInWindow()
+                val size = coords.size
+                containerBoundsInWindow = Rect(
+                    pos.x, pos.y, pos.x + size.width, pos.y + size.height
+                )
+            }
             .testTag("memo_voucher_card"),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -464,8 +484,57 @@ fun MemoVoucherCard(
 
                 // Item Rows
                 var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
-                var itemDragOffsetY by remember { mutableStateOf(0f) }
+                var itemDragOffsetY by remember { mutableFloatStateOf(0f) }
+                var activeAutoScrollSpeed by remember { mutableFloatStateOf(0f) }
                 val itemRowHeights = remember { mutableStateMapOf<Int, Int>() }
+                val rowWindowTops = remember { mutableStateMapOf<Int, Float>() }
+
+                var initialRowWindowTop by remember { mutableFloatStateOf(0f) }
+                var initialTouchInRowY by remember { mutableFloatStateOf(0f) }
+                var totalTouchDragY by remember { mutableFloatStateOf(0f) }
+
+                val density = LocalDensity.current
+                val configuration = LocalConfiguration.current
+                val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+                val viewportTop = maxOf(containerBoundsInWindow.top, with(density) { 60.dp.toPx() })
+                val viewportBottom = if (containerBoundsInWindow.bottom > 0f) minOf(containerBoundsInWindow.bottom, screenHeightPx - with(density) { 60.dp.toPx() }) else screenHeightPx - with(density) { 60.dp.toPx() }
+
+                val scrollThreshold = with(density) { 100.dp.toPx() }
+                val maxScrollSpeed = with(density) { 20.dp.toPx() }
+
+                LaunchedEffect(draggedItemIndex) {
+                    if (draggedItemIndex == null) return@LaunchedEffect
+                    while (isActive && draggedItemIndex != null) {
+                        val speed = activeAutoScrollSpeed
+                        if (speed != 0f && scrollState != null) {
+                            val consumed = scrollState.scrollBy(speed)
+                            if (consumed != 0f) {
+                                initialRowWindowTop -= consumed
+                                itemDragOffsetY += consumed
+
+                                val currentIndex = draggedItemIndex
+                                if (currentIndex != null) {
+                                    val rowHeight = (itemRowHeights[currentIndex] ?: 0).toFloat()
+                                    if (rowHeight > 0f) {
+                                        if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
+                                            onMoveItem(currentIndex, currentIndex + 1)
+                                            draggedItemIndex = currentIndex + 1
+                                            itemDragOffsetY -= rowHeight
+                                        } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                            onMoveItem(currentIndex, currentIndex - 1)
+                                            draggedItemIndex = currentIndex - 1
+                                            itemDragOffsetY += rowHeight
+                                        }
+                                    }
+                                }
+                            } else {
+                                activeAutoScrollSpeed = 0f
+                            }
+                        }
+                        kotlinx.coroutines.delay(16)
+                    }
+                }
 
                 state.items.forEachIndexed { index, item ->
                     val rowRequesters = itemFocusRequesters.getOrNull(index)
@@ -477,7 +546,10 @@ fun MemoVoucherCard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .onSizeChanged { itemRowHeights[index] = it.height }
+                            .onGloballyPositioned { coords ->
+                                rowWindowTops[index] = coords.positionInWindow().y
+                                itemRowHeights[index] = coords.size.height
+                            }
                             .graphicsLayer {
                                 translationY = if (isBeingDragged) itemDragOffsetY else 0f
                             }
@@ -499,32 +571,57 @@ fun MemoVoucherCard(
                             onRemove = { onRemoveItem(item.id) },
                             dragHandleModifier = Modifier.pointerInput(index, state.items.size) {
                                 detectDragGesturesAfterLongPress(
-                                    onDragStart = {
+                                    onDragStart = { offset ->
                                         draggedItemIndex = index
                                         itemDragOffsetY = 0f
+                                        activeAutoScrollSpeed = 0f
+                                        initialTouchInRowY = offset.y
+                                        initialRowWindowTop = rowWindowTops[index] ?: 0f
+                                        totalTouchDragY = 0f
                                     },
                                     onDragEnd = {
                                         draggedItemIndex = null
                                         itemDragOffsetY = 0f
+                                        activeAutoScrollSpeed = 0f
                                     },
                                     onDragCancel = {
                                         draggedItemIndex = null
                                         itemDragOffsetY = 0f
+                                        activeAutoScrollSpeed = 0f
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
                                         itemDragOffsetY += dragAmount.y
+                                        totalTouchDragY += dragAmount.y
+
                                         val currentIndex = draggedItemIndex ?: return@detectDragGesturesAfterLongPress
                                         val rowHeight = (itemRowHeights[currentIndex] ?: 0).toFloat()
-                                        if (rowHeight <= 0f) return@detectDragGesturesAfterLongPress
-                                        if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
-                                            onMoveItem(currentIndex, currentIndex + 1)
-                                            draggedItemIndex = currentIndex + 1
-                                            itemDragOffsetY -= rowHeight
-                                        } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
-                                            onMoveItem(currentIndex, currentIndex - 1)
-                                            draggedItemIndex = currentIndex - 1
-                                            itemDragOffsetY += rowHeight
+                                        if (rowHeight > 0f) {
+                                            if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
+                                                onMoveItem(currentIndex, currentIndex + 1)
+                                                draggedItemIndex = currentIndex + 1
+                                                itemDragOffsetY -= rowHeight
+                                            } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                                onMoveItem(currentIndex, currentIndex - 1)
+                                                draggedItemIndex = currentIndex - 1
+                                                itemDragOffsetY += rowHeight
+                                            }
+                                        }
+
+                                        val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
+                                        val distFromBottom = viewportBottom - currentPointerY
+                                        val distFromTop = currentPointerY - viewportTop
+
+                                        activeAutoScrollSpeed = when {
+                                            distFromBottom < scrollThreshold -> {
+                                                val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
+                                                maxScrollSpeed * ratio
+                                            }
+                                            distFromTop < scrollThreshold -> {
+                                                val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
+                                                -maxScrollSpeed * ratio
+                                            }
+                                            else -> 0f
                                         }
                                     }
                                 )

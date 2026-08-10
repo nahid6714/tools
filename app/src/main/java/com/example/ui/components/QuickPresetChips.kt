@@ -78,6 +78,16 @@ import com.example.ui.theme.StampBlue
 import com.example.util.BengaliUtils
 import com.example.util.QuickPreset
 
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.isActive
+
 @Composable
 fun QuickPresetChips(
     presets: List<QuickPreset>,
@@ -331,6 +341,9 @@ fun ManageQuickPresetsDialog(
 
     val commonUnits = listOf("কেজি", "লিটার", "পোয়া", "পিস", "প্যাকেট", "গ্রাম", "ডজন", "আঁটি")
 
+    val dialogScrollState = rememberScrollState()
+    var dialogContainerBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -349,7 +362,14 @@ fun ManageQuickPresetsDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .onGloballyPositioned { coords ->
+                        val pos = coords.positionInWindow()
+                        val size = coords.size
+                        dialogContainerBoundsInWindow = Rect(
+                            pos.x, pos.y, pos.x + size.width, pos.y + size.height
+                        )
+                    }
+                    .verticalScroll(dialogScrollState)
             ) {
                 if (editingPreset != null) {
                     Surface(
@@ -645,8 +665,57 @@ fun ManageQuickPresetsDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 var draggedPresetIndex by remember { mutableStateOf<Int?>(null) }
-                var presetDragOffsetY by remember { mutableStateOf(0f) }
+                var presetDragOffsetY by remember { mutableFloatStateOf(0f) }
+                var activePresetAutoScrollSpeed by remember { mutableFloatStateOf(0f) }
                 val presetRowHeights = remember { mutableStateMapOf<Int, Int>() }
+                val presetRowWindowTops = remember { mutableStateMapOf<Int, Float>() }
+
+                var initialPresetRowWindowTop by remember { mutableFloatStateOf(0f) }
+                var initialPresetTouchInRowY by remember { mutableFloatStateOf(0f) }
+                var totalPresetTouchDragY by remember { mutableFloatStateOf(0f) }
+
+                val density = LocalDensity.current
+                val configuration = LocalConfiguration.current
+                val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+                val viewportTop = maxOf(dialogContainerBoundsInWindow.top, with(density) { 60.dp.toPx() })
+                val viewportBottom = if (dialogContainerBoundsInWindow.bottom > 0f) minOf(dialogContainerBoundsInWindow.bottom, screenHeightPx - with(density) { 60.dp.toPx() }) else screenHeightPx - with(density) { 60.dp.toPx() }
+
+                val scrollThreshold = with(density) { 80.dp.toPx() }
+                val maxScrollSpeed = with(density) { 18.dp.toPx() }
+
+                LaunchedEffect(draggedPresetIndex) {
+                    if (draggedPresetIndex == null) return@LaunchedEffect
+                    while (isActive && draggedPresetIndex != null) {
+                        val speed = activePresetAutoScrollSpeed
+                        if (speed != 0f) {
+                            val consumed = dialogScrollState.scrollBy(speed)
+                            if (consumed != 0f) {
+                                initialPresetRowWindowTop -= consumed
+                                presetDragOffsetY += consumed
+
+                                val currentIndex = draggedPresetIndex
+                                if (currentIndex != null) {
+                                    val rowHeight = (presetRowHeights[currentIndex] ?: 0).toFloat()
+                                    if (rowHeight > 0f) {
+                                        if (presetDragOffsetY > rowHeight / 2 && currentIndex < presets.lastIndex) {
+                                            onReorderPreset(currentIndex, currentIndex + 1)
+                                            draggedPresetIndex = currentIndex + 1
+                                            presetDragOffsetY -= rowHeight
+                                        } else if (presetDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                            onReorderPreset(currentIndex, currentIndex - 1)
+                                            draggedPresetIndex = currentIndex - 1
+                                            presetDragOffsetY += rowHeight
+                                        }
+                                    }
+                                }
+                            } else {
+                                activePresetAutoScrollSpeed = 0f
+                            }
+                        }
+                        kotlinx.coroutines.delay(16)
+                    }
+                }
 
                 Column(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -661,7 +730,10 @@ fun ManageQuickPresetsDialog(
                             shadowElevation = if (isBeingDragged) 6.dp else 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .onSizeChanged { presetRowHeights[index] = it.height }
+                                .onGloballyPositioned { coords ->
+                                    presetRowWindowTops[index] = coords.positionInWindow().y
+                                    presetRowHeights[index] = coords.size.height
+                                }
                                 .graphicsLayer {
                                     translationY = if (isBeingDragged) presetDragOffsetY else 0f
                                 }
@@ -691,32 +763,57 @@ fun ManageQuickPresetsDialog(
                                         .padding(end = 4.dp)
                                         .pointerInput(index, presets.size) {
                                             detectDragGesturesAfterLongPress(
-                                                onDragStart = {
+                                                onDragStart = { offset ->
                                                     draggedPresetIndex = index
                                                     presetDragOffsetY = 0f
+                                                    activePresetAutoScrollSpeed = 0f
+                                                    initialPresetTouchInRowY = offset.y
+                                                    initialPresetRowWindowTop = presetRowWindowTops[index] ?: 0f
+                                                    totalPresetTouchDragY = 0f
                                                 },
                                                 onDragEnd = {
                                                     draggedPresetIndex = null
                                                     presetDragOffsetY = 0f
+                                                    activePresetAutoScrollSpeed = 0f
                                                 },
                                                 onDragCancel = {
                                                     draggedPresetIndex = null
                                                     presetDragOffsetY = 0f
+                                                    activePresetAutoScrollSpeed = 0f
                                                 },
                                                 onDrag = { change, dragAmount ->
                                                     change.consume()
                                                     presetDragOffsetY += dragAmount.y
+                                                    totalPresetTouchDragY += dragAmount.y
+
                                                     val currentIndex = draggedPresetIndex ?: return@detectDragGesturesAfterLongPress
                                                     val rowHeight = (presetRowHeights[currentIndex] ?: 0).toFloat()
-                                                    if (rowHeight <= 0f) return@detectDragGesturesAfterLongPress
-                                                    if (presetDragOffsetY > rowHeight / 2 && currentIndex < presets.lastIndex) {
-                                                        onReorderPreset(currentIndex, currentIndex + 1)
-                                                        draggedPresetIndex = currentIndex + 1
-                                                        presetDragOffsetY -= rowHeight
-                                                    } else if (presetDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
-                                                        onReorderPreset(currentIndex, currentIndex - 1)
-                                                        draggedPresetIndex = currentIndex - 1
-                                                        presetDragOffsetY += rowHeight
+                                                    if (rowHeight > 0f) {
+                                                        if (presetDragOffsetY > rowHeight / 2 && currentIndex < presets.lastIndex) {
+                                                            onReorderPreset(currentIndex, currentIndex + 1)
+                                                            draggedPresetIndex = currentIndex + 1
+                                                            presetDragOffsetY -= rowHeight
+                                                        } else if (presetDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                                            onReorderPreset(currentIndex, currentIndex - 1)
+                                                            draggedPresetIndex = currentIndex - 1
+                                                            presetDragOffsetY += rowHeight
+                                                        }
+                                                    }
+
+                                                    val currentPointerY = initialPresetRowWindowTop + initialPresetTouchInRowY + totalPresetTouchDragY
+                                                    val distFromBottom = viewportBottom - currentPointerY
+                                                    val distFromTop = currentPointerY - viewportTop
+
+                                                    activePresetAutoScrollSpeed = when {
+                                                        distFromBottom < scrollThreshold -> {
+                                                            val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
+                                                            maxScrollSpeed * ratio
+                                                        }
+                                                        distFromTop < scrollThreshold -> {
+                                                            val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
+                                                            -maxScrollSpeed * ratio
+                                                        }
+                                                        else -> 0f
                                                     }
                                                 }
                                             )
