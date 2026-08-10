@@ -64,7 +64,7 @@ data class AppToolItem(
     val icon: ImageVector,
     val isAvailable: Boolean = true,
     val badgeText: String = if (isAvailable) "সক্রিয়" else "শীঘ্রই আসছে",
-    val accentColor: Color = DarkForestGreen
+    val accentColor: Color = Color(0xFF1565C0)
 )
 
 @Composable
@@ -90,7 +90,7 @@ fun ToolsHubScreen(
             icon = Icons.Default.Restaurant,
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
-            accentColor = DarkForestGreen
+            accentColor = Color(0xFF1565C0)
         ),
         AppToolItem(
             id = "doc_scanner",
@@ -99,7 +99,7 @@ fun ToolsHubScreen(
             icon = Icons.Default.DocumentScanner,
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
-            accentColor = DarkForestGreen
+            accentColor = Color(0xFF1565C0)
         )
     )
 
@@ -118,8 +118,9 @@ fun ToolsHubScreen(
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
-                            DarkForestGreen,
-                            Color(0xFF133B2B)
+                            Color(0xFF0D47A1),
+                            Color(0xFF1565C0),
+                            Color(0xFF03A9F4)
                         )
                     )
                 )
