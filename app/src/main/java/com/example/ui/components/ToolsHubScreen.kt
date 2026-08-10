@@ -76,6 +76,7 @@ fun ToolsHubScreen(
     onOpenUpdateDialog: (UpdateInfo) -> Unit = {},
     onSelectFoodBillTool: () -> Unit,
     onSelectDocScannerTool: () -> Unit = {},
+    onSelectMedicalWorkTool: () -> Unit = {},
     onSelectAppSettings: () -> Unit = {},
     onSelectUpcomingTool: (title: String) -> Unit,
     modifier: Modifier = Modifier
@@ -83,6 +84,15 @@ fun ToolsHubScreen(
     val isEn = appLanguage == "en"
 
     val toolsList = listOf(
+        AppToolItem(
+            id = "medical_work",
+            title = if (isEn) "Medical Work Tracking & Report" else "মেডিকেল ওয়ার্ক ট্র্যাকিং ও রিপোর্ট",
+            subtitle = if (isEn) "Scan handwritten IDs/codes with AI/OCR, generate reports and group filters" else "হাতে লেখা আইডি/কোডের ছবি স্ক্যান, ডেইলি রিপোর্ট তৈরি, প্রিন্ট ও গ্রুপ ফিল্টার",
+            icon = Icons.Default.DocumentScanner,
+            isAvailable = true,
+            badgeText = if (isEn) "Active" else "চালু আছে",
+            accentColor = Color(0xFF0D47A1)
+        ),
         AppToolItem(
             id = "food_bill",
             title = if (isEn) "Food Bill Memo" else "খাবার বিল মেমো",
@@ -263,6 +273,7 @@ fun ToolsHubScreen(
                 tool = tool,
                 onClick = {
                     when (tool.id) {
+                        "medical_work" -> onSelectMedicalWorkTool()
                         "food_bill" -> onSelectFoodBillTool()
                         "doc_scanner" -> onSelectDocScannerTool()
                         "app_settings" -> onSelectAppSettings()

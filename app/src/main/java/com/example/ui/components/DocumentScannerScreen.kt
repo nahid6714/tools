@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
@@ -203,6 +204,7 @@ data class BatchPageItem(
 @Composable
 fun DocumentScannerScreen(
     onShowSnackbar: (String) -> Unit,
+    onImportToMedicalReport: ((File) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -904,7 +906,8 @@ fun DocumentScannerScreen(
                         doc = doc,
                         onPreview = { previewDoc = doc },
                         onShare = { shareScannedDoc(context, doc.file) },
-                        onDelete = { deleteConfirmDoc = doc }
+                        onDelete = { deleteConfirmDoc = doc },
+                        onImportToMedical = { onImportToMedicalReport?.invoke(doc.file) }
                     )
                 }
             }
@@ -2729,7 +2732,8 @@ fun ScannedDocCard(
     doc: ScannedDocItem,
     onPreview: () -> Unit,
     onShare: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onImportToMedical: (() -> Unit)? = null
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -2847,6 +2851,20 @@ fun ScannedDocCard(
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
+                    }
+
+                    if (onImportToMedical != null) {
+                        IconButton(
+                            onClick = onImportToMedical,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = "মেডিকেল ইমপোর্ট (OCR)",
+                                tint = DarkForestGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
 
                     IconButton(
