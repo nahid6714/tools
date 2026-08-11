@@ -68,11 +68,17 @@ import com.example.ui.components.AppSplashScreen
 import com.example.ui.components.BillHistoryList
 import com.example.ui.components.DocumentScannerScreen
 import com.example.ui.components.GlobalSettingsScreen
+import com.example.ui.components.MedicalFilterAnalysisScreen
+import com.example.ui.components.MedicalGroupManagerDialog
+import com.example.ui.components.MedicalReportGeneratorScreen
 import com.example.ui.components.MemoVoucherCard
 import com.example.ui.components.QuickPresetChips
 import com.example.ui.components.SettingsScreen
 import com.example.ui.components.ToolsHubScreen
 import com.example.ui.components.VoucherPreviewDialog
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.FolderSpecial
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.HeadingFontFamily
 import com.example.ui.theme.LightForestGreen
@@ -89,7 +95,8 @@ import java.util.Calendar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: FoodBillViewModel
+    viewModel: FoodBillViewModel,
+    medicalViewModel: MedicalWorkViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val currentBillState by viewModel.currentBillState.collectAsStateWithLifecycle()
@@ -98,6 +105,24 @@ fun HomeScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+
+    // Medical ViewModel States
+    val reportDate by medicalViewModel.reportDate.collectAsStateWithLifecycle()
+    val editableItems by medicalViewModel.editableItems.collectAsStateWithLifecycle()
+    val isScanning by medicalViewModel.isScanning.collectAsStateWithLifecycle()
+    val scanStatusText by medicalViewModel.scanStatusText.collectAsStateWithLifecycle()
+    val presetCodes by medicalViewModel.allPresetCodes.collectAsStateWithLifecycle()
+    val analysisSummary by medicalViewModel.analysisSummary.collectAsStateWithLifecycle()
+    val codeGroups by medicalViewModel.allCodeGroups.collectAsStateWithLifecycle()
+    val groupItems by medicalViewModel.allGroupItems.collectAsStateWithLifecycle()
+    val activeDateFilter by medicalViewModel.dateFilterType.collectAsStateWithLifecycle()
+    val selectedSpecificDate by medicalViewModel.selectedSpecificDate.collectAsStateWithLifecycle()
+    val customStartDate by medicalViewModel.customStartDate.collectAsStateWithLifecycle()
+    val customEndDate by medicalViewModel.customEndDate.collectAsStateWithLifecycle()
+    val selectedCodeFilter by medicalViewModel.selectedCodeFilter.collectAsStateWithLifecycle()
+    val selectedGroupFilter by medicalViewModel.selectedGroupFilter.collectAsStateWithLifecycle()
+
+    var showGroupManagerDialog by remember { mutableStateOf(false) }
 
     val isEn = appLanguage == "en"
 
@@ -142,6 +167,12 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        medicalViewModel.uiEvent.collectLatest { msg ->
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
+
     // Android System Date Picker Dialog
     val showDatePicker = {
         val calendar = Calendar.getInstance()
@@ -176,6 +207,10 @@ fun HomeScreen(
                             Text(
                                 text = when {
                                     showGlobalSettings -> if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস"
+                                    selectedTool == "medical_work" -> when (selectedTab) {
+                                        1 -> if (isEn) "Filter & Analysis" else "ফিল্টার ও এনালাইসিস"
+                                        else -> if (isEn) "Daily Report Generator" else "ডেইলি রিপোর্ট জেনারেটর"
+                                    }
                                     selectedTool == "food_bill" -> when (selectedTab) {
                                         1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
                                         2 -> if (isEn) "Memo Settings" else "মেমো সেটিংস"
@@ -210,7 +245,18 @@ fun HomeScreen(
                             }
                         },
                         actions = {
-                            if (!showGlobalSettings && selectedTool == null) {
+                            if (!showGlobalSettings && selectedTool == "medical_work") {
+                                IconButton(
+                                    onClick = { showGroupManagerDialog = true },
+                                    modifier = Modifier.testTag("group_manager_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FolderSpecial,
+                                        contentDescription = "কোড গ্রুপ ম্যানেজার",
+                                        tint = Color.White
+                                    )
+                                }
+                            } else if (!showGlobalSettings && selectedTool == null) {
                                 IconButton(
                                     onClick = { showGlobalSettings = true },
                                     modifier = Modifier.testTag("global_settings_button")
@@ -230,7 +276,44 @@ fun HomeScreen(
                     )
                 },
                 bottomBar = {
-                    if (!showGlobalSettings && selectedTool == "food_bill") {
+                    if (!showGlobalSettings && selectedTool == "medical_work") {
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ) {
+                            val darkUnselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+                            NavigationBarItem(
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                icon = { Icon(Icons.Default.DocumentScanner, contentDescription = if (isEn) "Daily Report" else "ডেইলি রিপোর্ট") },
+                                label = { Text(if (isEn) "Daily Report" else "ডেইলি রিপোর্ট", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color.White,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = darkUnselectedColor,
+                                    unselectedTextColor = darkUnselectedColor
+                                ),
+                                modifier = Modifier.testTag("tab_medical_report")
+                            )
+
+                            NavigationBarItem(
+                                selected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                                icon = { Icon(Icons.Default.Analytics, contentDescription = if (isEn) "Filter & Analysis" else "ফিল্টার ও এনালাইসিস") },
+                                label = { Text(if (isEn) "Filter & Analysis" else "ফিল্টার ও এনালাইসিস", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color.White,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = darkUnselectedColor,
+                                    unselectedTextColor = darkUnselectedColor
+                                ),
+                                modifier = Modifier.testTag("tab_medical_analysis")
+                            )
+                        }
+                    } else if (!showGlobalSettings && selectedTool == "food_bill") {
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.surface,
                             contentColor = MaterialTheme.colorScheme.onSurface
@@ -320,6 +403,10 @@ fun HomeScreen(
                             onOpenUpdateDialog = { info ->
                                 updateDialogInfoToShow = info
                             },
+                            onSelectMedicalWorkTool = {
+                                selectedTool = "medical_work"
+                                selectedTab = 0
+                            },
                             onSelectFoodBillTool = {
                                 selectedTool = "food_bill"
                                 selectedTab = 0
@@ -338,20 +425,69 @@ fun HomeScreen(
                                 }
                             }
                         )
+                    } else if (selectedTool == "medical_work") {
+                        when (selectedTab) {
+                            0 -> {
+                                MedicalReportGeneratorScreen(
+                                    reportDate = reportDate,
+                                    editableItems = editableItems,
+                                    presetCodes = presetCodes,
+                                    isScanning = isScanning,
+                                    scanStatusText = scanStatusText,
+                                    onDateChange = { medicalViewModel.setReportDate(it) },
+                                    onAddItem = { pId, code -> medicalViewModel.addItemToGenerator(pId, code) },
+                                    onUpdateItem = { idx, pId, code -> medicalViewModel.updateGeneratorItem(idx, pId, code) },
+                                    onRemoveItem = { idx -> medicalViewModel.removeGeneratorItem(idx) },
+                                    onClearAll = { medicalViewModel.clearGeneratorItems() },
+                                    onScanImage = { bitmap -> medicalViewModel.scanImageForMedicalReport(bitmap) },
+                                    onSaveAndConfirm = { medicalViewModel.saveAndConfirmDailyReport() },
+                                    onDuplicateItem = { idx -> medicalViewModel.duplicateGeneratorItem(idx) },
+                                    onMoveItem = { from, to -> medicalViewModel.moveGeneratorItem(from, to) },
+                                    onAutoSequenceIds = { prefix -> medicalViewModel.autoSequencePatientIds(prefix) },
+                                    onBatchApplyCode = { code -> medicalViewModel.batchApplyCode(code) },
+                                    onParseRawText = { raw -> medicalViewModel.parseRawTextForMedicalReport(raw) },
+                                    onAddPresetCode = { code, name, cat -> medicalViewModel.addPresetCode(code, name, cat) },
+                                    onDeletePresetCode = { code -> medicalViewModel.deletePresetCode(code) },
+                                    nextSuggestedPatientId = medicalViewModel.getNextSuggestedPatientId()
+                                )
+                            }
+                            1 -> {
+                                MedicalFilterAnalysisScreen(
+                                    summary = analysisSummary,
+                                    codeGroups = codeGroups,
+                                    groupItems = groupItems,
+                                    presetCodes = presetCodes,
+                                    activeDateFilter = activeDateFilter,
+                                    selectedSpecificDate = selectedSpecificDate,
+                                    customStartDate = customStartDate,
+                                    customEndDate = customEndDate,
+                                    selectedCodeFilter = selectedCodeFilter,
+                                    selectedGroupFilter = selectedGroupFilter,
+                                    onSelectDateFilter = { medicalViewModel.setDateFilterType(it) },
+                                    onSelectSpecificDate = { medicalViewModel.setSelectedSpecificDate(it) },
+                                    onSelectCustomDateRange = { s, e -> medicalViewModel.setCustomDateRange(s, e) },
+                                    onSelectCodeFilter = { medicalViewModel.setSelectedCodeFilter(it) },
+                                    onSelectGroupFilter = { medicalViewModel.setSelectedGroupFilter(it) },
+                                    onOpenGroupManager = { showGroupManagerDialog = true }
+                                )
+                            }
+                        }
                     } else if (selectedTool == "food_bill") {
                         when (selectedTab) {
                             0 -> {
                                 // Daily Bill Voucher Editor
+                                val mainScrollState = rememberScrollState()
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .verticalScroll(rememberScrollState())
+                                        .verticalScroll(mainScrollState)
                                         .padding(12.dp)
                                 ) {
                                     // Memo Paper Cash Voucher
                                     MemoVoucherCard(
                                         state = currentBillState,
                                         quickPresets = quickPresets,
+                                        scrollState = mainScrollState,
                                         onCenterNameChange = { viewModel.updateCenterName(it) },
                                         onSubtitleChange = { viewModel.updateSubtitle(it) },
                                         onPresetClick = { name, qty, rate, amount ->
@@ -580,6 +716,17 @@ fun HomeScreen(
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar(msg)
                                 }
+                            },
+                            onImportToMedicalReport = { file ->
+                                val bitmap = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                                if (bitmap != null) {
+                                    medicalViewModel.scanImageForMedicalReport(bitmap)
+                                    selectedTool = "medical_work"
+                                    selectedTab = 0
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("ডকুমেন্ট থেকে মেডিক্যাল রেকর্ড অটো-ইমপোর্ট করা হচ্ছে...")
+                                    }
+                                }
                             }
                         )
                     }
@@ -625,6 +772,20 @@ fun HomeScreen(
                     position = pos
                 )
             }
+        )
+    }
+
+    if (showGroupManagerDialog) {
+        MedicalGroupManagerDialog(
+            groups = codeGroups,
+            groupItems = groupItems,
+            presetCodes = presetCodes,
+            onDismiss = { showGroupManagerDialog = false },
+            onCreateGroup = { name, desc, codes -> medicalViewModel.createCodeGroup(name, desc, codes) },
+            onUpdateGroup = { id, name, desc, codes -> medicalViewModel.updateCodeGroup(id, name, desc, codes) },
+            onDeleteGroup = { id, name -> medicalViewModel.deleteCodeGroup(id, name) },
+            onAddPresetCode = { code, name, cat -> medicalViewModel.addPresetCode(code, name, cat) },
+            onDeletePresetCode = { code -> medicalViewModel.deletePresetCode(code) }
         )
     }
 

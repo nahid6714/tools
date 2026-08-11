@@ -98,7 +98,7 @@ fun VoucherPreviewDialog(
                 .fillMaxHeight(0.96f)
                 .testTag("voucher_preview_dialog"),
             shape = RoundedCornerShape(16.dp),
-            color = CreamPaperBg
+            color = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier.padding(12.dp)
@@ -114,12 +114,12 @@ fun VoucherPreviewDialog(
                             text = "মেমো শেয়ার ও প্রিন্ট প্রিভিউ",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ForestGreenText
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = "শেয়ার বা প্রিন্ট করার জন্য A4 পজিশন ও মেমো নির্বাচন করুন:",
                             fontSize = 12.sp,
-                            color = Color.DarkGray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -127,7 +127,7 @@ fun VoucherPreviewDialog(
                         onClick = onDismiss,
                         modifier = Modifier.testTag("close_preview_dialog")
                     ) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "বন্ধ করুন", tint = ForestGreenText)
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "বন্ধ করুন", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
 
@@ -137,7 +137,7 @@ fun VoucherPreviewDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFE8E0D5), RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -148,7 +148,7 @@ fun VoucherPreviewDialog(
                                 .weight(1f)
                                 .height(40.dp)
                                 .background(
-                                    if (isSelected) DarkForestGreen else Color.Transparent,
+                                    if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 .clickable {
@@ -179,7 +179,7 @@ fun VoucherPreviewDialog(
                                 text = pos.label,
                                 fontSize = 11.5.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) Color.White else ForestGreenText,
+                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -193,8 +193,8 @@ fun VoucherPreviewDialog(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color.White, RoundedCornerShape(10.dp))
-                            .border(1.dp, Color(0xFFD0C8B8), RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
                             .padding(8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -202,7 +202,7 @@ fun VoucherPreviewDialog(
                             text = "A4 পেজে মেমো সেটআপ (উপরে ও নিচে আলাদা মেমো)",
                             fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkForestGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Row(
@@ -215,8 +215,8 @@ fun VoucherPreviewDialog(
                                     .weight(1f)
                                     .clickable { showTopPicker = true },
                                 shape = RoundedCornerShape(6.dp),
-                                color = Color(0xFFF4EFE6),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, DarkForestGreen)
+                                color = MaterialTheme.colorScheme.surface,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -224,18 +224,18 @@ fun VoucherPreviewDialog(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = "১. উপরে (Top Slot):", fontSize = 10.sp, color = Color.Gray)
+                                        Text(text = "১. উপরে (Top Slot):", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         val labelText = if (topMemoState.memoId > 0) "মেমো #${BengaliUtils.toBengaliDigits(topMemoState.memoId.toString())} (${topMemoState.dateString})" else "চলতি মেমো (${topMemoState.dateString})"
                                         Text(
                                             text = labelText,
                                             fontSize = 11.5.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.Black,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                     }
-                                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = DarkForestGreen)
+                                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
 
@@ -245,8 +245,8 @@ fun VoucherPreviewDialog(
                                     .weight(1f)
                                     .clickable { showBottomPicker = true },
                                 shape = RoundedCornerShape(6.dp),
-                                color = Color(0xFFF4EFE6),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, DarkForestGreen)
+                                color = MaterialTheme.colorScheme.surface,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -254,19 +254,19 @@ fun VoucherPreviewDialog(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = "২. নিচে (Bottom Slot):", fontSize = 10.sp, color = Color.Gray)
+                                        Text(text = "২. নিচে (Bottom Slot):", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         val bMemo = bottomMemoState ?: topMemoState
                                         val labelText = if (bMemo.memoId > 0) "মেমো #${BengaliUtils.toBengaliDigits(bMemo.memoId.toString())} (${bMemo.dateString})" else if (bottomMemoState == null || bMemo == topMemoState) "একই মেমো (কপি)" else "চলতি মেমো (${bMemo.dateString})"
                                         Text(
                                             text = labelText,
                                             fontSize = 11.5.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.Black,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                     }
-                                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = DarkForestGreen)
+                                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -764,7 +764,7 @@ private fun MemoSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen) },
+        title = { Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
         text = {
             Column(
                 modifier = Modifier
@@ -773,7 +773,7 @@ private fun MemoSelectionDialog(
             ) {
                 if (historyBills.isEmpty() && !allowSameCopy) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("সংরক্ষিত কোনো মেমো নেই।", fontSize = 13.sp, color = Color.Gray)
+                        Text("সংরক্ষিত কোনো মেমো নেই।", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(
@@ -795,19 +795,19 @@ private fun MemoSelectionDialog(
                                     modifier = Modifier.padding(10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(imageVector = Icons.Default.Receipt, contentDescription = null, tint = DarkForestGreen)
+                                    Icon(imageVector = Icons.Default.Receipt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
                                         Text(
                                             text = "চলতি মেমো (সম্পাদিত বিল)",
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = DarkForestGreen
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
                                             text = "তারিখ: ${initialMemo.dateString} | মোট: ${BengaliUtils.formatBengaliCurrency(initialMemo.totalAmount)}",
                                             fontSize = 11.sp,
-                                            color = Color.DarkGray
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                     }
                                 }
@@ -833,7 +833,7 @@ private fun MemoSelectionDialog(
                                         onSelect(printMemo)
                                     },
                                 shape = RoundedCornerShape(8.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
                                 Row(
@@ -846,19 +846,19 @@ private fun MemoSelectionDialog(
                                             text = "মেমো #${BengaliUtils.toBengaliDigits(bill.id.toString())} — ${BengaliUtils.toBengaliDigits(bill.dateString)}",
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.Black
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         if (bill.purchaserName.isNotBlank()) {
                                             Text(
                                                 text = "ক্রেতা: ${bill.purchaserName}",
                                                 fontSize = 11.sp,
-                                                color = Color.Gray
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                         Text(
                                             text = "${bill.items.size}টি আইটেম",
                                             fontSize = 11.sp,
-                                            color = Color.Gray
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
 
@@ -866,7 +866,7 @@ private fun MemoSelectionDialog(
                                         text = BengaliUtils.formatBengaliCurrency(bill.totalAmount),
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = DarkForestGreen
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
@@ -877,7 +877,7 @@ private fun MemoSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("বাতিল", color = Color.Gray)
+                Text("বাতিল", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     )

@@ -43,6 +43,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -105,6 +106,16 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.isActive
+
 val MaroonHeaderColor = DarkForestGreen
 val MaroonTextColor = ForestGreenText
 
@@ -112,6 +123,7 @@ val MaroonTextColor = ForestGreenText
 fun MemoVoucherCard(
     state: CurrentBillState,
     quickPresets: List<QuickPreset> = emptyList(),
+    scrollState: ScrollState? = null,
     onPresetClick: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
     onAddCustomPreset: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
     onRemovePreset: (preset: QuickPreset) -> Unit = {},
@@ -142,12 +154,21 @@ fun MemoVoucherCard(
     }
     val purchaserLabelFocusRequester = remember { FocusRequester() }
 
+    var containerBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                val pos = coords.positionInWindow()
+                val size = coords.size
+                containerBoundsInWindow = Rect(
+                    pos.x, pos.y, pos.x + size.width, pos.y + size.height
+                )
+            }
             .testTag("memo_voucher_card"),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CreamPaperBg),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -269,7 +290,7 @@ fun MemoVoucherCard(
                                 fontFamily = HeadingFontFamily,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ForestGreenText
+                                color = MaterialTheme.colorScheme.primary
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -278,20 +299,20 @@ fun MemoVoucherCard(
                             style = TextStyle(
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(
                             imageVector = Icons.Default.CalendarToday,
                             contentDescription = "তারিখ পরিবর্তন",
-                            tint = DarkForestGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(start = 2.dp)
                         )
                     }
                 }
 
-                Divider(color = WarmBorderColor, thickness = 1.dp)
+                Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Action Buttons Row (Left: নতুন আইটেম যোগ করুন, Right: দ্রুত আইটেম যোগ করুন)
@@ -408,7 +429,7 @@ fun MemoVoucherCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF0E8DF), shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp))
                         .padding(vertical = 8.dp, horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -420,7 +441,7 @@ fun MemoVoucherCard(
                             fontFamily = HeadingFontFamily,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ForestGreenText
+                            color = MaterialTheme.colorScheme.primary
                         )
                     )
                     Text(
@@ -430,7 +451,7 @@ fun MemoVoucherCard(
                             fontFamily = HeadingFontFamily,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ForestGreenText,
+                            color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                     )
@@ -441,7 +462,7 @@ fun MemoVoucherCard(
                             fontFamily = HeadingFontFamily,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ForestGreenText,
+                            color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                     )
@@ -452,7 +473,7 @@ fun MemoVoucherCard(
                             fontFamily = HeadingFontFamily,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ForestGreenText,
+                            color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.End
                         )
                     )
@@ -463,8 +484,57 @@ fun MemoVoucherCard(
 
                 // Item Rows
                 var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
-                var itemDragOffsetY by remember { mutableStateOf(0f) }
+                var itemDragOffsetY by remember { mutableFloatStateOf(0f) }
+                var activeAutoScrollSpeed by remember { mutableFloatStateOf(0f) }
                 val itemRowHeights = remember { mutableStateMapOf<Int, Int>() }
+                val rowWindowTops = remember { mutableStateMapOf<Int, Float>() }
+
+                var initialRowWindowTop by remember { mutableFloatStateOf(0f) }
+                var initialTouchInRowY by remember { mutableFloatStateOf(0f) }
+                var totalTouchDragY by remember { mutableFloatStateOf(0f) }
+
+                val density = LocalDensity.current
+                val configuration = LocalConfiguration.current
+                val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+                val viewportTop = maxOf(containerBoundsInWindow.top, with(density) { 60.dp.toPx() })
+                val viewportBottom = if (containerBoundsInWindow.bottom > 0f) minOf(containerBoundsInWindow.bottom, screenHeightPx - with(density) { 60.dp.toPx() }) else screenHeightPx - with(density) { 60.dp.toPx() }
+
+                val scrollThreshold = with(density) { 100.dp.toPx() }
+                val maxScrollSpeed = with(density) { 20.dp.toPx() }
+
+                LaunchedEffect(draggedItemIndex) {
+                    if (draggedItemIndex == null) return@LaunchedEffect
+                    while (isActive && draggedItemIndex != null) {
+                        val speed = activeAutoScrollSpeed
+                        if (speed != 0f && scrollState != null) {
+                            val consumed = scrollState.scrollBy(speed)
+                            if (consumed != 0f) {
+                                initialRowWindowTop -= consumed
+                                itemDragOffsetY += consumed
+
+                                val currentIndex = draggedItemIndex
+                                if (currentIndex != null) {
+                                    val rowHeight = (itemRowHeights[currentIndex] ?: 0).toFloat()
+                                    if (rowHeight > 0f) {
+                                        if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
+                                            onMoveItem(currentIndex, currentIndex + 1)
+                                            draggedItemIndex = currentIndex + 1
+                                            itemDragOffsetY -= rowHeight
+                                        } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                            onMoveItem(currentIndex, currentIndex - 1)
+                                            draggedItemIndex = currentIndex - 1
+                                            itemDragOffsetY += rowHeight
+                                        }
+                                    }
+                                }
+                            } else {
+                                activeAutoScrollSpeed = 0f
+                            }
+                        }
+                        kotlinx.coroutines.delay(16)
+                    }
+                }
 
                 state.items.forEachIndexed { index, item ->
                     val rowRequesters = itemFocusRequesters.getOrNull(index)
@@ -476,12 +546,15 @@ fun MemoVoucherCard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .onSizeChanged { itemRowHeights[index] = it.height }
+                            .onGloballyPositioned { coords ->
+                                rowWindowTops[index] = coords.positionInWindow().y
+                                itemRowHeights[index] = coords.size.height
+                            }
                             .graphicsLayer {
                                 translationY = if (isBeingDragged) itemDragOffsetY else 0f
                             }
                             .zIndex(if (isBeingDragged) 1f else 0f)
-                            .background(if (isBeingDragged) Color(0xFFF0E8DF) else Color.Transparent)
+                            .background(if (isBeingDragged) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
                     ) {
                         MemoItemRow(
                             index = index,
@@ -498,44 +571,70 @@ fun MemoVoucherCard(
                             onRemove = { onRemoveItem(item.id) },
                             dragHandleModifier = Modifier.pointerInput(index, state.items.size) {
                                 detectDragGesturesAfterLongPress(
-                                    onDragStart = {
+                                    onDragStart = { offset ->
                                         draggedItemIndex = index
                                         itemDragOffsetY = 0f
+                                        activeAutoScrollSpeed = 0f
+                                        initialTouchInRowY = offset.y
+                                        initialRowWindowTop = rowWindowTops[index] ?: 0f
+                                        totalTouchDragY = 0f
                                     },
                                     onDragEnd = {
                                         draggedItemIndex = null
                                         itemDragOffsetY = 0f
+                                        activeAutoScrollSpeed = 0f
                                     },
                                     onDragCancel = {
                                         draggedItemIndex = null
                                         itemDragOffsetY = 0f
+                                        activeAutoScrollSpeed = 0f
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
                                         itemDragOffsetY += dragAmount.y
+                                        totalTouchDragY += dragAmount.y
+
                                         val currentIndex = draggedItemIndex ?: return@detectDragGesturesAfterLongPress
                                         val rowHeight = (itemRowHeights[currentIndex] ?: 0).toFloat()
-                                        if (rowHeight <= 0f) return@detectDragGesturesAfterLongPress
-                                        if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
-                                            onMoveItem(currentIndex, currentIndex + 1)
-                                            draggedItemIndex = currentIndex + 1
-                                            itemDragOffsetY -= rowHeight
-                                        } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
-                                            onMoveItem(currentIndex, currentIndex - 1)
-                                            draggedItemIndex = currentIndex - 1
-                                            itemDragOffsetY += rowHeight
+                                        if (rowHeight > 0f) {
+                                            if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
+                                                onMoveItem(currentIndex, currentIndex + 1)
+                                                draggedItemIndex = currentIndex + 1
+                                                itemDragOffsetY -= rowHeight
+                                            } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                                onMoveItem(currentIndex, currentIndex - 1)
+                                                draggedItemIndex = currentIndex - 1
+                                                itemDragOffsetY += rowHeight
+                                            }
+                                        }
+
+                                        val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
+                                        val distFromBottom = viewportBottom - currentPointerY
+                                        val distFromTop = currentPointerY - viewportTop
+
+                                        activeAutoScrollSpeed = when {
+                                            distFromBottom < scrollThreshold -> {
+                                                val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
+                                                maxScrollSpeed * ratio
+                                            }
+                                            distFromTop < scrollThreshold -> {
+                                                val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
+                                                -maxScrollSpeed * ratio
+                                            }
+                                            else -> 0f
                                         }
                                     }
                                 )
                             }
                         )
                     }
-                    Divider(color = Color(0xFFECE3D8), thickness = 0.5.dp)
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Total Summary Row with Brass Dashed/Stitched Border
+                val primaryColor = MaterialTheme.colorScheme.primary
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -545,12 +644,12 @@ fun MemoVoucherCard(
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f), 0f)
                             )
                             drawRoundRect(
-                                color = BrassAccent,
+                                color = primaryColor,
                                 style = stroke,
                                 cornerRadius = CornerRadius(8.dp.toPx())
                             )
                         }
-                        .background(Color(0xFFFFFBF2), shape = RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp))
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
                     Row(
@@ -564,7 +663,7 @@ fun MemoVoucherCard(
                                 fontFamily = HeadingFontFamily,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ForestGreenText
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         )
                         Text(
@@ -573,7 +672,7 @@ fun MemoVoucherCard(
                                 fontFamily = HeadingFontFamily,
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = DarkForestGreen
+                                color = MaterialTheme.colorScheme.primary
                             ),
                             modifier = Modifier.testTag("total_amount_text")
                         )
@@ -591,7 +690,7 @@ fun MemoVoucherCard(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.width(160.dp)
                     ) {
-                        Divider(color = ForestGreenText, thickness = 1.dp)
+                        Divider(color = MaterialTheme.colorScheme.primary, thickness = 1.dp)
                         Spacer(modifier = Modifier.height(4.dp))
                         if (onPurchaserLabelChange != null) {
                             BasicTextField(
@@ -600,7 +699,7 @@ fun MemoVoucherCard(
                                 textStyle = TextStyle(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color.DarkGray,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     textAlign = TextAlign.Center
                                 ),
                                 singleLine = true,
@@ -612,17 +711,17 @@ fun MemoVoucherCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .focusRequester(purchaserLabelFocusRequester)
-                                    .background(Color(0x10000000), RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
                                     .padding(vertical = 2.dp, horizontal = 4.dp)
                                     .testTag("purchaser_label_input"),
-                                cursorBrush = SolidColor(DarkForestGreen),
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                 decorationBox = { innerTextField ->
                                     Box(contentAlignment = Alignment.Center) {
                                         if (state.purchaserLabel.isEmpty()) {
                                             Text(
                                                 text = "স্বাক্ষরের টাইটেল...",
                                                 fontSize = 11.sp,
-                                                color = Color.Gray,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                                 textAlign = TextAlign.Center
                                             )
                                         }
@@ -635,7 +734,7 @@ fun MemoVoucherCard(
                                 text = state.purchaserLabel,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.DarkGray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -685,14 +784,14 @@ fun MemoItemRow(
         Box(
             modifier = Modifier
                 .weight(1.8f)
-                .background(Color.White, shape = RoundedCornerShape(4.dp))
-                .border(0.5.dp, WarmBorderColor, RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
+                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
                 .padding(horizontal = 6.dp, vertical = 6.dp)
         ) {
             if (item.name.isEmpty()) {
                 Text(
                     text = "আইটেমের নাম",
-                    color = Color.Gray.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     fontSize = 14.sp
                 )
             }
@@ -707,9 +806,9 @@ fun MemoItemRow(
                 textStyle = TextStyle(
                     fontSize = nameFontSize,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 ),
-                cursorBrush = SolidColor(DarkForestGreen),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { qtyFocusRequester.requestFocus() }),
@@ -729,8 +828,8 @@ fun MemoItemRow(
         Box(
             modifier = Modifier
                 .weight(1.4f)
-                .background(Color.White, shape = RoundedCornerShape(4.dp))
-                .border(0.5.dp, WarmBorderColor, RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
+                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
                 .padding(horizontal = 4.dp, vertical = 4.dp)
         ) {
             Row(
@@ -741,7 +840,7 @@ fun MemoItemRow(
                     if (item.quantity.isEmpty()) {
                         Text(
                             text = "পরিমাণ",
-                            color = Color.Gray.copy(alpha = 0.5f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             fontSize = 12.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
@@ -753,10 +852,10 @@ fun MemoItemRow(
                         textStyle = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         ),
-                        cursorBrush = SolidColor(DarkForestGreen),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { rateFocusRequester.requestFocus() }),
@@ -771,7 +870,7 @@ fun MemoItemRow(
                 Box {
                     Surface(
                         shape = RoundedCornerShape(3.dp),
-                        color = Color(0xFFEBE2D8),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier
                             .clickable { showUnitMenu = true }
                             .padding(horizontal = 2.dp, vertical = 2.dp)
@@ -779,7 +878,7 @@ fun MemoItemRow(
                         Text(
                             text = "▼",
                             fontSize = 8.sp,
-                            color = DarkForestGreen,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(2.dp)
                         )
                     }
@@ -811,8 +910,8 @@ fun MemoItemRow(
         Box(
             modifier = Modifier
                 .weight(0.9f)
-                .background(Color.White, shape = RoundedCornerShape(4.dp))
-                .border(0.5.dp, WarmBorderColor, RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
+                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
                 .padding(horizontal = 4.dp, vertical = 6.dp)
         ) {
             val displayRate = if (item.rate == "0") "" else BengaliUtils.toBengaliDigits(item.rate)
@@ -827,10 +926,10 @@ fun MemoItemRow(
                 textStyle = TextStyle(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 ),
-                cursorBrush = SolidColor(DarkForestGreen),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -840,7 +939,7 @@ fun MemoItemRow(
             if (item.rate == "0" || item.rate.isEmpty()) {
                 Text(
                     text = "০",
-                    color = Color.Gray.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -855,8 +954,8 @@ fun MemoItemRow(
         Box(
             modifier = Modifier
                 .weight(1.1f)
-                .background(Color.White, shape = RoundedCornerShape(4.dp))
-                .border(0.5.dp, WarmBorderColor, RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
+                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
                 .padding(horizontal = 4.dp, vertical = 6.dp)
         ) {
             BasicTextField(
@@ -877,10 +976,10 @@ fun MemoItemRow(
                 textStyle = TextStyle(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.End
                 ),
-                cursorBrush = SolidColor(DarkForestGreen),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -890,7 +989,7 @@ fun MemoItemRow(
             if (displayAmount.isEmpty()) {
                 Text(
                     text = "০",
-                    color = Color.Gray.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     fontSize = 13.sp,
                     textAlign = TextAlign.End,
                     modifier = Modifier.fillMaxWidth()
