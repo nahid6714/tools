@@ -15,7 +15,7 @@ import androidx.room.migration.Migration
         CodeGroupItemEntity::class,
         PresetMedicalCodeEntity::class
     ],
-    version = 4,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,33 +42,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Enforces ONE CODE = ONE OWNER: rebuilds code_group_items with a unique,
-        // case-insensitive index on `code`. If old data already had the same code
-        // under more than one owner (previously allowed), we keep only the earliest
-        // assignment (lowest id) for that code and drop the later duplicates so
-        // existing records are preserved instead of destroyed.
-        private val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    "CREATE TABLE IF NOT EXISTS `code_group_items_new` (" +
-                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
-                        "`groupId` INTEGER NOT NULL, " +
-                        "`code` TEXT NOT NULL COLLATE NOCASE)"
-                )
-                db.execSQL(
-                    "INSERT INTO code_group_items_new (id, groupId, code) " +
-                        "SELECT id, groupId, code FROM code_group_items " +
-                        "WHERE id IN (SELECT MIN(id) FROM code_group_items GROUP BY code COLLATE NOCASE)"
-                )
-                db.execSQL("DROP TABLE code_group_items")
-                db.execSQL("ALTER TABLE code_group_items_new RENAME TO code_group_items")
-                db.execSQL(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_code_group_items_code` " +
-                        "ON `code_group_items` (`code`)"
-                )
-            }
-        }
-
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -76,7 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "albaraka_food_bill_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

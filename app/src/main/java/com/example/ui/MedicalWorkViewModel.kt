@@ -269,23 +269,6 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         return "$prefix$formattedNum"
     }
 
-    /**
-     * Suggests the next patient ID by continuing the serial from the most recently saved
-     * record across ALL dates (allRecords is already sorted date DESC, id DESC), so serial
-     * numbers keep running forward day-to-day instead of resetting back to 001 each day.
-     * Falls back to a fresh date-based prefix (e.g. AB2608001) only when there is no
-     * previous record at all to continue from.
-     */
-    fun getNextSuggestedPatientId(): String {
-        val lastRecord = allRecords.value.firstOrNull()
-        if (lastRecord != null && lastRecord.patientId.isNotBlank()) {
-            return incrementPatientId(lastRecord.patientId)
-        }
-        val monthStr = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
-        val yearStr = SimpleDateFormat("yy", Locale.getDefault()).format(Date())
-        return "AB$yearStr${monthStr}001"
-    }
-
     fun clearGeneratorItems() {
         _editableItems.value = emptyList()
     }
@@ -382,28 +365,20 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    // Owner (Group) Management Actions
+    // Group Management Actions
     fun createCodeGroup(groupName: String, description: String, codes: List<String>) {
         if (groupName.isBlank()) return
         viewModelScope.launch {
-            val (_, skipped) = repository.createCodeGroup(groupName.trim(), description.trim(), codes)
-            if (skipped.isEmpty()) {
-                _uiEvent.emit("অনার '$groupName' সফলভাবে তৈরি হয়েছে!")
-            } else {
-                _uiEvent.emit("অনার '$groupName' তৈরি হয়েছে। তবে এই কোডগুলো আগে থেকেই অন্য অনারের অধীনে থাকায় যোগ হয়নি: ${skipped.joinToString(", ")}")
-            }
+            repository.createCodeGroup(groupName.trim(), description.trim(), codes)
+            _uiEvent.emit("কোড গ্রুপ '$groupName' সফলভাবে তৈরি হয়েছে!")
         }
     }
 
     fun updateCodeGroup(groupId: Long, groupName: String, description: String, codes: List<String>) {
         if (groupName.isBlank()) return
         viewModelScope.launch {
-            val skipped = repository.updateCodeGroup(groupId, groupName.trim(), description.trim(), codes)
-            if (skipped.isEmpty()) {
-                _uiEvent.emit("অনার '$groupName' আপডেট করা হয়েছে!")
-            } else {
-                _uiEvent.emit("আপডেট হয়েছে। তবে এই কোডগুলো আগে থেকেই অন্য অনারের অধীনে থাকায় যোগ হয়নি: ${skipped.joinToString(", ")}")
-            }
+            repository.updateCodeGroup(groupId, groupName.trim(), description.trim(), codes)
+            _uiEvent.emit("কোড গ্রুপ '$groupName' আপডেট করা হয়েছে!")
         }
     }
 
@@ -413,72 +388,7 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
             if (_selectedGroupFilter.value == groupId) {
                 _selectedGroupFilter.value = null
             }
-            _uiEvent.emit("অনার '$groupName' মুছে ফেলা হয়েছে।")
-        }
-    }
-
-    /** Suspend lookup usable from a Composable's coroutine scope before deciding to prompt for an owner. */
-    suspend fun findOwnerForCode(code: String): CodeGroupEntity? = repository.findOwnerForCode(code)
-
-    /**
-     * Adds a new preset/quick code AND assigns it to [ownerId] in one step.
-     * If the code is already owned by someone else, the add is refused and the
-     * user is informed (one code = one owner).
-     */
-    fun addPresetCodeWithOwner(code: String, name: String, category: String, ownerId: Long) {
-        val trimmedCode = code.trim()
-        if (trimmedCode.isBlank()) return
-        viewModelScope.launch {
-            val ok = repository.assignCodeToOwner(ownerId, trimmedCode)
-            if (!ok) {
-                _uiEvent.emit("কোড '$trimmedCode' ইতোমধ্যে অন্য একজন অনারের অধীনে আছে। একটি কোডের একাধিক অনার হতে পারবে না।")
-                return@launch
-            }
-            repository.savePresetCode(trimmedCode, name.trim(), category.trim())
-            _uiEvent.emit("নতুন কোড '$trimmedCode' যোগ করা হয়েছে!")
-        }
-    }
-
-    fun createOwner(name: String, onResult: (Result<CodeGroupEntity>) -> Unit = {}) {
-        viewModelScope.launch {
-            val result = repository.createOwner(name)
-            result.onSuccess { _uiEvent.emit("নতুন অনার '${it.groupName}' যোগ করা হয়েছে!") }
-            result.onFailure { _uiEvent.emit(it.message ?: "অনার যোগ করা যায়নি।") }
-            onResult(result)
-        }
-    }
-
-    fun renameOwner(ownerId: Long, newName: String) {
-        viewModelScope.launch {
-            val result = repository.renameOwner(ownerId, newName)
-            result.onSuccess { _uiEvent.emit("অনারের নাম পরিবর্তন করা হয়েছে।") }
-            result.onFailure { _uiEvent.emit(it.message ?: "নাম পরিবর্তন করা যায়নি।") }
-        }
-    }
-
-    fun deleteOwnerSafely(ownerId: Long, ownerName: String) {
-        viewModelScope.launch {
-            val result = repository.deleteOwnerSafely(ownerId)
-            result.onSuccess {
-                if (_selectedGroupFilter.value == ownerId) _selectedGroupFilter.value = null
-                _uiEvent.emit("অনার '$ownerName' মুছে ফেলা হয়েছে।")
-            }
-            result.onFailure { _uiEvent.emit(it.message ?: "অনার মুছে ফেলা যায়নি।") }
-        }
-    }
-
-    /** Reassigns an already-owned code to a different owner (old owner is removed automatically). */
-    fun reassignCodeOwner(code: String, newOwnerId: Long) {
-        viewModelScope.launch {
-            repository.reassignCodeOwner(code, newOwnerId)
-            _uiEvent.emit("কোড '$code'-এর অনার পরিবর্তন করা হয়েছে।")
-        }
-    }
-
-    fun removeCodeOwnership(code: String) {
-        viewModelScope.launch {
-            repository.removeCodeOwnership(code)
-            _uiEvent.emit("কোড '$code' এখন কোনো অনারের অধীনে নেই (Owner Not Assigned)।")
+            _uiEvent.emit("গ্রুপ '$groupName' মুছে ফেলা হয়েছে।")
         }
     }
 

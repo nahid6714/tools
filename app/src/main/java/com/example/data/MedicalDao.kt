@@ -54,13 +54,6 @@ interface MedicalDao {
     @Query("DELETE FROM code_group_items WHERE groupId = :groupId")
     suspend fun deleteGroupItemsByGroupId(groupId: Long)
 
-    // Ownership helpers (ONE CODE = ONE OWNER, case-insensitive)
-    @Query("SELECT * FROM code_group_items WHERE code = :code COLLATE NOCASE LIMIT 1")
-    suspend fun findGroupItemByCode(code: String): CodeGroupItemEntity?
-
-    @Query("DELETE FROM code_group_items WHERE code = :code COLLATE NOCASE")
-    suspend fun deleteGroupItemByCode(code: String)
-
     // Preset Codes
     @Query("SELECT * FROM preset_medical_codes ORDER BY code ASC")
     fun getAllPresetCodes(): Flow<List<PresetMedicalCodeEntity>>

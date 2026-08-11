@@ -77,7 +77,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,8 +92,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.CodeGroupEntity
-import com.example.data.CodeGroupItemEntity
 import com.example.data.MedicalRecordEntity
 import com.example.data.PresetMedicalCodeEntity
 import com.example.ui.theme.DarkForestGreen
@@ -137,57 +134,15 @@ fun MedicalReportGeneratorScreen(
     onParseRawText: ((rawText: String) -> Unit)? = null,
     onAddPresetCode: ((code: String, name: String, category: String) -> Unit)? = null,
     onDeletePresetCode: ((code: String) -> Unit)? = null,
-    // Ownership (ONE CODE = ONE OWNER)
-    codeGroups: List<CodeGroupEntity> = emptyList(),
-    groupItems: List<CodeGroupItemEntity> = emptyList(),
-    allMedicalRecords: List<MedicalRecordEntity> = emptyList(),
-    onAssignCodeOwner: ((code: String, ownerId: Long) -> Unit)? = null,
-    onAddPresetCodeWithOwner: ((code: String, name: String, category: String, ownerId: Long) -> Unit)? = null,
-    onCreateOwner: ((name: String) -> Unit)? = null,
-    onReassignCodeOwner: ((code: String, newOwnerId: Long) -> Unit)? = null,
-    onRemoveCodeOwnership: ((code: String) -> Unit)? = null,
-    nextSuggestedPatientId: String = "",
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val activity = remember(context) { context.findActivity() }
 
-    var newPatientId by remember { mutableStateOf(nextSuggestedPatientId) }
+    var newPatientId by remember { mutableStateOf("") }
     var newCode by remember { mutableStateOf("") }
     var showReportPreviewDialog by remember { mutableStateOf(false) }
-
-    // Owner-selection prompt state, shown when a code with no existing owner is submitted.
-    var pendingOwnerPromptForMainAdd by remember { mutableStateOf<Pair<String, String>?>(null) } // patientId to code
-    var pendingOwnerPromptForPresetAdd by remember { mutableStateOf<Triple<String, String, String>?>(null) } // code, name, category
-
-    fun ownerForCode(code: String): CodeGroupEntity? {
-        val item = groupItems.find { it.code.equals(code.trim(), ignoreCase = true) } ?: return null
-        return codeGroups.find { it.id == item.groupId }
-    }
-
-    fun finalizeMainAdd(pId: String, code: String) {
-        onAddItem(pId, code)
-        // Auto increment patient ID for quick next entry
-        val digits = pId.takeLastWhile { it.isDigit() }
-        newPatientId = if (digits.isNotEmpty()) {
-            val prefix = pId.dropLast(digits.length)
-            val nextNum = (digits.toLongOrNull() ?: 0L) + 1
-            "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
-        } else {
-            ""
-        }
-        newCode = ""
-    }
-
-    // When this day's item list is empty (a fresh start), keep the ID field pre-filled with
-    // the suggested next serial (continuing from the very last saved record across all
-    // dates) instead of leaving it blank, so numbering never resets back to 001 each day.
-    LaunchedEffect(nextSuggestedPatientId, editableItems.size) {
-        if (editableItems.isEmpty() && newPatientId.isBlank()) {
-            newPatientId = nextSuggestedPatientId
-        }
-    }
     var showPasteRawTextDialog by remember { mutableStateOf(false) }
     var showBatchCodeDialog by remember { mutableStateOf(false) }
     var showAutoSequenceDialog by remember { mutableStateOf(false) }
@@ -524,12 +479,15 @@ fun MedicalReportGeneratorScreen(
                     Button(
                         onClick = {
                             if (newPatientId.isNotBlank() && newCode.isNotBlank()) {
-                                val trimmedCode = newCode.trim()
-                                if (ownerForCode(trimmedCode) == null) {
-                                    // Brand-new code: ask who it belongs to before adding it.
-                                    pendingOwnerPromptForMainAdd = newPatientId to trimmedCode
+                                onAddItem(newPatientId, newCode)
+                                // Auto increment patient ID for quick next entry
+                                val digits = newPatientId.takeLastWhile { it.isDigit() }
+                                if (digits.isNotEmpty()) {
+                                    val prefix = newPatientId.dropLast(digits.length)
+                                    val nextNum = (digits.toLongOrNull() ?: 0L) + 1
+                                    newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
                                 } else {
-                                    finalizeMainAdd(newPatientId, trimmedCode)
+                                    newPatientId = ""
                                 }
                             }
                         },
@@ -1084,13 +1042,7 @@ fun MedicalReportGeneratorScreen(
                         Button(
                             onClick = {
                                 if (newCodeInput.isNotBlank()) {
-                                    val trimmedCode = newCodeInput.trim()
-                                    val trimmedName = newNameInput.trim()
-                                    if (ownerForCode(trimmedCode) == null) {
-                                        pendingOwnerPromptForPresetAdd = Triple(trimmedCode, trimmedName, "General")
-                                    } else {
-                                        onAddPresetCode?.invoke(trimmedCode, trimmedName, "General")
-                                    }
+                                    onAddPresetCode?.invoke(newCodeInput.trim(), newNameInput.trim(), "General")
                                     newCodeInput = ""
                                     newNameInput = ""
                                 }
@@ -1108,14 +1060,11 @@ fun MedicalReportGeneratorScreen(
                     Divider()
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text("কোড ম্যানেজমেন্ট (কোড | অনার | মোট কাজ):", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("সংরক্ষিত প্রিসেট কোডসমূহ (${availableCodeList.size}টি):", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(6.dp))
 
                     availableCodeList.forEach { codeStr ->
                         val presetItem = presetCodes.find { it.code.equals(codeStr, ignoreCase = true) }
-                        val owner = ownerForCode(codeStr)
-                        val taskCount = allMedicalRecords.count { it.code.equals(codeStr, ignoreCase = true) }
-                        var showChangeOwnerMenu by remember { mutableStateOf(false) }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1127,45 +1076,6 @@ fun MedicalReportGeneratorScreen(
                                 Text("কোড: $codeStr", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = DarkForestGreen)
                                 if (presetItem != null && presetItem.name.isNotBlank()) {
                                     Text(presetItem.name, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Text(
-                                    text = "অনার: ${owner?.groupName ?: "নির্ধারিত নেই"} | মোট কাজ: ${taskCount}",
-                                    fontSize = 11.sp,
-                                    color = if (owner != null) ForestGreenText else Color(0xFFB26A00)
-                                )
-                            }
-
-                            Box {
-                                IconButton(
-                                    onClick = { showChangeOwnerMenu = true },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(Icons.Default.Edit, contentDescription = "অনার পরিবর্তন", tint = DarkForestGreen, modifier = Modifier.size(16.dp))
-                                }
-                                DropdownMenu(
-                                    expanded = showChangeOwnerMenu,
-                                    onDismissRequest = { showChangeOwnerMenu = false }
-                                ) {
-                                    codeGroups.forEach { ownerOption ->
-                                        DropdownMenuItem(
-                                            text = { Text(ownerOption.groupName) },
-                                            onClick = {
-                                                showChangeOwnerMenu = false
-                                                if (owner?.id != ownerOption.id) {
-                                                    onReassignCodeOwner?.invoke(codeStr, ownerOption.id)
-                                                }
-                                            }
-                                        )
-                                    }
-                                    if (owner != null) {
-                                        DropdownMenuItem(
-                                            text = { Text("Owner Not Assigned করুন", color = Color(0xFFB26A00)) },
-                                            onClick = {
-                                                showChangeOwnerMenu = false
-                                                onRemoveCodeOwnership?.invoke(codeStr)
-                                            }
-                                        )
-                                    }
                                 }
                             }
 
@@ -1188,37 +1098,6 @@ fun MedicalReportGeneratorScreen(
                     Text("সম্পন্ন")
                 }
             }
-        )
-    }
-
-    // Owner selection prompt for a brand-new code from the main "+" add form
-    pendingOwnerPromptForMainAdd?.let { (pId, code) ->
-        OwnerSelectionDialog(
-            patientId = pId,
-            code = code,
-            owners = codeGroups,
-            onDismiss = { pendingOwnerPromptForMainAdd = null },
-            onConfirm = { ownerId ->
-                onAssignCodeOwner?.invoke(code, ownerId)
-                finalizeMainAdd(pId, code)
-                pendingOwnerPromptForMainAdd = null
-            },
-            onCreateOwner = { name -> onCreateOwner?.invoke(name) }
-        )
-    }
-
-    // Owner selection prompt for a brand-new code from the Preset Code Manager
-    pendingOwnerPromptForPresetAdd?.let { (code, name, category) ->
-        OwnerSelectionDialog(
-            patientId = "",
-            code = code,
-            owners = codeGroups,
-            onDismiss = { pendingOwnerPromptForPresetAdd = null },
-            onConfirm = { ownerId ->
-                onAddPresetCodeWithOwner?.invoke(code, name, category, ownerId)
-                pendingOwnerPromptForPresetAdd = null
-            },
-            onCreateOwner = { ownerName -> onCreateOwner?.invoke(ownerName) }
         )
     }
 }

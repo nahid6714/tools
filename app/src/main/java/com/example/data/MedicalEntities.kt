@@ -1,8 +1,6 @@
 package com.example.data
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "medical_records")
@@ -15,26 +13,18 @@ data class MedicalRecordEntity(
     val notes: String = ""
 )
 
-/**
- * A CodeGroup represents an "Owner" (person) that a set of Codes is assigned to.
- * ONE CODE = ONE OWNER is enforced via the unique, case-insensitive index on
- * CodeGroupItemEntity.code below, plus application-level checks in MedicalRepository.
- */
 @Entity(tableName = "code_groups")
 data class CodeGroupEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val groupName: String, // Owner's name, e.g. "রাহাত"
+    val groupName: String, // e.g. "Nahid"
     val description: String = ""
 )
 
-@Entity(
-    tableName = "code_group_items",
-    indices = [Index(value = ["code"], unique = true)]
-)
+@Entity(tableName = "code_group_items")
 data class CodeGroupItemEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val groupId: Long, // FK to CodeGroupEntity (the Owner)
-    @ColumnInfo(collate = ColumnInfo.NOCASE) val code: String // e.g. "101" / "MD-01" (case-insensitive unique)
+    val groupId: Long, // FK to CodeGroupEntity
+    val code: String // e.g. "101"
 )
 
 @Entity(tableName = "preset_medical_codes")

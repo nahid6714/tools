@@ -72,8 +72,7 @@ fun MedicalGroupManagerDialog(
     onCreateGroup: (name: String, description: String, codes: List<String>) -> Unit,
     onUpdateGroup: (id: Long, name: String, description: String, codes: List<String>) -> Unit,
     onDeleteGroup: (id: Long, name: String) -> Unit,
-    onAddPresetCode: (code: String, name: String, category: String) -> Unit,
-    onDeletePresetCode: (code: String) -> Unit = {}
+    onAddPresetCode: (code: String, name: String, category: String) -> Unit
 ) {
     var isAddingNewGroup by remember { mutableStateOf(false) }
     var editingGroupId by remember { mutableStateOf<Long?>(null) }
@@ -339,30 +338,12 @@ fun MedicalGroupManagerDialog(
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.padding(2.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(start = 8.dp, end = 2.dp, top = 2.dp, bottom = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "${p.code}${if (p.name.isNotBlank()) " (${p.name})" else ""}",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    IconButton(
-                                        onClick = { onDeletePresetCode(p.code) },
-                                        modifier = Modifier
-                                            .size(20.dp)
-                                            .padding(start = 2.dp)
-                                            .testTag("btn_delete_preset_${p.code}")
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "কোড মুছুন",
-                                            tint = Color(0xFFD32F2F),
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = "${p.code}${if (p.name.isNotBlank()) " (${p.name})" else ""}",
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
