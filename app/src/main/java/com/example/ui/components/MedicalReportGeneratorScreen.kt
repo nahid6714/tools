@@ -523,15 +523,27 @@ fun MedicalReportGeneratorScreen(
                     verticalAlignment = Alignment.Top
                 ) {
                     Column(modifier = Modifier.weight(1.3f)) {
+                        Text(
+                            text = "সিরিয়াল / আইডি",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 4.dp, start = 2.dp)
+                        )
                         OutlinedTextField(
                             value = newPatientId,
                             onValueChange = { newPatientId = it.uppercase(Locale.ROOT) },
-                            label = { Text("সিরিয়াল / আইডি (যেমন 15)", fontSize = 11.sp) },
+                            placeholder = { Text("যেমন: 15", fontSize = 12.sp, color = Color.Gray) },
+                            textStyle = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp),
+                                .height(46.dp),
                             singleLine = true,
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = DarkForestGreen,
+                                unfocusedBorderColor = Color(0xFFCFD8DC)
+                            )
                         )
                         if (previewFormattedId != null) {
                             Text(
@@ -544,91 +556,107 @@ fun MedicalReportGeneratorScreen(
                         }
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1.1f)
-                            .align(Alignment.Top)
-                    ) {
-                        OutlinedTextField(
-                            value = newCode,
-                            onValueChange = {
-                                newCode = it
-                                showManualCodeDropdown = true
-                            },
-                            label = { Text("কোড সিলেক্ট করুন", fontSize = 11.sp) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            singleLine = true,
-                            shape = RoundedCornerShape(8.dp),
-                            trailingIcon = {
-                                IconButton(onClick = { showManualCodeDropdown = !showManualCodeDropdown }) {
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDownward,
-                                        contentDescription = "কোড ড্রোপডাউন",
-                                        tint = DarkForestGreen
+                    Column(modifier = Modifier.weight(1.1f)) {
+                        Text(
+                            text = "কোড",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 4.dp, start = 2.dp)
+                        )
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = newCode,
+                                onValueChange = {
+                                    newCode = it
+                                    showManualCodeDropdown = true
+                                },
+                                placeholder = { Text("কোড সিলেক্ট করুন", fontSize = 11.5.sp, color = Color.Gray) },
+                                textStyle = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(46.dp),
+                                singleLine = true,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = DarkForestGreen,
+                                    unfocusedBorderColor = Color(0xFFCFD8DC)
+                                ),
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = { showManualCodeDropdown = !showManualCodeDropdown },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowDownward,
+                                            contentDescription = "কোড ড্রোপডাউন",
+                                            tint = DarkForestGreen,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            )
+
+                            DropdownMenu(
+                                expanded = showManualCodeDropdown,
+                                onDismissRequest = { showManualCodeDropdown = false },
+                                modifier = Modifier.fillMaxWidth(0.55f)
+                            ) {
+                                Text(
+                                    text = "ড্রোপডাউন থেকে কোড বেছে নিন:",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkForestGreen,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                                Divider()
+                                val displayCodes = availableCodeList
+
+                                displayCodes.forEach { codeOpt ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = codeOpt,
+                                                fontSize = 13.sp,
+                                                fontWeight = if (newCode.equals(codeOpt, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (newCode.equals(codeOpt, ignoreCase = true)) DarkForestGreen else Color.Unspecified
+                                            )
+                                        },
+                                        onClick = {
+                                            newCode = codeOpt
+                                            showManualCodeDropdown = false
+                                        }
                                     )
                                 }
-                            }
-                        )
-
-                        DropdownMenu(
-                            expanded = showManualCodeDropdown,
-                            onDismissRequest = { showManualCodeDropdown = false },
-                            modifier = Modifier.fillMaxWidth(0.55f)
-                        ) {
-                            Text(
-                                text = "ড্রোপডাউন থেকে কোড বেছে নিন:",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = DarkForestGreen,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                            Divider()
-                            val displayCodes = availableCodeList
-
-                            displayCodes.forEach { codeOpt ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = codeOpt,
-                                            fontSize = 13.sp,
-                                            fontWeight = if (newCode.equals(codeOpt, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (newCode.equals(codeOpt, ignoreCase = true)) DarkForestGreen else Color.Unspecified
-                                        )
-                                    },
-                                    onClick = {
-                                        newCode = codeOpt
-                                        showManualCodeDropdown = false
-                                    }
-                                )
                             }
                         }
                     }
 
-                    Button(
-                        onClick = {
-                            val formattedId = formatPatientId(newPatientId, reportDate, editableItems)
-                            if (formattedId.isNotBlank() && newCode.isNotBlank()) {
-                                onAddItem(formattedId, newCode)
-                                // Auto increment patient ID for quick next entry
-                                val digits = formattedId.takeLastWhile { it.isDigit() }
-                                if (digits.isNotEmpty()) {
-                                    val prefix = formattedId.dropLast(digits.length)
-                                    val nextNum = (digits.toLongOrNull() ?: 0L) + 1
-                                    newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
-                                } else {
-                                    newPatientId = ""
+                    Column {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(
+                            onClick = {
+                                val formattedId = formatPatientId(newPatientId, reportDate, editableItems)
+                                if (formattedId.isNotBlank() && newCode.isNotBlank()) {
+                                    onAddItem(formattedId, newCode)
+                                    // Auto increment patient ID for quick next entry
+                                    val digits = formattedId.takeLastWhile { it.isDigit() }
+                                    if (digits.isNotEmpty()) {
+                                        val prefix = formattedId.dropLast(digits.length)
+                                        val nextNum = (digits.toLongOrNull() ?: 0L) + 1
+                                        newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
+                                    } else {
+                                        newPatientId = ""
+                                    }
                                 }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen),
-                        modifier = Modifier
-                            .height(56.dp)
-                            .align(Alignment.Top),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "যোগ করুন")
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen),
+                            modifier = Modifier.height(46.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "যোগ করুন")
+                        }
                     }
                 }
 
@@ -1397,14 +1425,18 @@ private fun GroceryStyleItemRow(
             },
             modifier = Modifier
                 .weight(1.3f)
-                .height(48.dp)
+                .height(42.dp)
                 .padding(end = 4.dp),
             singleLine = true,
             textStyle = TextStyle(
-                fontSize = 11.5.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold
             ),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(8.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = DarkForestGreen,
+                unfocusedBorderColor = Color(0xFFCFD8DC)
+            )
         )
 
         // Code Input & Dropdown Selector (Unit Selection Style)
@@ -1416,7 +1448,7 @@ private fun GroceryStyleItemRow(
         ) {
             IconButton(
                 onClick = { cycleCode(false) },
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             ) {
                 Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous Code", tint = DarkForestGreen, modifier = Modifier.size(16.dp))
             }
@@ -1430,41 +1462,41 @@ private fun GroceryStyleItemRow(
                     onValueChange = { updatedCode -> onUpdate(item.patientId, updatedCode) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
+                        .height(42.dp),
                     singleLine = true,
                     textStyle = TextStyle(
-                        fontSize = 12.sp,
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkForestGreen,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Start
                     ),
                     placeholder = {
                         Text(
                             "-",
-                            fontSize = 12.sp,
+                            fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkForestGreen,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
+                            color = DarkForestGreen
                         )
                     },
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = DarkForestGreen,
+                        unfocusedBorderColor = Color(0xFFCFD8DC)
+                    ),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { showCodeDropdown = true },
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.ArrowDownward,
+                                contentDescription = "Select Preset Code",
+                                tint = DarkForestGreen,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
                 )
-
-                IconButton(
-                    onClick = { showCodeDropdown = true },
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 1.dp)
-                        .size(20.dp)
-                ) {
-                    Icon(
-                        Icons.Default.ArrowDownward,
-                        contentDescription = "Select Preset Code",
-                        tint = DarkForestGreen,
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
 
                 DropdownMenu(
                     expanded = showCodeDropdown,
@@ -1499,7 +1531,7 @@ private fun GroceryStyleItemRow(
 
             IconButton(
                 onClick = { cycleCode(true) },
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             ) {
                 Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next Code", tint = DarkForestGreen, modifier = Modifier.size(16.dp))
             }
