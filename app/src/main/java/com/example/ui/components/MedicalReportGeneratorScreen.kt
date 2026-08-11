@@ -73,6 +73,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -1078,6 +1079,13 @@ fun MedicalReportGeneratorScreen(
     if (showPresetCodeManagerDialog) {
         var newCodeInput by remember { mutableStateOf("") }
         var newNameInput by remember { mutableStateOf("") }
+        var nameDropdownExpanded by remember { mutableStateOf(false) }
+        var showAddNewNameDialog by remember { mutableStateOf(false) }
+        var customNewNameText by remember { mutableStateOf("") }
+
+        val existingNameList = remember(presetCodes) {
+            presetCodes.map { it.name.trim() }.filter { it.isNotBlank() }.distinct()
+        }
 
         AlertDialog(
             onDismissRequest = { showPresetCodeManagerDialog = false },
@@ -1115,13 +1123,92 @@ fun MedicalReportGeneratorScreen(
                             singleLine = true
                         )
 
-                        OutlinedTextField(
-                            value = newNameInput,
-                            onValueChange = { newNameInput = it },
-                            label = { Text("নাম (যেমন X-Ray)", fontSize = 11.sp) },
-                            modifier = Modifier.weight(1.2f),
-                            singleLine = true
-                        )
+                        // Dropdown Selector for Name
+                        Box(modifier = Modifier.weight(1.2f)) {
+                            OutlinedTextField(
+                                value = newNameInput,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("নাম", fontSize = 11.sp) },
+                                placeholder = { Text("সিলেক্ট করুন", fontSize = 11.sp) },
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Default.ArrowDownward,
+                                        contentDescription = "Select Name",
+                                        tint = DarkForestGreen,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = false,
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledTrailingIconColor = DarkForestGreen
+                                )
+                            )
+
+                            // Click overlay box
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable { nameDropdownExpanded = true }
+                            )
+
+                            DropdownMenu(
+                                expanded = nameDropdownExpanded,
+                                onDismissRequest = { nameDropdownExpanded = false },
+                                modifier = Modifier.fillMaxWidth(0.65f)
+                            ) {
+                                if (existingNameList.isNotEmpty()) {
+                                    existingNameList.forEach { nameOption ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = nameOption,
+                                                    fontSize = 12.5.sp,
+                                                    fontWeight = if (nameOption == newNameInput) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (nameOption == newNameInput) DarkForestGreen else Color.Unspecified
+                                                )
+                                            },
+                                            onClick = {
+                                                newNameInput = nameOption
+                                                nameDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                }
+
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.Add,
+                                                contentDescription = null,
+                                                tint = DarkForestGreen,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "＋ নতুন নাম যোগ করুন",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = DarkForestGreen
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        nameDropdownExpanded = false
+                                        customNewNameText = ""
+                                        showAddNewNameDialog = true
+                                    }
+                                )
+                            }
+                        }
 
                         Button(
                             onClick = {
@@ -1183,6 +1270,44 @@ fun MedicalReportGeneratorScreen(
                 }
             }
         )
+
+        if (showAddNewNameDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddNewNameDialog = false },
+                title = { Text("নতুন নাম যোগ করুন", fontWeight = FontWeight.Bold, fontSize = 15.sp) },
+                text = {
+                    Column {
+                        Text("নতুন নামের বিবরণ বা ডাক্তার/বিভাগের নাম লিখুন:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = customNewNameText,
+                            onValueChange = { customNewNameText = it },
+                            label = { Text("নাম (যেমন VC sir, X-Ray)", fontSize = 11.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (customNewNameText.isNotBlank()) {
+                                newNameInput = customNewNameText.trim()
+                                showAddNewNameDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
+                    ) {
+                        Text("সেট করুন")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAddNewNameDialog = false }) {
+                        Text("বাতিল")
+                    }
+                }
+            )
+        }
     }
 
 
