@@ -513,27 +513,42 @@ fun MedicalReportGeneratorScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val previewFormattedId = if (newPatientId.isNotBlank() && newPatientId.all { it.isDigit() }) {
+                    formatPatientId(newPatientId, reportDate, editableItems)
+                } else null
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
-                    val previewFormattedId = if (newPatientId.isNotBlank() && newPatientId.all { it.isDigit() }) {
-                        formatPatientId(newPatientId, reportDate, editableItems)
-                    } else null
+                    Column(modifier = Modifier.weight(1.3f)) {
+                        OutlinedTextField(
+                            value = newPatientId,
+                            onValueChange = { newPatientId = it.uppercase(Locale.ROOT) },
+                            label = { Text("সিরিয়াল / আইডি (যেমন 15)", fontSize = 11.sp) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            singleLine = true,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        if (previewFormattedId != null) {
+                            Text(
+                                text = "→ $previewFormattedId",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkForestGreen,
+                                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                            )
+                        }
+                    }
 
-                    OutlinedTextField(
-                        value = newPatientId,
-                        onValueChange = { newPatientId = it.uppercase(Locale.ROOT) },
-                        label = { Text("সিরিয়াল / আইডি (যেমন 15)", fontSize = 11.sp) },
-                        supportingText = if (previewFormattedId != null) {
-                            { Text("→ $previewFormattedId", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen) }
-                        } else null,
-                        modifier = Modifier.weight(1.3f),
-                        singleLine = true
-                    )
-
-                    Box(modifier = Modifier.weight(1.1f)) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1.1f)
+                            .align(Alignment.Top)
+                    ) {
                         OutlinedTextField(
                             value = newCode,
                             onValueChange = {
@@ -541,8 +556,11 @@ fun MedicalReportGeneratorScreen(
                                 showManualCodeDropdown = true
                             },
                             label = { Text("কোড সিলেক্ট করুন", fontSize = 11.sp) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
                             singleLine = true,
+                            shape = RoundedCornerShape(8.dp),
                             trailingIcon = {
                                 IconButton(onClick = { showManualCodeDropdown = !showManualCodeDropdown }) {
                                     Icon(
@@ -606,8 +624,10 @@ fun MedicalReportGeneratorScreen(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen),
-                        modifier = Modifier.height(54.dp),
-                        shape = RoundedCornerShape(10.dp)
+                        modifier = Modifier
+                            .height(56.dp)
+                            .align(Alignment.Top),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "যোগ করুন")
                     }
@@ -1119,8 +1139,11 @@ fun MedicalReportGeneratorScreen(
                             value = newCodeInput,
                             onValueChange = { newCodeInput = it },
                             label = { Text("কোড (যেমন 106, USG)", fontSize = 11.sp) },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            singleLine = true,
+                            shape = RoundedCornerShape(8.dp)
                         )
 
                         // Dropdown Selector for Name
@@ -1139,9 +1162,12 @@ fun MedicalReportGeneratorScreen(
                                         modifier = Modifier.size(16.dp)
                                     )
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
                                 enabled = false,
                                 singleLine = true,
+                                shape = RoundedCornerShape(8.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     disabledTextColor = MaterialTheme.colorScheme.onSurface,
                                     disabledBorderColor = MaterialTheme.colorScheme.outline,
@@ -1372,13 +1398,14 @@ private fun GroceryStyleItemRow(
             },
             modifier = Modifier
                 .weight(1.3f)
+                .height(48.dp)
                 .padding(end = 4.dp),
             singleLine = true,
             textStyle = TextStyle(
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.SemiBold
             ),
-            shape = RoundedCornerShape(6.dp)
+            shape = RoundedCornerShape(8.dp)
         )
 
         // Code Input & Dropdown Selector (Unit Selection Style)
@@ -1402,7 +1429,9 @@ private fun GroceryStyleItemRow(
                 OutlinedTextField(
                     value = item.code,
                     onValueChange = { updatedCode -> onUpdate(item.patientId, updatedCode) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
                     singleLine = true,
                     textStyle = TextStyle(
                         fontSize = 12.sp,
@@ -1420,7 +1449,7 @@ private fun GroceryStyleItemRow(
                             modifier = Modifier.fillMaxWidth()
                         )
                     },
-                    shape = RoundedCornerShape(6.dp)
+                    shape = RoundedCornerShape(8.dp)
                 )
 
                 IconButton(
