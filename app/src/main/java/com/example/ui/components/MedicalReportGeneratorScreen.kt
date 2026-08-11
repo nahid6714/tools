@@ -585,8 +585,7 @@ fun MedicalReportGeneratorScreen(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                             Divider()
-                            val filteredCodes = if (newCode.isBlank()) availableCodeList else availableCodeList.filter { it.contains(newCode, ignoreCase = true) }
-                            val displayCodes = if (filteredCodes.isEmpty()) availableCodeList else filteredCodes
+                            val displayCodes = availableCodeList
 
                             displayCodes.forEach { codeOpt ->
                                 DropdownMenuItem(
