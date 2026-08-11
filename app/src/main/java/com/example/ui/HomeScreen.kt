@@ -121,8 +121,7 @@ fun HomeScreen(
     val customEndDate by medicalViewModel.customEndDate.collectAsStateWithLifecycle()
     val selectedCodeFilter by medicalViewModel.selectedCodeFilter.collectAsStateWithLifecycle()
     val selectedGroupFilter by medicalViewModel.selectedGroupFilter.collectAsStateWithLifecycle()
-
-    var showGroupManagerDialog by remember { mutableStateOf(false) }
+    val selectedOwnerFilter by medicalViewModel.selectedOwnerFilter.collectAsStateWithLifecycle()
 
     val isEn = appLanguage == "en"
 
@@ -245,18 +244,7 @@ fun HomeScreen(
                             }
                         },
                         actions = {
-                            if (!showGlobalSettings && selectedTool == "medical_work") {
-                                IconButton(
-                                    onClick = { showGroupManagerDialog = true },
-                                    modifier = Modifier.testTag("group_manager_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.FolderSpecial,
-                                        contentDescription = "কোড গ্রুপ ম্যানেজার",
-                                        tint = Color.White
-                                    )
-                                }
-                            } else if (!showGlobalSettings && selectedTool == null) {
+                            if (!showGlobalSettings && selectedTool == null) {
                                 IconButton(
                                     onClick = { showGlobalSettings = true },
                                     modifier = Modifier.testTag("global_settings_button")
@@ -462,12 +450,14 @@ fun HomeScreen(
                                     customEndDate = customEndDate,
                                     selectedCodeFilter = selectedCodeFilter,
                                     selectedGroupFilter = selectedGroupFilter,
+                                    selectedOwnerFilter = selectedOwnerFilter,
                                     onSelectDateFilter = { medicalViewModel.setDateFilterType(it) },
                                     onSelectSpecificDate = { medicalViewModel.setSelectedSpecificDate(it) },
                                     onSelectCustomDateRange = { s, e -> medicalViewModel.setCustomDateRange(s, e) },
                                     onSelectCodeFilter = { medicalViewModel.setSelectedCodeFilter(it) },
                                     onSelectGroupFilter = { medicalViewModel.setSelectedGroupFilter(it) },
-                                    onOpenGroupManager = { showGroupManagerDialog = true }
+                                    onSelectOwnerFilter = { medicalViewModel.setSelectedOwnerFilter(it) },
+                                    onResetAllFilters = { medicalViewModel.resetAllFilters() }
                                 )
                             }
                         }
@@ -771,19 +761,6 @@ fun HomeScreen(
                     position = pos
                 )
             }
-        )
-    }
-
-    if (showGroupManagerDialog) {
-        MedicalGroupManagerDialog(
-            groups = codeGroups,
-            groupItems = groupItems,
-            presetCodes = presetCodes,
-            onDismiss = { showGroupManagerDialog = false },
-            onCreateGroup = { name, desc, codes -> medicalViewModel.createCodeGroup(name, desc, codes) },
-            onUpdateGroup = { id, name, desc, codes -> medicalViewModel.updateCodeGroup(id, name, desc, codes) },
-            onDeleteGroup = { id, name -> medicalViewModel.deleteCodeGroup(id, name) },
-            onAddPresetCode = { code, name, cat -> medicalViewModel.addPresetCode(code, name, cat) }
         )
     }
 

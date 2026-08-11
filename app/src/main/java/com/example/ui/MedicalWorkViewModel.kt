@@ -65,7 +65,8 @@ private data class DateFilterState(
 
 private data class CategoryFilterState(
     val codeFilter: String?,
-    val groupFilter: Long?
+    val groupFilter: Long?,
+    val ownerFilter: String?
 )
 
 class MedicalWorkViewModel(application: Application) : AndroidViewModel(application) {
@@ -113,6 +114,9 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
     private val _selectedGroupFilter = MutableStateFlow<Long?>(null) // null = all, groupId for Nahid, etc.
     val selectedGroupFilter: StateFlow<Long?> = _selectedGroupFilter.asStateFlow()
 
+    private val _selectedOwnerFilter = MutableStateFlow<String?>(null) // null = all owners
+    val selectedOwnerFilter: StateFlow<String?> = _selectedOwnerFilter.asStateFlow()
+
     private val _analysisSummary = MutableStateFlow(AnalysisSummary())
     val analysisSummary: StateFlow<AnalysisSummary> = _analysisSummary.asStateFlow()
 
@@ -144,22 +148,29 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
 
         val categoryFiltersFlow = combine(
             _selectedCodeFilter,
-            _selectedGroupFilter
-        ) { codeFilter, groupFilter ->
-            CategoryFilterState(codeFilter, groupFilter)
+            _selectedGroupFilter,
+            _selectedOwnerFilter
+        ) { codeFilter, groupFilter, ownerFilter ->
+            CategoryFilterState(codeFilter, groupFilter, ownerFilter)
+        }
+
+        val allFiltersFlow = combine(dateFiltersFlow, categoryFiltersFlow) { dateFilters, catFilters ->
+            dateFilters to catFilters
         }
 
         combine(
             allRecords,
             allCodeGroups,
             allGroupItems,
-            dateFiltersFlow,
-            categoryFiltersFlow
-        ) { records, groups, groupItems, dateFilters, catFilters ->
+            allPresetCodes,
+            allFiltersFlow
+        ) { records, groups, groupItems, presetCodes, filters ->
+            val dateFilters = filters.first
+            val catFilters = filters.second
             computeAnalysisSummary(
-                records, groups, groupItems,
+                records, groups, groupItems, presetCodes,
                 dateFilters.dateFilter, dateFilters.specDate, dateFilters.startD, dateFilters.endD,
-                catFilters.codeFilter, catFilters.groupFilter
+                catFilters.codeFilter, catFilters.groupFilter, catFilters.ownerFilter
             )
         }.onEach { summary ->
             _analysisSummary.value = summary
@@ -351,6 +362,10 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         _customEndDate.value = endDate
     }
 
+    fun setSelectedOwnerFilter(owner: String?) {
+        _selectedOwnerFilter.value = owner
+    }
+
     fun setSelectedCodeFilter(code: String?) {
         _selectedCodeFilter.value = code
         if (code != null) {
@@ -363,6 +378,13 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         if (groupId != null) {
             _selectedCodeFilter.value = null // reset individual code if group selected
         }
+    }
+
+    fun resetAllFilters() {
+        _dateFilterType.value = DateFilterType.TODAY
+        _selectedCodeFilter.value = null
+        _selectedGroupFilter.value = null
+        _selectedOwnerFilter.value = null
     }
 
     // Group Management Actions
@@ -412,12 +434,14 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         records: List<MedicalRecordEntity>,
         groups: List<CodeGroupEntity>,
         groupItems: List<CodeGroupItemEntity>,
+        presetCodes: List<PresetMedicalCodeEntity>,
         dateFilter: DateFilterType,
         specDate: String,
         startD: String,
         endD: String,
         codeFilter: String?,
-        groupFilter: Long?
+        groupFilter: Long?,
+        ownerFilter: String?
     ): AnalysisSummary {
         // 1. Date Filtering
         val (startDate, endDate) = calculateDateBounds(dateFilter, specDate, startD, endD)
@@ -425,28 +449,43 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
             record.date in startDate..endDate
         }
 
-        // 2. Code / Group Filtering
-        val targetCodes = mutableSetOf<String>()
-        var filterDesc = ""
+        // 2. Code / Group / Owner Filtering
+        var filteredRecords = dateFilteredRecords
+        val filterDescs = mutableListOf<String>()
 
         if (groupFilter != null) {
             val selectedGroup = groups.find { it.id == groupFilter }
             val groupCodes = groupItems.filter { it.groupId == groupFilter }.map { it.code }
-            targetCodes.addAll(groupCodes)
+            filteredRecords = filteredRecords.filter { it.code in groupCodes }
             val groupName = selectedGroup?.groupName ?: "গ্রুপ"
-            filterDesc = "গ্রুপ: $groupName (কোড: ${groupCodes.joinToString(", ")})"
-        } else if (!codeFilter.isNullOrBlank()) {
-            targetCodes.add(codeFilter)
-            filterDesc = "কোড: $codeFilter"
-        } else {
-            filterDesc = "সব কোড"
+            filterDescs.add("গ্রুপ: $groupName")
         }
 
-        val finalFilteredRecords = if (targetCodes.isNotEmpty()) {
-            dateFilteredRecords.filter { record -> record.code in targetCodes }
-        } else {
-            dateFilteredRecords
+        if (!ownerFilter.isNullOrBlank()) {
+            val codesForOwner = presetCodes
+                .filter { it.name.equals(ownerFilter, ignoreCase = true) }
+                .map { it.code }
+                .toSet()
+            if (codesForOwner.isNotEmpty()) {
+                filteredRecords = filteredRecords.filter { it.code in codesForOwner }
+            } else {
+                filteredRecords = filteredRecords.filter { getCodeNameFor(it.code).equals(ownerFilter, ignoreCase = true) }
+            }
+            filterDescs.add("অনার: $ownerFilter")
         }
+
+        if (!codeFilter.isNullOrBlank()) {
+            filteredRecords = filteredRecords.filter { it.code.equals(codeFilter, ignoreCase = true) }
+            filterDescs.add("কোড: $codeFilter")
+        }
+
+        if (filterDescs.isEmpty()) {
+            filterDescs.add("সব কোড")
+        }
+
+        val filterDesc = filterDescs.joinToString(" | ")
+
+        val finalFilteredRecords = filteredRecords
 
         // 3. Compute Date Breakdown
         val dateMap = finalFilteredRecords.groupBy { it.date }

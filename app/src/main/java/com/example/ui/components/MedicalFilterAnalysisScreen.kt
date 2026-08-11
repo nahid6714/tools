@@ -22,15 +22,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderSpecial
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -84,21 +91,24 @@ import java.util.Locale
 @Composable
 fun MedicalFilterAnalysisScreen(
     summary: AnalysisSummary,
-    codeGroups: List<CodeGroupEntity>,
-    groupItems: List<CodeGroupItemEntity>,
+    codeGroups: List<CodeGroupEntity> = emptyList(),
+    groupItems: List<CodeGroupItemEntity> = emptyList(),
     presetCodes: List<PresetMedicalCodeEntity>,
     activeDateFilter: DateFilterType,
     selectedSpecificDate: String,
     customStartDate: String,
     customEndDate: String,
     selectedCodeFilter: String?,
-    selectedGroupFilter: Long?,
+    selectedGroupFilter: Long? = null,
+    selectedOwnerFilter: String? = null,
     onSelectDateFilter: (DateFilterType) -> Unit,
     onSelectSpecificDate: (String) -> Unit,
     onSelectCustomDateRange: (String, String) -> Unit,
     onSelectCodeFilter: (String?) -> Unit,
-    onSelectGroupFilter: (Long?) -> Unit,
-    onOpenGroupManager: () -> Unit,
+    onSelectGroupFilter: (Long?) -> Unit = {},
+    onSelectOwnerFilter: (String?) -> Unit = {},
+    onResetAllFilters: () -> Unit = {},
+    onOpenGroupManager: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -188,15 +198,11 @@ fun MedicalFilterAnalysisScreen(
                                 color = Color.White
                             )
                             Text(
-                                text = "তারিখ ও কোড গ্রুপ অনুযায়ী কাজের পরিসংখ্যান",
+                                text = "তারিখ ও কোড অনুযায়ী কাজের পরিসংখ্যান",
                                 fontSize = 12.sp,
                                 color = Color(0xFFE0E0E0)
                             )
                         }
-                    }
-
-                    IconButton(onClick = onOpenGroupManager) {
-                        Icon(Icons.Default.FolderSpecial, contentDescription = "Group Manager", tint = Color.White)
                     }
                 }
 
@@ -244,205 +250,425 @@ fun MedicalFilterAnalysisScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Date Filter Chips
+        // Consolidated Dropdown Filters Section Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "১. তারিখ অনুযায়ী ফিল্টার (Date Filter):",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = ForestGreenText
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    DateFilterType.values().forEach { filter ->
-                        val isSelected = activeDateFilter == filter
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { onSelectDateFilter(filter) },
-                            label = { Text(filter.labelBn, fontSize = 12.sp) },
-                            leadingIcon = if (isSelected) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = DarkForestGreen,
-                                selectedLabelColor = Color.White
-                            ),
-                            modifier = Modifier.testTag("filter_date_${filter.name}")
-                        )
-                    }
-                }
-
-                if (activeDateFilter == DateFilterType.SPECIFIC_DATE) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        onClick = showSpecificDatePicker,
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("নির্দিষ্ট তারিখ নির্বাচন করুন:", fontSize = 12.sp)
-                            Text(selectedSpecificDate, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = DarkForestGreen)
-                        }
-                    }
-                }
-
-                if (activeDateFilter == DateFilterType.CUSTOM_RANGE) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            onClick = showStartDatePicker,
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text("শুরু:", fontSize = 10.sp)
-                                Text(customStartDate, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = DarkForestGreen)
-                            }
-                        }
-                        Surface(
-                            onClick = showEndDatePicker,
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text("শেষ:", fontSize = 10.sp)
-                                Text(customEndDate, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = DarkForestGreen)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Code / Group Filter Chips (Group/Folder System)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.FilterList, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = null,
+                            tint = DarkForestGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "২. কোড বা গ্রুপ অনুযায়ী ফিল্টার (Code Group):",
+                            text = "ফিল্টার সিস্টেম (Dropdown Filters)",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = 15.sp,
                             color = ForestGreenText
                         )
                     }
 
-                    TextButton(onClick = onOpenGroupManager) {
-                        Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("গ্রুপ তৈরি/সম্পাদনা", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (activeDateFilter != DateFilterType.TODAY || selectedCodeFilter != null || !selectedOwnerFilter.isNullOrBlank()) {
+                            TextButton(
+                                onClick = onResetAllFilters,
+                                modifier = Modifier.testTag("reset_filters_btn")
+                            ) {
+                                Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("রিসেট", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Group Filters First (e.g. "Nahid" group)
-                Text("কোড গ্রুপ / ফোল্ডারসমূহ (Code Groups):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(4.dp))
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // All Codes Chip
-                    val isAllSelected = selectedGroupFilter == null && selectedCodeFilter == null
-                    FilterChip(
-                        selected = isAllSelected,
-                        onClick = {
-                            onSelectGroupFilter(null)
-                            onSelectCodeFilter(null)
-                        },
-                        label = { Text("সব কোড (All)", fontSize = 12.sp) },
-                        leadingIcon = if (isAllSelected) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = DarkForestGreen,
-                            selectedLabelColor = Color.White
-                        )
+                // 1. Date Filter Dropdown
+                var dateDropdownExpanded by remember { mutableStateOf(false) }
+                Column {
+                    Text(
+                        text = "১. তারিখ অনুযায়ী ফিল্টার (Date Filter):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Surface(
+                            onClick = { dateDropdownExpanded = true },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFCFD8DC)),
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("date_filter_dropdown")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "${activeDateFilter.labelBn} (${activeDateFilter.labelEn})",
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                                Icon(
+                                    imageVector = if (dateDropdownExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    tint = DarkForestGreen
+                                )
+                            }
+                        }
 
-                    // Groups (e.g. Nahid)
-                    codeGroups.forEach { group ->
-                        val isGroupSelected = selectedGroupFilter == group.id
-                        val codesInGroup = groupItems.filter { it.groupId == group.id }.map { it.code }
-                        FilterChip(
-                            selected = isGroupSelected,
-                            onClick = { onSelectGroupFilter(group.id) },
-                            label = { Text("${group.groupName} (${codesInGroup.size} কোড)", fontSize = 12.sp) },
-                            leadingIcon = if (isGroupSelected) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF1565C0),
-                                selectedLabelColor = Color.White
-                            ),
-                            modifier = Modifier.testTag("filter_group_${group.groupName}")
-                        )
+                        DropdownMenu(
+                            expanded = dateDropdownExpanded,
+                            onDismissRequest = { dateDropdownExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.85f)
+                        ) {
+                            DateFilterType.values().forEach { filter ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("${filter.labelBn} (${filter.labelEn})", fontSize = 13.sp)
+                                            if (activeDateFilter == filter) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelectDateFilter(filter)
+                                        dateDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (activeDateFilter == DateFilterType.SPECIFIC_DATE) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            onClick = showSpecificDatePicker,
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("নির্দিষ্ট তারিখ পছন্দ করুন:", fontSize = 12.sp)
+                                Text(selectedSpecificDate, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = DarkForestGreen)
+                            }
+                        }
+                    }
+
+                    if (activeDateFilter == DateFilterType.CUSTOM_RANGE) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                onClick = showStartDatePicker,
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text("শুরু:", fontSize = 10.sp)
+                                    Text(customStartDate, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = DarkForestGreen)
+                                }
+                            }
+                            Surface(
+                                onClick = showEndDatePicker,
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text("শেষ:", fontSize = 10.sp)
+                                    Text(customEndDate, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = DarkForestGreen)
+                                }
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Individual Preset Codes
-                Text("নির্দিষ্ট একটি কোড (Individual Code):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(4.dp))
+                // 2. Code Owner / Name Filter Dropdown
+                var ownerDropdownExpanded by remember { mutableStateOf(false) }
+                val availableOwners = remember(presetCodes) {
+                    presetCodes.map { it.name.trim() }.filter { it.isNotBlank() }.distinct().sorted()
+                }
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    presetCodes.take(12).forEach { p ->
-                        val isCodeSelected = selectedCodeFilter == p.code && selectedGroupFilter == null
-                        FilterChip(
-                            selected = isCodeSelected,
-                            onClick = { onSelectCodeFilter(p.code) },
-                            label = { Text(p.code, fontSize = 12.sp) },
-                            leadingIcon = if (isCodeSelected) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = DarkForestGreen,
-                                selectedLabelColor = Color.White
-                            ),
-                            modifier = Modifier.testTag("filter_code_${p.code}")
-                        )
+                Column {
+                    Text(
+                        text = "২. কোড অনার / নাম অনুযায়ী ফিল্টার (Code Owner Filter):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Surface(
+                            onClick = { ownerDropdownExpanded = true },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFCFD8DC)),
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("owner_filter_dropdown")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Person, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = selectedOwnerFilter ?: "সব অনার / নাম (All Owners)",
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp,
+                                        color = if (selectedOwnerFilter != null) DarkForestGreen else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (selectedOwnerFilter != null) {
+                                        IconButton(
+                                            onClick = { onSelectOwnerFilter(null) },
+                                            modifier = Modifier.size(20.dp)
+                                        ) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear Owner", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                        }
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                    Icon(
+                                        imageVector = if (ownerDropdownExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = DarkForestGreen
+                                    )
+                                }
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = ownerDropdownExpanded,
+                            onDismissRequest = { ownerDropdownExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.85f)
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("সব অনার / নাম (All Owners)", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        if (selectedOwnerFilter == null) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    onSelectOwnerFilter(null)
+                                    ownerDropdownExpanded = false
+                                }
+                            )
+
+                            availableOwners.forEach { ownerName ->
+                                val count = presetCodes.count { it.name.equals(ownerName, ignoreCase = true) }
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "$ownerName (${BengaliUtils.toBengaliDigits(count.toString())} টি কোড)",
+                                                fontSize = 13.sp
+                                            )
+                                            if (selectedOwnerFilter == ownerName) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelectOwnerFilter(ownerName)
+                                        ownerDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 3. Code Filter Dropdown
+                var codeDropdownExpanded by remember { mutableStateOf(false) }
+
+                val filteredPresetCodes = remember(presetCodes, selectedOwnerFilter) {
+                    if (!selectedOwnerFilter.isNullOrBlank()) {
+                        presetCodes.filter { it.name.equals(selectedOwnerFilter, ignoreCase = true) }
+                    } else {
+                        presetCodes
+                    }
+                }
+
+                val availableCodesList = remember(filteredPresetCodes, summary.records, selectedOwnerFilter) {
+                    val codeMap = mutableMapOf<String, String>()
+                    filteredPresetCodes.forEach { codeMap[it.code] = it.name }
+                    if (selectedOwnerFilter.isNullOrBlank()) {
+                        summary.records.forEach { record ->
+                            if (!codeMap.containsKey(record.code)) {
+                                codeMap[record.code] = ""
+                            }
+                        }
+                    }
+                    codeMap.entries.toList().sortedBy { it.key }
+                }
+
+                Column {
+                    Text(
+                        text = "৩. কোড অনুযায়ী ফিল্টার (Code Filter):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Surface(
+                            onClick = { codeDropdownExpanded = true },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFCFD8DC)),
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("code_filter_dropdown")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Code, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    val codeLabel = if (selectedCodeFilter != null) {
+                                        val codeOwner = presetCodes.find { it.code.equals(selectedCodeFilter, ignoreCase = true) }?.name
+                                        if (!codeOwner.isNullOrBlank()) "$selectedCodeFilter ($codeOwner)" else selectedCodeFilter!!
+                                    } else {
+                                        "সব কোড (All Codes)"
+                                    }
+                                    Text(
+                                        text = codeLabel,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp,
+                                        color = if (selectedCodeFilter != null) DarkForestGreen else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (selectedCodeFilter != null) {
+                                        IconButton(
+                                            onClick = { onSelectCodeFilter(null) },
+                                            modifier = Modifier.size(20.dp)
+                                        ) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear Code", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                        }
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                    Icon(
+                                        imageVector = if (codeDropdownExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = DarkForestGreen
+                                    )
+                                }
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = codeDropdownExpanded,
+                            onDismissRequest = { codeDropdownExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.85f)
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("সব কোড (All Codes)", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        if (selectedCodeFilter == null) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    onSelectCodeFilter(null)
+                                    codeDropdownExpanded = false
+                                }
+                            )
+
+                            availableCodesList.forEach { entry ->
+                                val codeStr = entry.key
+                                val ownerStr = entry.value
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = if (ownerStr.isNotBlank()) "$codeStr — $ownerStr" else codeStr,
+                                                fontSize = 13.sp
+                                            )
+                                            if (selectedCodeFilter == codeStr) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelectCodeFilter(codeStr)
+                                        codeDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
