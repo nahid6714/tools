@@ -88,6 +88,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -1247,7 +1248,12 @@ private fun GroceryStyleItemRow(
             modifier = Modifier
                 .weight(1.3f)
                 .padding(end = 4.dp),
-            singleLine = true
+            singleLine = true,
+            textStyle = TextStyle(
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold
+            ),
+            shape = RoundedCornerShape(6.dp)
         )
 
         // Code Input & Dropdown Selector (Unit Selection Style)
@@ -1259,38 +1265,60 @@ private fun GroceryStyleItemRow(
         ) {
             IconButton(
                 onClick = { cycleCode(false) },
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(22.dp)
             ) {
                 Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous Code", tint = DarkForestGreen, modifier = Modifier.size(16.dp))
             }
 
-            Box(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
                 OutlinedTextField(
                     value = item.code,
                     onValueChange = { updatedCode -> onUpdate(item.patientId, updatedCode) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { showCodeDropdown = true },
-                            modifier = Modifier.size(20.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.ArrowDownward,
-                                contentDescription = "Select Preset Code",
-                                tint = DarkForestGreen,
-                                modifier = Modifier.size(12.dp)
-                            )
-                        }
-                    }
+                    textStyle = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkForestGreen,
+                        textAlign = TextAlign.Center
+                    ),
+                    placeholder = {
+                        Text(
+                            "-",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkForestGreen,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    shape = RoundedCornerShape(6.dp)
                 )
+
+                IconButton(
+                    onClick = { showCodeDropdown = true },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 1.dp)
+                        .size(20.dp)
+                ) {
+                    Icon(
+                        Icons.Default.ArrowDownward,
+                        contentDescription = "Select Preset Code",
+                        tint = DarkForestGreen,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
 
                 DropdownMenu(
                     expanded = showCodeDropdown,
                     onDismissRequest = { showCodeDropdown = false }
                 ) {
                     Text(
-                        text = "কোড বেছে নিন (যেমন কেজি/গ্রাম সিলেক্ট):",
+                        text = "কোড বেছে নিন:",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkForestGreen,
@@ -1318,7 +1346,7 @@ private fun GroceryStyleItemRow(
 
             IconButton(
                 onClick = { cycleCode(true) },
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(22.dp)
             ) {
                 Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next Code", tint = DarkForestGreen, modifier = Modifier.size(16.dp))
             }
