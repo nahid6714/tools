@@ -8,7 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
+import android.graphics.Canvas as AndroidCanvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
@@ -74,7 +74,7 @@ import androidx.compose.material.icons.filled.FormatAlignCenter
 import androidx.compose.material.icons.filled.FormatAlignLeft
 import androidx.compose.material.icons.filled.FormatAlignRight
 import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Image as FilledImageIcon
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -2636,7 +2636,7 @@ private fun processSingleCardBitmap(
         ).toFloat().coerceAtLeast(100f)
 
         val croppedBitmap = Bitmap.createBitmap(targetWidth.toInt(), targetHeight.toInt(), Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(croppedBitmap)
+        val canvas = AndroidCanvas(croppedBitmap)
 
         val matrix = Matrix()
         val srcPoints = floatArrayOf(
@@ -2671,7 +2671,7 @@ private fun processSingleCardBitmap(
         }
 
         val finalBitmap = Bitmap.createBitmap(rotatedBitmap.width, rotatedBitmap.height, Bitmap.Config.ARGB_8888)
-        val filterCanvas = Canvas(finalBitmap)
+        val filterCanvas = AndroidCanvas(finalBitmap)
 
         val colorMatrix = ColorMatrix()
 
@@ -2969,7 +2969,7 @@ private suspend fun renderAndSaveCardLayout(
         val outHeight = 1697 // standard ~A4 aspect ratio
 
         val bitmap = Bitmap.createBitmap(outWidth, outHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
+        val canvas = AndroidCanvas(bitmap)
         canvas.drawColor(android.graphics.Color.WHITE)
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -3140,7 +3140,7 @@ private suspend fun renderPdfPagesToImageUris(context: Context, pdfUri: Uri): Li
                 val width = (page.width * 2.0).toInt().coerceAtLeast(800)
                 val height = (page.height * 2.0).toInt().coerceAtLeast(1000)
                 val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(bitmap)
+                val canvas = AndroidCanvas(bitmap)
                 canvas.drawColor(android.graphics.Color.WHITE)
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 page.close()
@@ -3192,7 +3192,7 @@ private suspend fun renderDocumentBitmap(
         ).toFloat().coerceAtLeast(100f)
 
         val croppedBitmap = Bitmap.createBitmap(targetWidth.toInt(), targetHeight.toInt(), Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(croppedBitmap)
+        val canvas = AndroidCanvas(croppedBitmap)
 
         val matrix = Matrix()
         val srcPoints = floatArrayOf(
@@ -3227,7 +3227,7 @@ private suspend fun renderDocumentBitmap(
         }
 
         val finalBitmap = Bitmap.createBitmap(rotatedBitmap.width, rotatedBitmap.height, Bitmap.Config.ARGB_8888)
-        val filterCanvas = Canvas(finalBitmap)
+        val filterCanvas = AndroidCanvas(finalBitmap)
 
         val colorMatrix = ColorMatrix()
         when (filterMode) {
