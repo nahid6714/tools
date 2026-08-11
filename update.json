@@ -1,7 +1,7 @@
 {
-  "versionCode": 113,
-  "versionName": "1.0.113",
-  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.113/app-release.apk",
-  "releaseNotes": "• Add drag-to-reorder for quick presets and bill items\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
+  "versionCode": 130,
+  "versionName": "1.0.130",
+  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.130/app-release.apk",
+  "releaseNotes": "• fix: revert version metadata and remove code filter\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
   "minSupportedVersion": 1
 }
