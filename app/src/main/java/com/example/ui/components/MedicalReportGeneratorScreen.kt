@@ -112,12 +112,68 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+fun computeDefaultPatientIdPrefix(dateStr: String): String {
+    return try {
+        if (dateStr.contains("-")) {
+            val parts = dateStr.split("-")
+            if (parts.size >= 2) {
+                val year2 = parts[0].takeLast(2)
+                val month2 = parts[1].padStart(2, '0')
+                "AB$year2$month2"
+            } else {
+                val y = SimpleDateFormat("yy", Locale.getDefault()).format(Date())
+                val m = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
+                "AB$y$m"
+            }
+        } else {
+            val y = SimpleDateFormat("yy", Locale.getDefault()).format(Date())
+            val m = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
+            "AB$y$m"
+        }
+    } catch (e: Exception) {
+        val y = SimpleDateFormat("yy", Locale.getDefault()).format(Date())
+        val m = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
+        "AB$y$m"
+    }
+}
+
+fun formatPatientId(rawId: String, dateStr: String, existingItems: List<ScannedMedicalItem> = emptyList()): String {
+    val trimmed = rawId.trim().uppercase(Locale.ROOT)
+    if (trimmed.isEmpty()) return ""
+
+    // Check if input is purely numeric (e.g., "1", "15", "001", "123")
+    if (trimmed.all { it.isDigit() }) {
+        // Find existing prefix in previous items if any (e.g. "AB2608")
+        val existingPrefix = existingItems.asReversed().firstNotNullOfOrNull { item ->
+            val digits = item.patientId.takeLastWhile { it.isDigit() }
+            if (digits.isNotEmpty()) {
+                val p = item.patientId.dropLast(digits.length)
+                if (p.isNotBlank()) p else null
+            } else null
+        }
+
+        val prefixToUse = existingPrefix ?: computeDefaultPatientIdPrefix(dateStr)
+
+        val paddedNum = if (trimmed.length < 3) {
+            String.format(Locale.US, "%03d", trimmed.toIntOrNull() ?: 0)
+        } else {
+            trimmed
+        }
+
+        return "$prefixToUse$paddedNum"
+    }
+
+    return trimmed
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MedicalReportGeneratorScreen(
     reportDate: String,
     editableItems: List<ScannedMedicalItem>,
     presetCodes: List<PresetMedicalCodeEntity>,
+    owners: List<com.example.data.CodeOwnerEntity> = emptyList(),
+    ownerships: List<com.example.data.CodeOwnershipEntity> = emptyList(),
     isScanning: Boolean,
     scanStatusText: String,
     onDateChange: (String) -> Unit,
@@ -134,6 +190,9 @@ fun MedicalReportGeneratorScreen(
     onParseRawText: ((rawText: String) -> Unit)? = null,
     onAddPresetCode: ((code: String, name: String, category: String) -> Unit)? = null,
     onDeletePresetCode: ((code: String) -> Unit)? = null,
+    onAssignCodeOwner: ((code: String, ownerId: Long, onComplete: (Boolean, String) -> Unit) -> Unit)? = null,
+    onAddNewOwner: ((name: String, onComplete: (Boolean, String) -> Unit) -> Unit)? = null,
+    onOpenOwnerManager: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -150,6 +209,16 @@ fun MedicalReportGeneratorScreen(
     var rawInputText by remember { mutableStateOf("") }
     var batchTargetCode by remember { mutableStateOf("") }
     var sequencePrefix by remember { mutableStateOf("") }
+    var showManualCodeDropdown by remember { mutableStateOf(false) }
+
+    // Owner Assignment Prompt States for Brand New Code
+    var showOwnerSelectionPrompt by remember { mutableStateOf(false) }
+    var pendingPatientIdForAdd by remember { mutableStateOf("") }
+    var pendingCodeForAdd by remember { mutableStateOf("") }
+    var showNewOwnerInlineDialog by remember { mutableStateOf(false) }
+    var newInlineOwnerName by remember { mutableStateOf("") }
+    var ownerSelectExpanded by remember { mutableStateOf(false) }
+    var selectedOwnerForNewCode by remember { mutableStateOf<com.example.data.CodeOwnerEntity?>(null) }
 
     // List of active codes available for selection & cycling
     val availableCodeList = remember(presetCodes, editableItems) {
@@ -460,34 +529,102 @@ fun MedicalReportGeneratorScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val previewFormattedId = if (newPatientId.isNotBlank() && newPatientId.all { it.isDigit() }) {
+                        formatPatientId(newPatientId, reportDate, editableItems)
+                    } else null
+
                     OutlinedTextField(
                         value = newPatientId,
                         onValueChange = { newPatientId = it.uppercase(Locale.ROOT) },
-                        label = { Text("আইডি (যেমন AB2608001)", fontSize = 11.sp) },
+                        label = { Text("সিরিয়াল / আইডি (যেমন 15)", fontSize = 11.sp) },
+                        supportingText = if (previewFormattedId != null) {
+                            { Text("→ $previewFormattedId", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen) }
+                        } else null,
                         modifier = Modifier.weight(1.3f),
                         singleLine = true
                     )
 
-                    OutlinedTextField(
-                        value = newCode,
-                        onValueChange = { newCode = it },
-                        label = { Text("কোড (101)", fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
+                    Box(modifier = Modifier.weight(1.1f)) {
+                        OutlinedTextField(
+                            value = newCode,
+                            onValueChange = {
+                                newCode = it
+                                showManualCodeDropdown = true
+                            },
+                            label = { Text("কোড সিলেক্ট করুন", fontSize = 11.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            trailingIcon = {
+                                IconButton(onClick = { showManualCodeDropdown = !showManualCodeDropdown }) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDownward,
+                                        contentDescription = "কোড ড্রোপডাউন",
+                                        tint = DarkForestGreen
+                                    )
+                                }
+                            }
+                        )
+
+                        DropdownMenu(
+                            expanded = showManualCodeDropdown,
+                            onDismissRequest = { showManualCodeDropdown = false },
+                            modifier = Modifier.fillMaxWidth(0.55f)
+                        ) {
+                            Text(
+                                text = "ড্রোপডাউন থেকে কোড বেছে নিন:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkForestGreen,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                            Divider()
+                            val filteredCodes = if (newCode.isBlank()) availableCodeList else availableCodeList.filter { it.contains(newCode, ignoreCase = true) }
+                            val displayCodes = if (filteredCodes.isEmpty()) availableCodeList else filteredCodes
+
+                            displayCodes.forEach { codeOpt ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = codeOpt,
+                                            fontSize = 13.sp,
+                                            fontWeight = if (newCode.equals(codeOpt, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (newCode.equals(codeOpt, ignoreCase = true)) DarkForestGreen else Color.Unspecified
+                                        )
+                                    },
+                                    onClick = {
+                                        newCode = codeOpt
+                                        showManualCodeDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
 
                     Button(
                         onClick = {
-                            if (newPatientId.isNotBlank() && newCode.isNotBlank()) {
-                                onAddItem(newPatientId, newCode)
-                                // Auto increment patient ID for quick next entry
-                                val digits = newPatientId.takeLastWhile { it.isDigit() }
-                                if (digits.isNotEmpty()) {
-                                    val prefix = newPatientId.dropLast(digits.length)
-                                    val nextNum = (digits.toLongOrNull() ?: 0L) + 1
-                                    newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
+                            val formattedId = formatPatientId(newPatientId, reportDate, editableItems)
+                            if (formattedId.isNotBlank() && newCode.isNotBlank()) {
+                                val codeToVerify = newCode.trim().uppercase(Locale.ROOT)
+                                val existingOwnership = ownerships.find { it.codeNormalized == codeToVerify }
+
+                                if (existingOwnership == null && owners.isNotEmpty()) {
+                                    // Code is brand new and has no owner yet! Prompt for owner selection
+                                    pendingPatientIdForAdd = formattedId
+                                    pendingCodeForAdd = newCode
+                                    selectedOwnerForNewCode = owners.firstOrNull()
+                                    showOwnerSelectionPrompt = true
                                 } else {
-                                    newPatientId = ""
+                                    // Code already has an owner or no owners defined
+                                    onAddItem(formattedId, newCode)
+                                    // Auto increment patient ID for quick next entry
+                                    val digits = formattedId.takeLastWhile { it.isDigit() }
+                                    if (digits.isNotEmpty()) {
+                                        val prefix = formattedId.dropLast(digits.length)
+                                        val nextNum = (digits.toLongOrNull() ?: 0L) + 1
+                                        newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
+                                    } else {
+                                        newPatientId = ""
+                                    }
                                 }
                             }
                         },
@@ -499,17 +636,21 @@ fun MedicalReportGeneratorScreen(
                     }
                 }
 
-                // Preset Code Selection Chips (1-Tap Add to Table)
-                Spacer(modifier = Modifier.height(8.dp))
+                // Quick Management Actions
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Style, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(14.dp))
+                    if (onOpenOwnerManager != null) {
+                        TextButton(
+                            onClick = { onOpenOwnerManager.invoke() },
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text("Owner ম্যানেজমেন্ট", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen)
+                        }
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("কুইক কোড চিপস (১-ট্যাপ সিলেক্ট):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
                     TextButton(
@@ -518,30 +659,7 @@ fun MedicalReportGeneratorScreen(
                     ) {
                         Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp), tint = DarkForestGreen)
                         Spacer(modifier = Modifier.width(3.dp))
-                        Text("কোড যোগ / এডিট", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen)
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    availableCodeList.take(12).forEach { codeStr ->
-                        Surface(
-                            onClick = { newCode = codeStr },
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (newCode == codeStr) DarkForestGreen else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.padding(1.dp)
-                        ) {
-                            Text(
-                                text = codeStr,
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (newCode == codeStr) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
+                        Text("কোড যোগ / এডিট", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen)
                     }
                 }
             }
@@ -1100,6 +1218,161 @@ fun MedicalReportGeneratorScreen(
             }
         )
     }
+
+    // Dialog: Owner Selection for New Code
+    if (showOwnerSelectionPrompt) {
+        AlertDialog(
+            onDismissRequest = { showOwnerSelectionPrompt = false },
+            title = {
+                Text(
+                    text = "Owner নির্বাচন করুন ($pendingCodeForAdd)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "কোডটি একটি নতুন কোড। এটি কোন Owner-এর অধীনে থাকবে?",
+                        fontSize = 12.5.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text("Owner বেছে নিন:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { ownerSelectExpanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = selectedOwnerForNewCode?.name ?: "Owner সিলেক্ট করুন",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkForestGreen
+                                )
+                                Icon(Icons.Default.ArrowDownward, contentDescription = null, modifier = Modifier.size(16.dp))
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = ownerSelectExpanded,
+                            onDismissRequest = { ownerSelectExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.85f)
+                        ) {
+                            owners.forEach { owner ->
+                                DropdownMenuItem(
+                                    text = { Text(owner.name, fontSize = 13.sp, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        selectedOwnerForNewCode = owner
+                                        ownerSelectExpanded = false
+                                    }
+                                )
+                            }
+                            Divider()
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "「+ নতুন Owner যোগ করুন」",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = DarkForestGreen
+                                    )
+                                },
+                                onClick = {
+                                    ownerSelectExpanded = false
+                                    showNewOwnerInlineDialog = true
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val selOwner = selectedOwnerForNewCode
+                        if (selOwner != null) {
+                            onAssignCodeOwner?.invoke(pendingCodeForAdd, selOwner.id) { success, _ ->
+                                if (success) {
+                                    onAddItem(pendingPatientIdForAdd, pendingCodeForAdd)
+                                    val digits = pendingPatientIdForAdd.takeLastWhile { it.isDigit() }
+                                    if (digits.isNotEmpty()) {
+                                        val prefix = pendingPatientIdForAdd.dropLast(digits.length)
+                                        val nextNum = (digits.toLongOrNull() ?: 0L) + 1
+                                        newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
+                                    } else {
+                                        newPatientId = ""
+                                    }
+                                    showOwnerSelectionPrompt = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = selectedOwnerForNewCode != null,
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
+                ) {
+                    Text("নিশ্চিত করুন")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOwnerSelectionPrompt = false }) {
+                    Text("বাতিল")
+                }
+            }
+        )
+    }
+
+    // Small Dialog: Add New Owner
+    if (showNewOwnerInlineDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewOwnerInlineDialog = false },
+            title = { Text("নতুন Owner যোগ করুন", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+            text = {
+                Column {
+                    Text("নতুন Owner-এর নাম:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = newInlineOwnerName,
+                        onValueChange = { newInlineOwnerName = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("যেমন: করিম") }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newInlineOwnerName.isNotBlank()) {
+                            onAddNewOwner?.invoke(newInlineOwnerName.trim()) { success, _ ->
+                                if (success) {
+                                    newInlineOwnerName = ""
+                                    showNewOwnerInlineDialog = false
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
+                ) {
+                    Text("Owner যোগ করুন")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewOwnerInlineDialog = false }) {
+                    Text("বাতিল")
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -1151,7 +1424,14 @@ private fun GroceryStyleItemRow(
         // Patient ID Input Box
         OutlinedTextField(
             value = item.patientId,
-            onValueChange = { updatedId -> onUpdate(updatedId.uppercase(Locale.ROOT), item.code) },
+            onValueChange = { updatedId ->
+                val formatted = if (updatedId.isNotBlank() && updatedId.all { it.isDigit() } && updatedId.length >= 3) {
+                    formatPatientId(updatedId, "", emptyList())
+                } else {
+                    updatedId.uppercase(Locale.ROOT)
+                }
+                onUpdate(formatted, item.code)
+            },
             modifier = Modifier
                 .weight(1.3f)
                 .padding(end = 4.dp),

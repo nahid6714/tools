@@ -190,7 +190,15 @@ object MedicalImageOcrScanner {
             } else if (line.contains(",") || line.contains("-") || line.contains(" ")) {
                 val parts = line.split(Regex("[,\\s\\-]+")).filter { it.isNotBlank() }
                 if (parts.size >= 2) {
-                    items.add(ScannedMedicalItem(patientId = parts[0], code = parts[1]))
+                    val rawPId = parts[0].trim().uppercase(Locale.ROOT)
+                    val formattedPId = if (rawPId.all { it.isDigit() }) {
+                        val monthStr = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
+                        val yearStr = SimpleDateFormat("yy", Locale.getDefault()).format(Date())
+                        val prefix = "AB$yearStr$monthStr"
+                        val paddedNum = if (rawPId.length < 3) String.format(Locale.US, "%03d", rawPId.toIntOrNull() ?: 0) else rawPId
+                        "$prefix$paddedNum"
+                    } else rawPId
+                    items.add(ScannedMedicalItem(patientId = formattedPId, code = parts[1]))
                 }
             }
         }
