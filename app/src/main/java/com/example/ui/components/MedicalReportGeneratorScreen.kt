@@ -92,6 +92,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.CodeOwnerEntity
+import com.example.data.CodeOwnershipEntity
 import com.example.data.MedicalRecordEntity
 import com.example.data.PresetMedicalCodeEntity
 import com.example.ui.theme.DarkForestGreen
@@ -172,8 +174,8 @@ fun MedicalReportGeneratorScreen(
     reportDate: String,
     editableItems: List<ScannedMedicalItem>,
     presetCodes: List<PresetMedicalCodeEntity>,
-    owners: List<com.example.data.CodeOwnerEntity> = emptyList(),
-    ownerships: List<com.example.data.CodeOwnershipEntity> = emptyList(),
+    owners: List<CodeOwnerEntity> = emptyList(),
+    ownerships: List<CodeOwnershipEntity> = emptyList(),
     isScanning: Boolean,
     scanStatusText: String,
     onDateChange: (String) -> Unit,
@@ -218,7 +220,7 @@ fun MedicalReportGeneratorScreen(
     var showNewOwnerInlineDialog by remember { mutableStateOf(false) }
     var newInlineOwnerName by remember { mutableStateOf("") }
     var ownerSelectExpanded by remember { mutableStateOf(false) }
-    var selectedOwnerForNewCode by remember { mutableStateOf<com.example.data.CodeOwnerEntity?>(null) }
+    var selectedOwnerForNewCode by remember { mutableStateOf<CodeOwnerEntity?>(null) }
 
     // List of active codes available for selection & cycling
     val availableCodeList = remember(presetCodes, editableItems) {
