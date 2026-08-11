@@ -115,6 +115,7 @@ fun HomeScreen(
     val analysisSummary by medicalViewModel.analysisSummary.collectAsStateWithLifecycle()
     val codeGroups by medicalViewModel.allCodeGroups.collectAsStateWithLifecycle()
     val groupItems by medicalViewModel.allGroupItems.collectAsStateWithLifecycle()
+    val allMedicalRecords by medicalViewModel.allRecords.collectAsStateWithLifecycle()
     val activeDateFilter by medicalViewModel.dateFilterType.collectAsStateWithLifecycle()
     val selectedSpecificDate by medicalViewModel.selectedSpecificDate.collectAsStateWithLifecycle()
     val customStartDate by medicalViewModel.customStartDate.collectAsStateWithLifecycle()
@@ -448,6 +449,14 @@ fun HomeScreen(
                                     onParseRawText = { raw -> medicalViewModel.parseRawTextForMedicalReport(raw) },
                                     onAddPresetCode = { code, name, cat -> medicalViewModel.addPresetCode(code, name, cat) },
                                     onDeletePresetCode = { code -> medicalViewModel.deletePresetCode(code) },
+                                    codeGroups = codeGroups,
+                                    groupItems = groupItems,
+                                    allMedicalRecords = allMedicalRecords,
+                                    onAssignCodeOwner = { code, ownerId -> medicalViewModel.reassignCodeOwner(code, ownerId) },
+                                    onAddPresetCodeWithOwner = { code, name, cat, ownerId -> medicalViewModel.addPresetCodeWithOwner(code, name, cat, ownerId) },
+                                    onCreateOwner = { name -> medicalViewModel.createOwner(name) },
+                                    onReassignCodeOwner = { code, ownerId -> medicalViewModel.reassignCodeOwner(code, ownerId) },
+                                    onRemoveCodeOwnership = { code -> medicalViewModel.removeCodeOwnership(code) },
                                     nextSuggestedPatientId = medicalViewModel.getNextSuggestedPatientId()
                                 )
                             }
