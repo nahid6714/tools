@@ -92,8 +92,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.CodeOwnerEntity
-import com.example.data.CodeOwnershipEntity
 import com.example.data.MedicalRecordEntity
 import com.example.data.PresetMedicalCodeEntity
 import com.example.ui.theme.DarkForestGreen
@@ -174,8 +172,6 @@ fun MedicalReportGeneratorScreen(
     reportDate: String,
     editableItems: List<ScannedMedicalItem>,
     presetCodes: List<PresetMedicalCodeEntity>,
-    owners: List<CodeOwnerEntity> = emptyList(),
-    ownerships: List<CodeOwnershipEntity> = emptyList(),
     isScanning: Boolean,
     scanStatusText: String,
     onDateChange: (String) -> Unit,
@@ -192,9 +188,6 @@ fun MedicalReportGeneratorScreen(
     onParseRawText: ((rawText: String) -> Unit)? = null,
     onAddPresetCode: ((code: String, name: String, category: String) -> Unit)? = null,
     onDeletePresetCode: ((code: String) -> Unit)? = null,
-    onAssignCodeOwner: ((code: String, ownerId: Long, onComplete: (Boolean, String) -> Unit) -> Unit)? = null,
-    onAddNewOwner: ((name: String, onComplete: (Boolean, String) -> Unit) -> Unit)? = null,
-    onOpenOwnerManager: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -213,14 +206,6 @@ fun MedicalReportGeneratorScreen(
     var sequencePrefix by remember { mutableStateOf("") }
     var showManualCodeDropdown by remember { mutableStateOf(false) }
 
-    // Owner Assignment Prompt States for Brand New Code
-    var showOwnerSelectionPrompt by remember { mutableStateOf(false) }
-    var pendingPatientIdForAdd by remember { mutableStateOf("") }
-    var pendingCodeForAdd by remember { mutableStateOf("") }
-    var showNewOwnerInlineDialog by remember { mutableStateOf(false) }
-    var newInlineOwnerName by remember { mutableStateOf("") }
-    var ownerSelectExpanded by remember { mutableStateOf(false) }
-    var selectedOwnerForNewCode by remember { mutableStateOf<CodeOwnerEntity?>(null) }
 
     // List of active codes available for selection & cycling
     val availableCodeList = remember(presetCodes, editableItems) {
@@ -606,27 +591,15 @@ fun MedicalReportGeneratorScreen(
                         onClick = {
                             val formattedId = formatPatientId(newPatientId, reportDate, editableItems)
                             if (formattedId.isNotBlank() && newCode.isNotBlank()) {
-                                val codeToVerify = newCode.trim().uppercase(Locale.ROOT)
-                                val existingOwnership = ownerships.find { it.codeNormalized == codeToVerify }
-
-                                if (existingOwnership == null && owners.isNotEmpty()) {
-                                    // Code is brand new and has no owner yet! Prompt for owner selection
-                                    pendingPatientIdForAdd = formattedId
-                                    pendingCodeForAdd = newCode
-                                    selectedOwnerForNewCode = owners.firstOrNull()
-                                    showOwnerSelectionPrompt = true
+                                onAddItem(formattedId, newCode)
+                                // Auto increment patient ID for quick next entry
+                                val digits = formattedId.takeLastWhile { it.isDigit() }
+                                if (digits.isNotEmpty()) {
+                                    val prefix = formattedId.dropLast(digits.length)
+                                    val nextNum = (digits.toLongOrNull() ?: 0L) + 1
+                                    newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
                                 } else {
-                                    // Code already has an owner or no owners defined
-                                    onAddItem(formattedId, newCode)
-                                    // Auto increment patient ID for quick next entry
-                                    val digits = formattedId.takeLastWhile { it.isDigit() }
-                                    if (digits.isNotEmpty()) {
-                                        val prefix = formattedId.dropLast(digits.length)
-                                        val nextNum = (digits.toLongOrNull() ?: 0L) + 1
-                                        newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
-                                    } else {
-                                        newPatientId = ""
-                                    }
+                                    newPatientId = ""
                                 }
                             }
                         },
@@ -645,16 +618,6 @@ fun MedicalReportGeneratorScreen(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (onOpenOwnerManager != null) {
-                        TextButton(
-                            onClick = { onOpenOwnerManager.invoke() },
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text("Owner ম্যানেজমেন্ট", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen)
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
-
                     TextButton(
                         onClick = { showPresetCodeManagerDialog = true },
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
@@ -1221,160 +1184,7 @@ fun MedicalReportGeneratorScreen(
         )
     }
 
-    // Dialog: Owner Selection for New Code
-    if (showOwnerSelectionPrompt) {
-        AlertDialog(
-            onDismissRequest = { showOwnerSelectionPrompt = false },
-            title = {
-                Text(
-                    text = "Owner নির্বাচন করুন ($pendingCodeForAdd)",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "কোডটি একটি নতুন কোড। এটি কোন Owner-এর অধীনে থাকবে?",
-                        fontSize = 12.5.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
 
-                    Text("Owner বেছে নিন:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedButton(
-                            onClick = { ownerSelectExpanded = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = selectedOwnerForNewCode?.name ?: "Owner সিলেক্ট করুন",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkForestGreen
-                                )
-                                Icon(Icons.Default.ArrowDownward, contentDescription = null, modifier = Modifier.size(16.dp))
-                            }
-                        }
-
-                        DropdownMenu(
-                            expanded = ownerSelectExpanded,
-                            onDismissRequest = { ownerSelectExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.85f)
-                        ) {
-                            owners.forEach { owner ->
-                                DropdownMenuItem(
-                                    text = { Text(owner.name, fontSize = 13.sp, fontWeight = FontWeight.Bold) },
-                                    onClick = {
-                                        selectedOwnerForNewCode = owner
-                                        ownerSelectExpanded = false
-                                    }
-                                )
-                            }
-                            Divider()
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "「+ নতুন Owner যোগ করুন」",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = DarkForestGreen
-                                    )
-                                },
-                                onClick = {
-                                    ownerSelectExpanded = false
-                                    showNewOwnerInlineDialog = true
-                                }
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val selOwner = selectedOwnerForNewCode
-                        if (selOwner != null) {
-                            onAssignCodeOwner?.invoke(pendingCodeForAdd, selOwner.id) { success, _ ->
-                                if (success) {
-                                    onAddItem(pendingPatientIdForAdd, pendingCodeForAdd)
-                                    val digits = pendingPatientIdForAdd.takeLastWhile { it.isDigit() }
-                                    if (digits.isNotEmpty()) {
-                                        val prefix = pendingPatientIdForAdd.dropLast(digits.length)
-                                        val nextNum = (digits.toLongOrNull() ?: 0L) + 1
-                                        newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
-                                    } else {
-                                        newPatientId = ""
-                                    }
-                                    showOwnerSelectionPrompt = false
-                                }
-                            }
-                        }
-                    },
-                    enabled = selectedOwnerForNewCode != null,
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
-                ) {
-                    Text("নিশ্চিত করুন")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showOwnerSelectionPrompt = false }) {
-                    Text("বাতিল")
-                }
-            }
-        )
-    }
-
-    // Small Dialog: Add New Owner
-    if (showNewOwnerInlineDialog) {
-        AlertDialog(
-            onDismissRequest = { showNewOwnerInlineDialog = false },
-            title = { Text("নতুন Owner যোগ করুন", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-            text = {
-                Column {
-                    Text("নতুন Owner-এর নাম:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = newInlineOwnerName,
-                        onValueChange = { newInlineOwnerName = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text("যেমন: করিম") }
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (newInlineOwnerName.isNotBlank()) {
-                            onAddNewOwner?.invoke(newInlineOwnerName.trim()) { success, _ ->
-                                if (success) {
-                                    newInlineOwnerName = ""
-                                    showNewOwnerInlineDialog = false
-                                }
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
-                ) {
-                    Text("Owner যোগ করুন")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNewOwnerInlineDialog = false }) {
-                    Text("বাতিল")
-                }
-            }
-        )
-    }
 }
 
 /**
