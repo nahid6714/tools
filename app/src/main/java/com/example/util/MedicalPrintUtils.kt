@@ -208,13 +208,13 @@ object MedicalPrintUtils {
     ) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-        // Date Header (Top Right)
-        val formattedDate = formatDateShort(dateStr)
+        // Date / Filter Header (Top Right)
+        val headerText = if (dateStr.startsWith("তারিখ") || dateStr.startsWith("ফিল্টার")) dateStr else "তারিখ: ${formatDateShort(dateStr)}"
         paint.color = Color.BLACK
-        paint.textSize = 46f
+        paint.textSize = 42f
         paint.typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         paint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("তারিখ: $formattedDate", width - 60f, 130f, paint)
+        canvas.drawText(headerText, width - 60f, 130f, paint)
 
         // Top Horizontal Divider Line
         paint.textAlign = Paint.Align.LEFT

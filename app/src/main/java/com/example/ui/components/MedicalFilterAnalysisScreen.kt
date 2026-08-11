@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,10 +37,14 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderSpecial
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -112,8 +118,6 @@ fun MedicalFilterAnalysisScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var selectedTab by remember { mutableIntStateOf(0) } // 0 = Date Breakdown, 1 = Code Breakdown, 2 = All Records Table
-    var showExportDialog by remember { mutableStateOf(false) }
 
     val showSpecificDatePicker = {
         val calendar = Calendar.getInstance()
@@ -214,35 +218,23 @@ fun MedicalFilterAnalysisScreen(
                     color = Color(0x2BFFFFFF),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(14.dp)
                     ) {
-                        Column {
-                            Text("মোট কাজের সংখ্যা (Total Count)", fontSize = 11.sp, color = Color(0xFFB0BEC5))
-                            Text(
-                                text = "${BengaliUtils.toBengaliDigits(summary.totalCount.toString())} টি",
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = summary.filterDescriptionBn,
-                                fontSize = 12.sp,
-                                color = Color(0xFFE0E0E0)
-                            )
-                        }
-
-                        Button(
-                            onClick = { showExportDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("রিপোর্ট শেয়ার/প্রিন্ট", color = DarkForestGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
+                        Text("মোট কাজের সংখ্যা (Total Count)", fontSize = 11.sp, color = Color(0xFFB0BEC5))
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${BengaliUtils.toBengaliDigits(summary.totalCount.toString())} টি",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = summary.filterDescriptionBn,
+                            fontSize = 12.sp,
+                            color = Color(0xFFE0E0E0)
+                        )
                     }
                 }
             }
@@ -676,227 +668,229 @@ fun MedicalFilterAnalysisScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Detailed Analysis Result Views Tabs
+        // Clean Direct Record Table Card (Home screen style list)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = DarkForestGreen
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("তারিখ ভিত্তিক (${summary.dateBreakdown.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    Text(
+                        text = "কোড ও আইডির তালিকা (Filtered Records)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = ForestGreenText
                     )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("কোড ভিত্তিক (${summary.codeBreakdown.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        text = { Text("আইডি তালিকা (${summary.records.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = DarkForestGreen.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = "${BengaliUtils.toBengaliDigits(summary.records.size.toString())} টি আইডি",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkForestGreen,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                when (selectedTab) {
-                    0 -> {
-                        // Date-wise Breakdown List
-                        if (summary.dateBreakdown.isEmpty()) {
-                            Text("এই ফিল্টারে কোনো রেকর্ড পাওয়া যায়নি।", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-                        } else {
-                            summary.dateBreakdown.forEach { item ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 3.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text(item.formattedDateBn, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-                                            Text(item.date, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-
-                                        Surface(
-                                            shape = RoundedCornerShape(16.dp),
-                                            color = DarkForestGreen
-                                        ) {
-                                            Text(
-                                                text = "${BengaliUtils.toBengaliDigits(item.count.toString())} টি কাজ",
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 12.sp,
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                if (summary.records.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "এই ফিল্টারে কোনো রেকর্ড পাওয়া যায়নি।",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-
-                    1 -> {
-                        // Code-wise Breakdown List
-                        if (summary.codeBreakdown.isEmpty()) {
-                            Text("এই ফিল্টারে কোনো রেকর্ড পাওয়া যায়নি।", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-                        } else {
-                            summary.codeBreakdown.forEach { item ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 3.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text("কোড: ${item.code}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkForestGreen)
-                                            if (item.codeName.isNotBlank()) {
-                                                Text(item.codeName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                        }
-
-                                        Surface(
-                                            shape = RoundedCornerShape(16.dp),
-                                            color = Color(0xFF1565C0)
-                                        ) {
-                                            Text(
-                                                text = "${BengaliUtils.toBengaliDigits(item.count.toString())} টি কাজ",
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 12.sp,
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                } else {
+                    // Clean Grid Table (Home screen preview style)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFFCFD8DC), RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        // Header Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFE8EAF6))
+                                .height(38.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "ক্রমিক",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(0.7f)
+                            )
+                            Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color(0xFFCFD8DC))
+                            Text(
+                                "পেশেন্ট আইডি",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1.5f)
+                            )
+                            Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color(0xFFCFD8DC))
+                            Text(
+                                "কোড",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1.2f)
+                            )
                         }
-                    }
 
-                    2 -> {
-                        // Patient Records List
-                        if (summary.records.isEmpty()) {
-                            Text("এই ফিল্টারে কোনো রেকর্ড পাওয়া যায়নি।", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-                        } else {
-                            summary.records.forEachIndexed { idx, record ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(if (idx % 2 == 1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f) else Color.Transparent)
-                                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("${idx + 1}.", fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.width(30.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(record.patientId, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                                        Text(record.date, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = DarkForestGreen.copy(alpha = 0.12f)
-                                    ) {
-                                        Text(
-                                            text = "কোড: ${record.code}",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = DarkForestGreen,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
-                                    }
-                                }
+                        Divider(color = Color(0xFFCFD8DC), thickness = 1.dp)
+
+                        // Data Rows
+                        summary.records.forEachIndexed { i, r ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(38.dp)
+                                    .background(if (i % 2 == 1) Color(0xFFFAFAFA) else Color.White),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "${i + 1}",
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.weight(0.7f)
+                                )
+                                Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color(0xFFCFD8DC))
+                                Text(
+                                    r.patientId,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1.5f)
+                                )
+                                Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color(0xFFCFD8DC))
+                                Text(
+                                    r.code,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    color = DarkForestGreen,
+                                    modifier = Modifier.weight(1.2f)
+                                )
+                            }
+                            if (i < summary.records.size - 1) {
+                                Divider(color = Color(0xFFCFD8DC), thickness = 0.8.dp)
                             }
                         }
                     }
                 }
             }
         }
-    }
 
-    // Export Analysis Preview Dialog
-    if (showExportDialog) {
-        AlertDialog(
-            onDismissRequest = { showExportDialog = false },
-            title = {
-                Text("ফিল্টার এনালাইসিস রিপোর্ট", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Bottom Report Share & Print Actions Card (Matching Home screen bottom options)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = "রিপোর্ট শেয়ার ও প্রিন্ট (Export Options):",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ForestGreenText
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFE8EAF6),
-                        modifier = Modifier.fillMaxWidth()
+                    // 1. Share Image
+                    OutlinedButton(
+                        onClick = {
+                            MedicalPrintUtils.shareDailyReportAsImage(
+                                context,
+                                summary.filterDescriptionBn,
+                                summary.records
+                            )
+                        },
+                        enabled = summary.records.isNotEmpty(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("share_image_btn"),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, DarkForestGreen),
+                        contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(summary.filterDescriptionBn, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = DarkForestGreen)
-                            Text("মোট কাজের সংখ্যা: ${BengaliUtils.toBengaliDigits(summary.totalCount.toString())} টি", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
+                        Icon(Icons.Default.Image, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("ছবি শেয়ার", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen)
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text("১. তারিখ ভিত্তিক কাজ:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    summary.dateBreakdown.forEach { d ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(d.formattedDateBn, fontSize = 12.sp)
-                            Text("${BengaliUtils.toBengaliDigits(d.count.toString())} টি", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
+                    // 2. Share PDF
+                    Button(
+                        onClick = {
+                            MedicalPrintUtils.shareDailyReportAsPdf(
+                                context,
+                                summary.filterDescriptionBn,
+                                summary.records
+                            )
+                        },
+                        enabled = summary.records.isNotEmpty(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("share_pdf_btn"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen),
+                        contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("PDF শেয়ার", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text("২. কোড ভিত্তিক কাজ:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    summary.codeBreakdown.forEach { c ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("কোড ${c.code}", fontSize = 12.sp)
-                            Text("${BengaliUtils.toBengaliDigits(c.count.toString())} টি", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Row {
-                    IconButton(onClick = { MedicalPrintUtils.shareAnalysisReportAsImage(context, summary) }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", tint = DarkForestGreen)
-                    }
-                    TextButton(onClick = { showExportDialog = false }) {
-                        Text("বন্ধ করুন")
+                    // 3. Print
+                    OutlinedButton(
+                        onClick = {
+                            MedicalPrintUtils.printDailyReport(
+                                context,
+                                summary.filterDescriptionBn,
+                                summary.records
+                            )
+                        },
+                        enabled = summary.records.isNotEmpty(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("print_report_btn"),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Color(0xFF1565C0)),
+                        contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Print, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("প্রিন্ট", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
                     }
                 }
             }
-        )
+        }
     }
 }
