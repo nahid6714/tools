@@ -76,9 +76,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -203,6 +207,11 @@ fun MedicalReportGeneratorScreen(
     var showBatchCodeDialog by remember { mutableStateOf(false) }
     var showAutoSequenceDialog by remember { mutableStateOf(false) }
     var showPresetCodeManagerDialog by remember { mutableStateOf(false) }
+    var showAiAssistantDialog by remember { mutableStateOf(false) }
+    var aiSummaryText by remember { mutableStateOf("") }
+    var isAiLoading by remember { mutableStateOf(false) }
+    var aiInputNotes by remember { mutableStateOf("") }
+    var aiActiveTab by remember { mutableIntStateOf(0) }
     var rawInputText by remember { mutableStateOf("") }
     var batchTargetCode by remember { mutableStateOf("") }
     var sequencePrefix by remember { mutableStateOf("") }
@@ -430,25 +439,44 @@ fun MedicalReportGeneratorScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // OCR Image Scanner Action Buttons Row
+                // OCR Image Scanner & AI Assistant Action Buttons Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    // Direct Camera Snap Button
+                    Button(
+                        onClick = { cameraLauncher.launch(null) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD81B60)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1.1f)
+                            .height(44.dp)
+                            .testTag("direct_camera_snap_button"),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("ছবি তুলুন", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
                     // Smart Document Scanner Button (with auto-crop)
                     Button(
                         onClick = { launchSmartScanner() },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28A745)),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
-                            .weight(1.3f)
+                            .weight(1.2f)
                             .height(44.dp)
-                            .testTag("smart_ocr_scan_button")
+                            .testTag("smart_ocr_scan_button"),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("স্মার্ট ক্যামেরা (OCR)", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("স্মার্ট ক্যামেরা", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -458,13 +486,32 @@ fun MedicalReportGeneratorScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
+                            .weight(0.9f)
+                            .height(44.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("গ্যালারি", fontSize = 12.sp)
+                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("গ্যালারি", fontSize = 11.sp)
+                        }
+                    }
+
+                    // AI Assistant button
+                    Button(
+                        onClick = { showAiAssistantDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1.0f)
+                            .height(44.dp)
+                            .testTag("ai_assistant_button"),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("এআই হেল্পার", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -963,6 +1010,201 @@ fun MedicalReportGeneratorScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showAutoSequenceDialog = false }) { Text("বাতিল") }
+            }
+        )
+    }
+
+    // AI Work Assistant Dialog
+    if (showAiAssistantDialog) {
+        val coroutineScope = rememberCoroutineScope()
+        AlertDialog(
+            onDismissRequest = { showAiAssistantDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = Color(0xFF7B1FA2),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "এআই মেডিকেল ওয়ার্ক অ্যাসিস্ট্যান্ট",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF4A148C)
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    TabRow(
+                        selectedTabIndex = aiActiveTab,
+                        containerColor = Color(0xFFF3E5F5),
+                        contentColor = Color(0xFF7B1FA2)
+                    ) {
+                        Tab(
+                            selected = aiActiveTab == 0,
+                            onClick = { aiActiveTab = 0 },
+                            text = { Text("📊 এআই রিপোর্ট সামারি", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        )
+                        Tab(
+                            selected = aiActiveTab == 1,
+                            onClick = { aiActiveTab = 1 },
+                            text = { Text("📝 এআই স্মার্ট ইনপুট", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (aiActiveTab == 0) {
+                        // AI Report Summary Tab
+                        Text(
+                            text = "আপনার আজকের (${reportDate}) মোট ${editableItems.size}টি কাজ এআই এর মাধ্যমে বিশ্লেষণ করে বাংলা সামারি ও রিপোর্ট নোটিফিকেশন জেনারেট করুন:",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        if (aiSummaryText.isNotBlank()) {
+                            Card(
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    Text(
+                                        text = aiSummaryText,
+                                        fontSize = 12.5.sp,
+                                        color = Color(0xFF212121),
+                                        lineHeight = 18.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        isAiLoading = true
+                                        val records = editableItems.map {
+                                            MedicalRecordEntity(date = reportDate, patientId = it.patientId, code = it.code)
+                                        }
+                                        aiSummaryText = com.example.util.MedicalAiAssistant.generateWorkSummary(
+                                            date = reportDate,
+                                            records = records
+                                        )
+                                        isAiLoading = false
+                                    }
+                                },
+                                enabled = !isAiLoading,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (isAiLoading) {
+                                    Text("বিশ্লেষণ হচ্ছে...", fontSize = 12.sp)
+                                } else {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("জেনারেট করুন", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            if (aiSummaryText.isNotBlank()) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        val clip = android.content.ClipData.newPlainText("AI Summary", aiSummaryText)
+                                        clipboard.setPrimaryClip(clip)
+                                    },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("কপি", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    } else {
+                        // Smart AI Input Parser Tab
+                        Text(
+                            text = "বাংলা বা ইংরেজিতে সরাসরি ডাক্তারের রুটিন নোট পেস্ট করুন (যেমন: '১০১ নম্বর কোডে Patient 15, 16, 17 এবং কোড ১০২ এ Patient 18'):",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = aiInputNotes,
+                            onValueChange = { aiInputNotes = it },
+                            placeholder = { Text("এখানে নোটস বা মেসেজ পেস্ট করুন...", fontSize = 12.sp) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                if (aiInputNotes.isNotBlank()) {
+                                    coroutineScope.launch {
+                                        isAiLoading = true
+                                        val parsedRecords = com.example.util.MedicalAiAssistant.parseNotesToRecords(
+                                            notesText = aiInputNotes,
+                                            defaultDate = reportDate
+                                        )
+                                        parsedRecords.forEach { rec ->
+                                            onAddItem(rec.patientId, rec.code)
+                                        }
+                                        isAiLoading = false
+                                        showAiAssistantDialog = false
+                                        aiInputNotes = ""
+                                    }
+                                }
+                            },
+                            enabled = !isAiLoading && aiInputNotes.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isAiLoading) {
+                                Text("এক্সট্র্যাক্ট করা হচ্ছে...", fontSize = 12.sp)
+                            } else {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("এআই দিয়ে টেবিলে যুক্ত করুন", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAiAssistantDialog = false }) {
+                    Text("বন্ধ করুন", color = Color.Gray)
+                }
             }
         )
     }

@@ -287,17 +287,19 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
     fun scanImageForMedicalReport(bitmap: Bitmap) {
         viewModelScope.launch {
             _isScanning.value = true
-            _scanStatusText.value = "ছবি স্ক্যান ও AI/OCR শনাক্তকরণ চলছে..."
+            _scanStatusText.value = "ছবি স্ক্যান ও AI/OCR তথ্য শনাক্তকরণ চলছে..."
             try {
                 val result = MedicalImageOcrScanner.scanImage(bitmap)
                 if (result.date.isNotBlank()) {
                     _reportDate.value = result.date
                 }
                 if (result.items.isNotEmpty()) {
-                    _editableItems.value = result.items
-                    _uiEvent.emit("স্ক্যান সফল! ${result.items.size}টি রেকর্ড শনাক্ত করা হয়েছে।")
+                    val currentList = _editableItems.value.toMutableList()
+                    currentList.addAll(result.items)
+                    _editableItems.value = currentList
+                    _uiEvent.emit("📷 ছবি থেকে ${result.items.size}টি পেশেন্ট আইডি ও কোড অটোমেটিক তালিকায় যুক্ত হয়েছে!")
                 } else {
-                    _uiEvent.emit("ছবি থেকে রেকর্ড শনাক্ত করা যায়নি। ম্যানুয়ালি যোগ করুন।")
+                    _uiEvent.emit("ছবি থেকে কোনো রেকর্ড শনাক্ত করা যায়নি। ম্যানুয়ালি যোগ করুন।")
                 }
             } catch (e: Exception) {
                 _uiEvent.emit("স্ক্যান ত্রুটি: ${e.message}")

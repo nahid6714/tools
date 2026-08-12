@@ -89,14 +89,14 @@ object MedicalImageOcrScanner {
     }
 
     private fun callGeminiVisionApi(base64Image: String, apiKey: String): JSONObject? {
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
-
+        val modelsToTry = listOf("gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash")
+        
         val prompt = """
-            Examine this image of handwritten or printed list containing medical patient IDs and test/work codes.
+            Examine this image of handwritten, printed, or digital list containing medical patient IDs and test/work codes.
             Extract the Date if present in YYYY-MM-DD or DD/MM/YYYY format.
             Extract each patient entry in sequential order:
-            1. Patient ID (format is typically 2 letters like AB followed by digits e.g. AB2608001 or similar).
-            2. Code (number like 101, 102, 105 or code like CBC, USG).
+            1. Patient ID (format is typically 2 letters like AB followed by digits e.g. AB2608001, or numeric IDs like 1, 2, 15, 101).
+            2. Code (number like 101, 102, 105 or code like CBC, USG, X-RAY).
             
             Return ONLY a JSON object with this format (no markdown backticks, no text outside JSON):
             {
@@ -108,48 +108,54 @@ object MedicalImageOcrScanner {
             }
         """.trimIndent()
 
-        val jsonRequest = JSONObject().apply {
-            put("contents", JSONArray().apply {
-                put(JSONObject().apply {
-                    put("parts", JSONArray().apply {
-                        put(JSONObject().put("text", prompt))
-                        put(JSONObject().put("inlineData", JSONObject().apply {
-                            put("mimeType", "image/jpeg")
-                            put("data", base64Image)
-                        }))
+        for (modelName in modelsToTry) {
+            try {
+                val url = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey"
+
+                val jsonRequest = JSONObject().apply {
+                    put("contents", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("parts", JSONArray().apply {
+                                put(JSONObject().put("text", prompt))
+                                put(JSONObject().put("inlineData", JSONObject().apply {
+                                    put("mimeType", "image/jpeg")
+                                    put("data", base64Image)
+                                }))
+                            })
+                        })
                     })
-                })
-            })
-            put("generationConfig", JSONObject().apply {
-                put("responseMimeType", "application/json")
-                put("temperature", 0.1)
-            })
+                    put("generationConfig", JSONObject().apply {
+                        put("responseMimeType", "application/json")
+                        put("temperature", 0.1)
+                    })
+                }
+
+                val request = Request.Builder()
+                    .url(url)
+                    .post(jsonRequest.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                val response = httpClient.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string() ?: continue
+                    val responseJson = JSONObject(responseBody)
+                    val candidates = responseJson.optJSONArray("candidates") ?: continue
+                    if (candidates.length() == 0) continue
+                    val firstCand = candidates.getJSONObject(0)
+                    val content = firstCand.optJSONObject("content") ?: continue
+                    val parts = content.optJSONArray("parts") ?: continue
+                    if (parts.length() == 0) continue
+                    val text = parts.getJSONObject(0).optString("text", "")
+
+                    val cleanJson = text.replace("```json", "").replace("```", "").trim()
+                    val resultObj = JSONObject(cleanJson)
+                    return resultObj
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
-
-        val request = Request.Builder()
-            .url(url)
-            .post(jsonRequest.toString().toRequestBody("application/json".toMediaType()))
-            .build()
-
-        val response = httpClient.newCall(request).execute()
-        if (!response.isSuccessful) return null
-
-        val responseBody = response.body?.string() ?: return null
-        val responseJson = JSONObject(responseBody)
-        val candidates = responseJson.optJSONArray("candidates") ?: return null
-        if (candidates.length() == 0) return null
-        val firstCand = candidates.getJSONObject(0)
-        val content = firstCand.optJSONObject("content") ?: return null
-        val parts = content.optJSONArray("parts") ?: return null
-        if (parts.length() == 0) return null
-        val text = parts.getJSONObject(0).optString("text", "")
-
-        val cleanJson = text.replace("```json", "").replace("```", "").trim()
-        return try {
-            JSONObject(cleanJson)
-        } catch (e: Exception) {
-            null
-        }
+        return null
     }
 
     private fun normalizeDate(rawDate: String, fallback: String): String {
