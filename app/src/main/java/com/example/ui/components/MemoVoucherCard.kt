@@ -784,9 +784,11 @@ fun MemoItemRow(
         Box(
             modifier = Modifier
                 .weight(1.8f)
+                .height(40.dp)
                 .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
-                .padding(horizontal = 6.dp, vertical = 6.dp)
+                .padding(horizontal = 6.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
             if (item.name.isEmpty()) {
                 Text(
@@ -828,15 +830,17 @@ fun MemoItemRow(
         Box(
             modifier = Modifier
                 .weight(1.4f)
+                .height(40.dp)
                 .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
-                .padding(horizontal = 4.dp, vertical = 4.dp)
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     if (item.quantity.isEmpty()) {
                         Text(
                             text = "পরিমাণ",
@@ -910,9 +914,11 @@ fun MemoItemRow(
         Box(
             modifier = Modifier
                 .weight(0.9f)
+                .height(40.dp)
                 .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
-                .padding(horizontal = 4.dp, vertical = 6.dp)
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center
         ) {
             val displayRate = if (item.rate == "0") "" else BengaliUtils.toBengaliDigits(item.rate)
             BasicTextField(
@@ -954,9 +960,11 @@ fun MemoItemRow(
         Box(
             modifier = Modifier
                 .weight(1.1f)
+                .height(40.dp)
                 .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
-                .padding(horizontal = 4.dp, vertical = 6.dp)
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center
         ) {
             BasicTextField(
                 value = displayAmount,
