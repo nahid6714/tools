@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -805,10 +806,10 @@ fun MedicalReportGeneratorScreen(
                             .padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("নং", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp))
-                        Text("পেশেন্ট আইডি", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
-                        Text("কোড (১-ট্যাপ চেইঞ্জ)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f))
-                        Text("অ্যাকশন", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.width(88.dp))
+                        Text("নং", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.dp))
+                        Text("পেশেন্ট আইডি", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f))
+                        Text("কোড (১-ট্যাপ চেইঞ্জ)", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1.4f))
+                        Text("অ্যাকশন", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.width(76.dp))
                     }
                 }
 
@@ -1639,16 +1640,16 @@ private fun GroceryStyleItemRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Serial Number Badge
         Text(
             text = BengaliUtils.toBengaliDigits((index + 1).toString()),
-            fontSize = 12.sp,
+            fontSize = 11.5.sp,
             fontWeight = FontWeight.Bold,
             color = ForestGreenText,
-            modifier = Modifier.width(28.dp)
+            modifier = Modifier.width(26.dp)
         )
 
         // Patient ID Input Box
@@ -1663,8 +1664,8 @@ private fun GroceryStyleItemRow(
                 onUpdate(formatted, item.code)
             },
             modifier = Modifier
-                .weight(1.3f)
-                .height(48.dp)
+                .weight(1.1f)
+                .height(42.dp)
                 .padding(end = 4.dp),
             singleLine = true,
             textStyle = TextStyle(
@@ -1674,63 +1675,89 @@ private fun GroceryStyleItemRow(
             shape = RoundedCornerShape(8.dp)
         )
 
-        // Code Input & Dropdown Selector (Unit Selection Style)
+        // Code Input & Dropdown Selector (Unit Selection Style - Responsive & Full Width Text)
         Row(
             modifier = Modifier
-                .weight(1.3f)
+                .weight(1.4f)
                 .padding(end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             IconButton(
                 onClick = { cycleCode(false) },
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             ) {
-                Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous Code", tint = DarkForestGreen, modifier = Modifier.size(16.dp))
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowLeft,
+                    contentDescription = "Previous Code",
+                    tint = DarkForestGreen,
+                    modifier = Modifier.size(16.dp)
+                )
             }
 
             Box(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(42.dp)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .background(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(8.dp)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                OutlinedTextField(
-                    value = item.code,
-                    onValueChange = { updatedCode -> onUpdate(item.patientId, updatedCode) },
+                Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkForestGreen,
-                        textAlign = TextAlign.Center
-                    ),
-                    placeholder = {
-                        Text(
-                            "-",
+                        .fillMaxSize()
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    BasicTextField(
+                        value = item.code,
+                        onValueChange = { updatedCode -> onUpdate(item.patientId, updatedCode) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = DarkForestGreen,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                IconButton(
-                    onClick = { showCodeDropdown = true },
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 1.dp)
-                        .size(20.dp)
-                ) {
-                    Icon(
-                        Icons.Default.ArrowDownward,
-                        contentDescription = "Select Preset Code",
-                        tint = DarkForestGreen,
-                        modifier = Modifier.size(12.dp)
+                            textAlign = TextAlign.Center
+                        ),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (item.code.isEmpty()) {
+                                    Text(
+                                        text = "-",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Gray,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
                     )
+
+                    IconButton(
+                        onClick = { showCodeDropdown = true },
+                        modifier = Modifier.size(18.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowDownward,
+                            contentDescription = "Select Preset Code",
+                            tint = DarkForestGreen,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
                 }
 
                 DropdownMenu(
@@ -1766,38 +1793,43 @@ private fun GroceryStyleItemRow(
 
             IconButton(
                 onClick = { cycleCode(true) },
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             ) {
-                Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next Code", tint = DarkForestGreen, modifier = Modifier.size(16.dp))
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    contentDescription = "Next Code",
+                    tint = DarkForestGreen,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
 
         // Action Toolbar (Move Up/Down, Duplicate, Delete)
         Row(
-            modifier = Modifier.width(88.dp),
+            modifier = Modifier.width(76.dp),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (index > 0 && onMoveUp != null) {
-                IconButton(onClick = onMoveUp, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.ArrowUpward, contentDescription = "Up", modifier = Modifier.size(14.dp))
+                IconButton(onClick = onMoveUp, modifier = Modifier.size(20.dp)) {
+                    Icon(Icons.Default.ArrowUpward, contentDescription = "Up", modifier = Modifier.size(13.dp))
                 }
             }
 
             if (index < totalCount - 1 && onMoveDown != null) {
-                IconButton(onClick = onMoveDown, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.ArrowDownward, contentDescription = "Down", modifier = Modifier.size(14.dp))
+                IconButton(onClick = onMoveDown, modifier = Modifier.size(20.dp)) {
+                    Icon(Icons.Default.ArrowDownward, contentDescription = "Down", modifier = Modifier.size(13.dp))
                 }
             }
 
             if (onDuplicate != null) {
-                IconButton(onClick = onDuplicate, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = onDuplicate, modifier = Modifier.size(20.dp)) {
                     Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate", tint = DarkForestGreen, modifier = Modifier.size(13.dp))
                 }
             }
 
-            IconButton(onClick = onRemove, modifier = Modifier.size(26.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color.Red, modifier = Modifier.size(16.dp))
+            IconButton(onClick = onRemove, modifier = Modifier.size(22.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color.Red, modifier = Modifier.size(15.dp))
             }
         }
     }
