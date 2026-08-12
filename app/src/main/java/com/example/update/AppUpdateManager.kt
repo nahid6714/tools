@@ -120,9 +120,10 @@ class AppUpdateManager(
     }
 
     private fun fetchUrl(urlString: String): String? {
+        var connection: HttpURLConnection? = null
         return try {
             val url = URL(urlString)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
+            connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 10000
                 readTimeout = 10000
@@ -131,7 +132,8 @@ class AppUpdateManager(
                 setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
                 setRequestProperty("Pragma", "no-cache")
                 setRequestProperty("Expires", "0")
-                setRequestProperty("User-Agent", "AndroidAppUpdater")
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AndroidAppUpdater")
+                setRequestProperty("Accept-Encoding", "identity")
             }
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                 connection.inputStream.bufferedReader().use { it.readText() }
@@ -140,6 +142,8 @@ class AppUpdateManager(
             }
         } catch (e: Exception) {
             null
+        } finally {
+            connection?.disconnect()
         }
     }
 
@@ -242,62 +246,88 @@ class AppUpdateManager(
             }
 
             var urlStr = downloadUrl
-            var connection = (URL(urlStr).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 15000
-                readTimeout = 30000
-                setRequestProperty("User-Agent", "AndroidAppUpdater")
-                instanceFollowRedirects = true
-            }
-
-            // Follow HTTP redirects (GitHub Releases redirect to AWS S3)
-            var responseCode = connection.responseCode
+            var connection: HttpURLConnection? = null
+            var responseCode = 0
             var redirectCount = 0
-            while ((responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
-                    responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
-                    responseCode == HttpURLConnection.HTTP_SEE_OTHER) && redirectCount < 5) {
-                val newUrl = connection.getHeaderField("Location")
-                if (!newUrl.isNullOrEmpty()) {
-                    urlStr = newUrl
-                    connection = (URL(urlStr).openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 15000
-                        readTimeout = 30000
-                        setRequestProperty("User-Agent", "AndroidAppUpdater")
+
+            while (redirectCount < 10) {
+                val url = URL(urlStr)
+                connection = (url.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 30000
+                    readTimeout = 60000
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AndroidAppUpdater")
+                    setRequestProperty("Accept-Encoding", "identity")
+                }
+                responseCode = connection.responseCode
+                if (responseCode in 300..399) {
+                    val newUrl = connection.getHeaderField("Location")
+                    connection.disconnect()
+                    if (!newUrl.isNullOrEmpty()) {
+                        urlStr = newUrl
+                        redirectCount++
+                    } else {
+                        break
                     }
-                    responseCode = connection.responseCode
-                    redirectCount++
-                } else break
+                } else {
+                    break
+                }
             }
 
-            val fileLength = connection.contentLength
+            val finalConn = connection ?: throw IllegalStateException("Could not establish connection")
+
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                finalConn.disconnect()
+                withContext(Dispatchers.Main) {
+                    onError("ডাউনলোড ব্যর্থ হয়েছে (HTTP $responseCode)")
+                }
+                return@withContext
+            }
+
+            val fileLength = finalConn.contentLength
             val updateDir = File(context.cacheDir, "updates")
             if (!updateDir.exists()) updateDir.mkdirs()
 
             val apkFile = File(updateDir, "update.apk")
             if (apkFile.exists()) apkFile.delete()
 
-            connection.inputStream.use { input ->
-                FileOutputStream(apkFile).use { output ->
-                    val data = ByteArray(8192)
-                    var total: Long = 0
-                    var count: Int
-                    while (input.read(data).also { count = it } != -1) {
-                        total += count.toLong()
-                        if (fileLength > 0) {
-                            val progress = ((total * 100) / fileLength).toInt()
-                            withContext(Dispatchers.Main) {
-                                onProgress(progress)
+            try {
+                finalConn.inputStream.use { input ->
+                    FileOutputStream(apkFile).use { output ->
+                        val data = ByteArray(16384)
+                        var total: Long = 0
+                        var count: Int
+                        var lastProgress = -1
+                        while (input.read(data).also { count = it } != -1) {
+                            total += count.toLong()
+                            output.write(data, 0, count)
+                            if (fileLength > 0) {
+                                val progress = ((total * 100) / fileLength).toInt().coerceIn(0, 99)
+                                if (progress != lastProgress) {
+                                    lastProgress = progress
+                                    withContext(Dispatchers.Main) {
+                                        onProgress(progress)
+                                    }
+                                }
                             }
                         }
-                        output.write(data, 0, count)
+                        output.flush()
                     }
-                    output.flush()
                 }
+            } finally {
+                finalConn.disconnect()
             }
 
-            withContext(Dispatchers.Main) {
-                onProgress(100)
-                onSuccess(apkFile)
-                installApk(context, apkFile)
+            if (apkFile.exists() && apkFile.length() > 0) {
+                withContext(Dispatchers.Main) {
+                    onProgress(100)
+                    onSuccess(apkFile)
+                    installApk(context, apkFile)
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    onError("ডাউনলোডকৃত ফাইলটি সঠিক পাওয়া যায়নি।")
+                }
             }
 
         } catch (e: Exception) {
