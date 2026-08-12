@@ -15,9 +15,9 @@
 # Preserve annotations and type metadata for serialization/Room/Moshi
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
 
-# Keep ML Kit Document Scanner
--keep class com.google.mlkit.** { *; }
--keep class com.google.android.gms.** { *; }
+# Keep ML Kit Document Scanner & Text Recognition
+-dontwarn com.google.android.gms.**
+-dontwarn com.google.mlkit.**
 
 # Keep Compose Runtime Owner
 -keepclassmembers class * extends androidx.compose.ui.node.Owner { *; }
