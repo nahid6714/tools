@@ -83,7 +83,7 @@ object MedicalAiAssistant {
                 val prompt = """
                     You are an AI assistant parsing unstructured Bengali or English medical text notes into structured entries.
                     Extract each patient entry with Patient ID and Code.
-                    If patient IDs are a range like "AB2608001 to AB2608005", expand them into individual sequential entries.
+                    If patient IDs are a range like "AB26081 to AB26085", expand them into individual sequential entries without adding extra leading zeros before the serial number.
                     
                     Text Input:
                     "$notesText"
@@ -91,8 +91,8 @@ object MedicalAiAssistant {
                     Return ONLY a valid JSON array of objects with keys "patientId" and "code".
                     Example:
                     [
-                      {"patientId": "AB2608001", "code": "101"},
-                      {"patientId": "AB2608002", "code": "102"}
+                      {"patientId": "AB26081", "code": "101"},
+                      {"patientId": "AB26082", "code": "102"}
                     ]
                 """.trimIndent()
 

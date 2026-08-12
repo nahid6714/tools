@@ -1,10 +1,13 @@
 package com.example.util
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.util.Base64
 import com.example.BuildConfig
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -42,8 +45,11 @@ object MedicalImageOcrScanner {
 
     suspend fun scanImage(bitmap: Bitmap, apiKey: String = BuildConfig.GEMINI_API_KEY): ScannedMedicalResult = withContext(Dispatchers.IO) {
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        
-        // 1. If API key is available, call Gemini API
+
+        // Step 1: First extract raw text from image using local ML Kit Text Recognizer (100% on-device & accurate)
+        val mlKitRawText = recognizeTextWithMlKit(bitmap)
+
+        // Step 2: If Gemini Vision API key is available, attempt Gemini Vision for AI extraction
         if (apiKey.isNotBlank()) {
             try {
                 val base64Image = bitmapToBase64(bitmap)
@@ -63,7 +69,8 @@ object MedicalImageOcrScanner {
                     if (items.isNotEmpty()) {
                         return@withContext ScannedMedicalResult(
                             date = normalizeDate(date, todayStr),
-                            items = items
+                            items = items,
+                            rawText = mlKitRawText ?: ""
                         )
                     }
                 }
@@ -72,8 +79,45 @@ object MedicalImageOcrScanner {
             }
         }
 
-        // 2. Fallback sample / template parser for offline or when Gemini fails
-        return@withContext generateFallbackScannedResult(todayStr)
+        // Step 3: Parse the actual ML Kit recognized text if Gemini vision was not used or failed
+        if (!mlKitRawText.isNullOrBlank()) {
+            val parsedResult = parseRawText(mlKitRawText, todayStr)
+            if (parsedResult.items.isNotEmpty()) {
+                return@withContext parsedResult
+            }
+        }
+
+        // Step 4: If no text/items recognized, return empty result (NO HARDCODED MOCK DATA!)
+        return@withContext ScannedMedicalResult(
+            date = todayStr,
+            items = emptyList(),
+            rawText = mlKitRawText ?: "",
+            errorMessage = "ছবি থেকে কোনো তথ্য পড়া সম্ভব হয়নি। অনুগ্রহ করে স্পষ্ট আলোতে সোজা ছবি তুলুন।"
+        )
+    }
+
+    private suspend fun recognizeTextWithMlKit(bitmap: Bitmap): String? = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val inputImage = InputImage.fromBitmap(bitmap, 0)
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            suspendCancellableCoroutine<String?> { continuation ->
+                recognizer.process(inputImage)
+                    .addOnSuccessListener { visionText ->
+                        if (continuation.isActive) {
+                            continuation.resume(visionText.text, null)
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        e.printStackTrace()
+                        if (continuation.isActive) {
+                            continuation.resume(null, null)
+                        }
+                    }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
@@ -90,20 +134,20 @@ object MedicalImageOcrScanner {
 
     private fun callGeminiVisionApi(base64Image: String, apiKey: String): JSONObject? {
         val modelsToTry = listOf("gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash")
-        
+
         val prompt = """
             Examine this image of handwritten, printed, or digital list containing medical patient IDs and test/work codes.
             Extract the Date if present in YYYY-MM-DD or DD/MM/YYYY format.
             Extract each patient entry in sequential order:
-            1. Patient ID (format is typically 2 letters like AB followed by digits e.g. AB2608001, or numeric IDs like 1, 2, 15, 101).
+            1. Patient ID (format is typically 2 letters like AB followed by YYMM digits e.g. AB2608 followed directly by serial number without leading zeros e.g. AB26081, AB260825, AB2608100, or numeric IDs like 1, 2, 15, 101).
             2. Code (number like 101, 102, 105 or code like CBC, USG, X-RAY).
             
             Return ONLY a JSON object with this format (no markdown backticks, no text outside JSON):
             {
               "date": "YYYY-MM-DD",
               "items": [
-                {"patientId": "AB2608001", "code": "101"},
-                {"patientId": "AB2608002", "code": "102"}
+                {"patientId": "AB26081", "code": "101"},
+                {"patientId": "AB26082", "code": "102"}
               ]
             }
         """.trimIndent()
@@ -177,68 +221,79 @@ object MedicalImageOcrScanner {
         val items = mutableListOf<ScannedMedicalItem>()
 
         val dateRegex = Regex("(\\d{4}-\\d{2}-\\d{2}|\\d{2}/\\d{2}/\\d{4})")
-        val idRegex = Regex("([A-Za-z]{2}\\d{4,8})")
-        val codeRegex = Regex("(\\b\\d{2,4}\\b|\\b[A-Za-z]{2,5}\\b)")
+        val fullIdRegex = Regex("([A-Za-z]{1,4}\\d{4,8})")
+        val monthStr = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
+        val yearStr = SimpleDateFormat("yy", Locale.getDefault()).format(Date())
+        val defaultPrefix = "AB$yearStr$monthStr"
 
         lines.forEach { line ->
+            // Extract date if present
             val dateMatch = dateRegex.find(line)
             if (dateMatch != null && date == defaultDate) {
                 date = normalizeDate(dateMatch.value, defaultDate)
             }
 
-            val idMatch = idRegex.find(line)
-            if (idMatch != null) {
-                val pId = idMatch.value
-                val remaining = line.replace(pId, "").trim()
-                val codeMatch = codeRegex.find(remaining)
+            // Pattern 1: Look for full Patient ID like AB2608001
+            val fullIdMatch = fullIdRegex.find(line)
+            if (fullIdMatch != null) {
+                val pId = fullIdMatch.value.uppercase(Locale.ROOT)
+                val remaining = line.replace(fullIdMatch.value, "").trim()
+                val codeMatch = Regex("(\\b\\d{2,4}\\b|\\b[A-Za-z]{2,5}\\b)").find(remaining)
                 val code = codeMatch?.value ?: "101"
                 items.add(ScannedMedicalItem(patientId = pId, code = code))
-            } else if (line.contains(",") || line.contains("-") || line.contains(" ")) {
-                val parts = line.split(Regex("[,\\s\\-]+")).filter { it.isNotBlank() }
-                if (parts.size >= 2) {
-                    val rawPId = parts[0].trim().uppercase(Locale.ROOT)
-                    val formattedPId = if (rawPId.all { it.isDigit() }) {
-                        val monthStr = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
-                        val yearStr = SimpleDateFormat("yy", Locale.getDefault()).format(Date())
-                        val prefix = "AB$yearStr$monthStr"
-                        val paddedNum = if (rawPId.length < 3) String.format(Locale.US, "%03d", rawPId.toIntOrNull() ?: 0) else rawPId
-                        "$prefix$paddedNum"
-                    } else rawPId
-                    items.add(ScannedMedicalItem(patientId = formattedPId, code = parts[1]))
+            } else {
+                // Pattern 2: Lines with numbers, commas, dashes, colons or spaces
+                val cleanLine = line.replace("Patient", "", ignoreCase = true)
+                    .replace("Code", "", ignoreCase = true)
+                    .replace("ID", "", ignoreCase = true)
+                    .replace("কোড", "", ignoreCase = true)
+                    .replace("পেশেন্ট", "", ignoreCase = true)
+                    .trim()
+
+                // Check if line is "Code: Patient1, Patient2, Patient3" format
+                if (cleanLine.contains(":") || cleanLine.contains("->") || cleanLine.contains("=")) {
+                    val splitParts = cleanLine.split(Regex("[:\\->=]")).map { it.trim() }
+                    if (splitParts.size >= 2) {
+                        val codePart = splitParts[0]
+                        val patientsPart = splitParts[1]
+                        val patientTokens = patientsPart.split(Regex("[,\\s\\-]+")).filter { it.isNotBlank() }
+                        patientTokens.forEach { pToken ->
+                            val pId = formatPatientIdToken(pToken, defaultPrefix)
+                            if (pId.isNotBlank()) {
+                                items.add(ScannedMedicalItem(patientId = pId, code = codePart))
+                            }
+                        }
+                    }
+                } else {
+                    val parts = cleanLine.split(Regex("[,\\s\\-]+")).filter { it.isNotBlank() }
+                    if (parts.size >= 2) {
+                        val pIdToken = parts[0]
+                        val codeToken = parts[1]
+                        val formattedPId = formatPatientIdToken(pIdToken, defaultPrefix)
+                        if (formattedPId.isNotBlank() && codeToken.isNotBlank()) {
+                            items.add(ScannedMedicalItem(patientId = formattedPId, code = codeToken))
+                        }
+                    }
                 }
             }
         }
 
         return ScannedMedicalResult(
             date = date,
-            items = if (items.isNotEmpty()) items else listOf(
-                ScannedMedicalItem("AB2608001", "101"),
-                ScannedMedicalItem("AB2608002", "102")
-            ),
+            items = items,
             rawText = text
         )
     }
 
-    private fun generateFallbackScannedResult(todayStr: String): ScannedMedicalResult {
-        val monthStr = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
-        val yearStr = SimpleDateFormat("yy", Locale.getDefault()).format(Date())
-        val prefix = "AB$yearStr$monthStr"
-
-        val sampleItems = listOf(
-            ScannedMedicalItem("${prefix}001", "101"),
-            ScannedMedicalItem("${prefix}002", "102"),
-            ScannedMedicalItem("${prefix}003", "101"),
-            ScannedMedicalItem("${prefix}004", "104"),
-            ScannedMedicalItem("${prefix}005", "105"),
-            ScannedMedicalItem("${prefix}006", "102"),
-            ScannedMedicalItem("${prefix}007", "101"),
-            ScannedMedicalItem("${prefix}008", "CBC")
-        )
-
-        return ScannedMedicalResult(
-            date = todayStr,
-            items = sampleItems,
-            rawText = "Auto-scanned handwritten sheet"
-        )
+    private fun formatPatientIdToken(token: String, defaultPrefix: String): String {
+        val clean = token.uppercase(Locale.ROOT).trim()
+        if (clean.isBlank()) return ""
+        if (clean.matches(Regex("[A-Z]{1,4}\\d{1,8}"))) return clean
+        if (clean.all { it.isDigit() }) {
+            val numVal = clean.toLongOrNull()
+            val numStr = if (numVal != null && numVal > 0) numVal.toString() else clean
+            return "$defaultPrefix$numStr"
+        }
+        return clean
     }
 }

@@ -147,26 +147,30 @@ fun formatPatientId(rawId: String, dateStr: String, existingItems: List<ScannedM
     val trimmed = rawId.trim().uppercase(Locale.ROOT)
     if (trimmed.isEmpty()) return ""
 
-    // Check if input is purely numeric (e.g., "1", "15", "001", "123")
+    // Check if input is purely numeric (e.g., "1", "5", "25", "100", "005")
     if (trimmed.all { it.isDigit() }) {
         // Find existing prefix in previous items if any (e.g. "AB2608")
         val existingPrefix = existingItems.asReversed().firstNotNullOfOrNull { item ->
-            val digits = item.patientId.takeLastWhile { it.isDigit() }
-            if (digits.isNotEmpty()) {
-                val p = item.patientId.dropLast(digits.length)
-                if (p.isNotBlank()) p else null
-            } else null
+            val pId = item.patientId
+            val match = Regex("^([A-Za-z]+\\d{4})").find(pId)
+            if (match != null) {
+                match.value
+            } else {
+                val digits = pId.takeLastWhile { it.isDigit() }
+                if (digits.isNotEmpty()) {
+                    val p = pId.dropLast(digits.length)
+                    if (p.isNotBlank()) p else null
+                } else null
+            }
         }
 
         val prefixToUse = existingPrefix ?: computeDefaultPatientIdPrefix(dateStr)
 
-        val paddedNum = if (trimmed.length < 3) {
-            String.format(Locale.US, "%03d", trimmed.toIntOrNull() ?: 0)
-        } else {
-            trimmed
-        }
+        // Strip leading zeros if numeric: e.g. "005" -> "5", "5" -> "5", "25" -> "25", "100" -> "100"
+        val numVal = trimmed.toLongOrNull()
+        val numStr = if (numVal != null && numVal > 0) numVal.toString() else trimmed
 
-        return "$prefixToUse$paddedNum"
+        return "$prefixToUse$numStr"
     }
 
     return trimmed
@@ -671,14 +675,21 @@ fun MedicalReportGeneratorScreen(
                             val formattedId = formatPatientId(newPatientId, reportDate, editableItems)
                             if (formattedId.isNotBlank() && newCode.isNotBlank()) {
                                 onAddItem(formattedId, newCode)
-                                // Auto increment patient ID for quick next entry
-                                val digits = formattedId.takeLastWhile { it.isDigit() }
-                                if (digits.isNotEmpty()) {
-                                    val prefix = formattedId.dropLast(digits.length)
-                                    val nextNum = (digits.toLongOrNull() ?: 0L) + 1
-                                    newPatientId = "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
+                                // Auto increment patient ID for quick next entry without zero padding
+                                val match = Regex("^([A-Za-z]+\\d{4})(\\d+)$").find(formattedId)
+                                if (match != null) {
+                                    val prefix = match.groupValues[1]
+                                    val serial = match.groupValues[2].toLongOrNull() ?: 0L
+                                    newPatientId = "$prefix${serial + 1}"
                                 } else {
-                                    newPatientId = ""
+                                    val digits = formattedId.takeLastWhile { it.isDigit() }
+                                    if (digits.isNotEmpty()) {
+                                        val prefix = formattedId.dropLast(digits.length)
+                                        val nextNum = (digits.toLongOrNull() ?: 0L) + 1
+                                        newPatientId = "$prefix$nextNum"
+                                    } else {
+                                        newPatientId = ""
+                                    }
                                 }
                             }
                         },

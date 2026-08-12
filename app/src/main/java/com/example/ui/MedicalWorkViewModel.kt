@@ -195,11 +195,11 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         val prefix = "AB$yearStr$monthStr"
 
         _editableItems.value = listOf(
-            ScannedMedicalItem("${prefix}001", "101"),
-            ScannedMedicalItem("${prefix}002", "102"),
-            ScannedMedicalItem("${prefix}003", "101"),
-            ScannedMedicalItem("${prefix}004", "105"),
-            ScannedMedicalItem("${prefix}005", "104")
+            ScannedMedicalItem("${prefix}1", "101"),
+            ScannedMedicalItem("${prefix}2", "102"),
+            ScannedMedicalItem("${prefix}3", "101"),
+            ScannedMedicalItem("${prefix}4", "105"),
+            ScannedMedicalItem("${prefix}5", "104")
         )
     }
 
@@ -258,7 +258,7 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
             "AB$yearStr$monthStr"
         }
         val resequenced = current.mapIndexed { idx, item ->
-            val numStr = String.format(Locale.US, "%03d", idx + 1)
+            val numStr = (idx + 1).toString()
             ScannedMedicalItem(patientId = "$cleanPrefix$numStr", code = item.code)
         }
         _editableItems.value = resequenced
@@ -271,13 +271,17 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun incrementPatientId(id: String): String {
+        val match = Regex("^([A-Za-z]+\\d{4})(\\d+)$").find(id)
+        if (match != null) {
+            val prefix = match.groupValues[1]
+            val serial = match.groupValues[2].toLongOrNull() ?: 0L
+            return "$prefix${serial + 1}"
+        }
         val digits = id.takeLastWhile { it.isDigit() }
         if (digits.isEmpty()) return "$id-1"
         val prefix = id.dropLast(digits.length)
         val num = digits.toLongOrNull() ?: return "$id-1"
-        val nextNum = num + 1
-        val formattedNum = String.format(Locale.US, "%0${digits.length}d", nextNum)
-        return "$prefix$formattedNum"
+        return "$prefix${num + 1}"
     }
 
     fun clearGeneratorItems() {
