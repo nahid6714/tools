@@ -38,6 +38,11 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import com.example.util.getAllFlatItems
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -126,9 +131,13 @@ fun MemoVoucherCard(
     scrollState: ScrollState? = null,
     onPresetClick: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
     onAddCustomPreset: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
+    onAddCustomPresetWithParent: (name: String, qty: String, rate: String, amount: String, parentFolderId: String?) -> Unit = { n, q, r, a, p -> onAddCustomPreset(n, q, r, a) },
+    onAddFolder: (folderName: String, parentFolderId: String?) -> Unit = { _, _ -> },
+    onUpdatePresetNode: (nodeId: String, name: String, qty: String, rate: String, amount: String, isFolder: Boolean, parentFolderId: String?, children: List<QuickPreset>) -> Unit = { _, _, _, _, _, _, _, _ -> },
     onRemovePreset: (preset: QuickPreset) -> Unit = {},
     onResetDefaults: () -> Unit = {},
     onReorderPreset: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
+    onReorderPresetWithParent: (parentFolderId: String?, fromIndex: Int, toIndex: Int) -> Unit = { p, f, t -> onReorderPreset(f, t) },
     onUpdateDateClick: () -> Unit,
     onUpdateItemName: (id: String, name: String) -> Unit,
     onUpdateItemQty: (id: String, qty: String) -> Unit,
@@ -416,10 +425,12 @@ fun MemoVoucherCard(
                     ManageQuickPresetsDialog(
                         presets = quickPresets,
                         onDismiss = { showManagePresetsDialog = false },
-                        onAddPreset = onAddCustomPreset,
+                        onAddPresetWithParent = onAddCustomPresetWithParent,
+                        onAddFolder = onAddFolder,
+                        onUpdateNode = onUpdatePresetNode,
                         onRemovePreset = onRemovePreset,
                         onResetDefaults = onResetDefaults,
-                        onReorderPreset = onReorderPreset
+                        onReorderPresetWithParent = onReorderPresetWithParent
                     )
                 }
 
@@ -1075,6 +1086,7 @@ fun QuickItemSelectorButton(
     modifier: Modifier = Modifier
 ) {
     var expandedDropdown by remember { mutableStateOf(false) }
+    var expandedFolderIds by remember { mutableStateOf(setOf<String>()) }
     val transitionState = remember {
         MutableTransitionState(false).apply { targetState = false }
     }
@@ -1254,98 +1266,15 @@ fun QuickItemSelectorButton(
                                             .verticalScroll(rememberScrollState()),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        presets.forEach { preset ->
-                                            val isAdded = addedItemNames.contains(preset.name.trim())
-                                            val formattedText = BengaliUtils.formatPresetDisplayText(preset)
-
-                                            Surface(
-                                                shape = RoundedCornerShape(10.dp),
-                                                color = if (isAdded) DarkForestGreen.copy(alpha = 0.10f) else Color.White,
-                                                border = BorderStroke(
-                                                    width = if (isAdded) 1.2.dp else 1.dp,
-                                                    color = if (isAdded) DarkForestGreen.copy(alpha = 0.45f) else WarmBorderColor
-                                                ),
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable {
-                                                        onPresetClick(
-                                                            preset.name,
-                                                            preset.defaultQty,
-                                                            preset.defaultRate,
-                                                            preset.defaultAmount
-                                                        )
-                                                    }
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text(
-                                                        text = formattedText,
-                                                        fontSize = 13.5.sp,
-                                                        fontWeight = if (isAdded) FontWeight.Bold else FontWeight.SemiBold,
-                                                        color = if (isAdded) DarkForestGreen else Color(0xFF222222),
-                                                        modifier = Modifier.weight(1f, fill = false)
-                                                    )
-
-                                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                                    if (isAdded) {
-                                                        Surface(
-                                                            shape = RoundedCornerShape(12.dp),
-                                                            color = DarkForestGreen
-                                                        ) {
-                                                            Row(
-                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                            ) {
-                                                                Icon(
-                                                                    imageVector = Icons.Default.Check,
-                                                                    contentDescription = null,
-                                                                    tint = Color.White,
-                                                                    modifier = Modifier.size(12.dp)
-                                                                )
-                                                                Spacer(modifier = Modifier.width(4.dp))
-                                                                Text(
-                                                                    text = "যোগ করা আছে",
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    color = Color.White
-                                                                )
-                                                            }
-                                                        }
-                                                    } else {
-                                                        Surface(
-                                                            shape = RoundedCornerShape(12.dp),
-                                                            color = DarkForestGreen.copy(alpha = 0.08f),
-                                                            border = BorderStroke(0.8.dp, DarkForestGreen.copy(alpha = 0.2f))
-                                                        ) {
-                                                            Row(
-                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                            ) {
-                                                                Icon(
-                                                                    imageVector = Icons.Default.Add,
-                                                                    contentDescription = null,
-                                                                    tint = DarkForestGreen,
-                                                                    modifier = Modifier.size(12.dp)
-                                                                )
-                                                                Spacer(modifier = Modifier.width(4.dp))
-                                                                Text(
-                                                                    text = "যোগ করুন",
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Medium,
-                                                                    color = DarkForestGreen
-                                                                )
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        QuickItemSelectorTree(
+                                            nodes = presets,
+                                            addedItemNames = addedItemNames,
+                                            expandedFolderIds = expandedFolderIds,
+                                            onToggleFolder = { id ->
+                                                expandedFolderIds = if (expandedFolderIds.contains(id)) expandedFolderIds - id else expandedFolderIds + id
+                                            },
+                                            onPresetClick = onPresetClick
+                                        )
                                     }
                                 }
 
@@ -1384,6 +1313,184 @@ fun QuickItemSelectorButton(
                                         )
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickItemSelectorTree(
+    nodes: List<QuickPreset>,
+    addedItemNames: Set<String>,
+    expandedFolderIds: Set<String>,
+    onToggleFolder: (String) -> Unit,
+    onPresetClick: (name: String, qty: String, rate: String, amount: String) -> Unit,
+    level: Int = 0
+) {
+    nodes.forEach { preset ->
+        if (preset.isFolder) {
+            val isExpanded = expandedFolderIds.contains(preset.id)
+            val childItems = preset.children.getAllFlatItems()
+            val addedCount = childItems.count { addedItemNames.contains(it.name.trim()) }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = (level * 10).dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = DarkForestGreen.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, DarkForestGreen.copy(alpha = 0.25f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onToggleFolder(preset.id) }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = DarkForestGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${preset.name} (${childItems.size})",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkForestGreen
+                            )
+                            if (addedCount > 0) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "[$addedCount যোগ করা]",
+                                    fontSize = 10.sp,
+                                    color = DarkForestGreen,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = DarkForestGreen,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                if (isExpanded) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    QuickItemSelectorTree(
+                        nodes = preset.children,
+                        addedItemNames = addedItemNames,
+                        expandedFolderIds = expandedFolderIds,
+                        onToggleFolder = onToggleFolder,
+                        onPresetClick = onPresetClick,
+                        level = level + 1
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+            }
+        } else {
+            val isAdded = addedItemNames.contains(preset.name.trim())
+            val formattedText = BengaliUtils.formatPresetDisplayText(preset)
+
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (isAdded) DarkForestGreen.copy(alpha = 0.10f) else Color.White,
+                border = BorderStroke(
+                    width = if (isAdded) 1.2.dp else 1.dp,
+                    color = if (isAdded) DarkForestGreen.copy(alpha = 0.45f) else WarmBorderColor
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = (level * 10).dp)
+                    .clickable {
+                        onPresetClick(
+                            preset.name,
+                            preset.defaultQty,
+                            preset.defaultRate,
+                            preset.defaultAmount
+                        )
+                    }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formattedText,
+                        fontSize = 13.5.sp,
+                        fontWeight = if (isAdded) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (isAdded) DarkForestGreen else Color(0xFF222222),
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    if (isAdded) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = DarkForestGreen
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "যোগ করা আছে",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = DarkForestGreen.copy(alpha = 0.08f),
+                            border = BorderStroke(0.8.dp, DarkForestGreen.copy(alpha = 0.2f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = DarkForestGreen,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "যোগ করুন",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = DarkForestGreen
+                                )
                             }
                         }
                     }

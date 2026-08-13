@@ -485,6 +485,15 @@ fun HomeScreen(
                                         onAddCustomPreset = { name, qty, rate, amount ->
                                             viewModel.addCustomQuickPreset(name, qty, rate, amount)
                                         },
+                                        onAddCustomPresetWithParent = { name, qty, rate, amount, parentId ->
+                                            viewModel.addCustomQuickPreset(name, qty, rate, amount, parentId)
+                                        },
+                                        onAddFolder = { folderName, parentId ->
+                                            viewModel.addQuickPresetFolder(folderName, parentId)
+                                        },
+                                        onUpdatePresetNode = { nodeId, name, qty, rate, amount, isFolder, parentId, children ->
+                                            viewModel.updateQuickPresetNode(nodeId, name, qty, rate, amount, isFolder, parentId, children)
+                                        },
                                         onRemovePreset = { preset ->
                                             viewModel.removeQuickPreset(preset)
                                         },
@@ -493,6 +502,9 @@ fun HomeScreen(
                                         },
                                         onReorderPreset = { from, to ->
                                             viewModel.reorderQuickPresets(from, to)
+                                        },
+                                        onReorderPresetWithParent = { parentId, from, to ->
+                                            viewModel.reorderQuickPresets(parentId, from, to)
                                         },
                                         onUpdateDateClick = { showDatePicker() },
                                         onUpdateItemName = { id, name -> viewModel.updateItemName(id, name) },
