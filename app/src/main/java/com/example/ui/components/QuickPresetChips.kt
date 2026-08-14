@@ -5,8 +5,11 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -59,20 +61,26 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -84,6 +92,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import com.example.ui.theme.HeadingFontFamily
 import com.example.ui.theme.LedgerRed
 import com.example.util.BengaliUtils
@@ -740,10 +750,20 @@ fun ManageQuickPresetsDialog(
             )
         },
         text = {
+            val dialogScrollState = rememberScrollState()
+            var dialogBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .onGloballyPositioned { coords ->
+                        val pos = coords.positionInWindow()
+                        val size = coords.size
+                        dialogBoundsInWindow = Rect(
+                            pos.x, pos.y, pos.x + size.width, pos.y + size.height
+                        )
+                    }
+                    .verticalScroll(dialogScrollState)
             ) {
                 // Segmented buttons: Add Item vs Add Folder
                 if (editingNode == null) {
@@ -1147,6 +1167,8 @@ fun ManageQuickPresetsDialog(
                     parentFolderId = null,
                     editingNode = editingNode,
                     expandedTreeFolderIds = expandedTreeFolderIds,
+                    scrollState = dialogScrollState,
+                    dialogBoundsInWindow = dialogBoundsInWindow,
                     onToggleExpand = { id ->
                         expandedTreeFolderIds = if (expandedTreeFolderIds.contains(id)) {
                             expandedTreeFolderIds - id
@@ -1205,15 +1227,69 @@ private fun PresetManagementTree(
     parentFolderId: String?,
     editingNode: QuickPreset?,
     expandedTreeFolderIds: Set<String>,
+    scrollState: ScrollState? = null,
+    dialogBoundsInWindow: Rect = Rect.Zero,
     onToggleExpand: (String) -> Unit,
     onEditNode: (QuickPreset) -> Unit,
     onDeleteNode: (QuickPreset) -> Unit,
     onReorderNode: (parentFolderId: String?, fromIndex: Int, toIndex: Int) -> Unit,
     level: Int = 0
 ) {
-    var draggedNodeIndex by remember { mutableStateOf<Int?>(null) }
+    var draggedNodeId by remember { mutableStateOf<String?>(null) }
     var nodeDragOffsetY by remember { mutableFloatStateOf(0f) }
-    val nodeRowHeights = remember { mutableStateMapOf<Int, Int>() }
+    var activeAutoScrollSpeed by remember { mutableFloatStateOf(0f) }
+    val nodeRowHeights = remember { mutableStateMapOf<String, Int>() }
+    val nodeWindowTops = remember { mutableStateMapOf<String, Float>() }
+
+    var initialRowWindowTop by remember { mutableFloatStateOf(0f) }
+    var initialTouchInRowY by remember { mutableFloatStateOf(0f) }
+    var totalTouchDragY by remember { mutableFloatStateOf(0f) }
+
+    val currentNodes by rememberUpdatedState(nodes)
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+    val viewportTop = if (dialogBoundsInWindow.top > 0f) dialogBoundsInWindow.top else with(density) { 60.dp.toPx() }
+    val viewportBottom = if (dialogBoundsInWindow.bottom > 0f) dialogBoundsInWindow.bottom else screenHeightPx - with(density) { 60.dp.toPx() }
+    val scrollThreshold = with(density) { 80.dp.toPx() }
+    val maxScrollSpeed = with(density) { 18.dp.toPx() }
+
+    LaunchedEffect(draggedNodeId) {
+        if (draggedNodeId == null) return@LaunchedEffect
+        while (isActive && draggedNodeId != null) {
+            val speed = activeAutoScrollSpeed
+            if (speed != 0f && scrollState != null) {
+                val consumed = scrollState.scrollBy(speed)
+                if (consumed != 0f) {
+                    initialRowWindowTop -= consumed
+                    nodeDragOffsetY += consumed
+
+                    val currentId = draggedNodeId
+                    val list = currentNodes
+                    var currentIndex = list.indexOfFirst { it.id == currentId }
+                    if (currentIndex != -1) {
+                        val rowHeight = (nodeRowHeights[currentId] ?: 0).toFloat()
+                        if (rowHeight > 0f) {
+                            while (nodeDragOffsetY > rowHeight / 2 && currentIndex < list.lastIndex) {
+                                onReorderNode(parentFolderId, currentIndex, currentIndex + 1)
+                                currentIndex += 1
+                                nodeDragOffsetY -= rowHeight
+                            }
+                            while (nodeDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                onReorderNode(parentFolderId, currentIndex, currentIndex - 1)
+                                currentIndex -= 1
+                                nodeDragOffsetY += rowHeight
+                            }
+                        }
+                    }
+                } else {
+                    activeAutoScrollSpeed = 0f
+                }
+            }
+            delay(16)
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1221,18 +1297,19 @@ private fun PresetManagementTree(
     ) {
         nodes.forEachIndexed { index, node ->
             val isEditing = editingNode?.id == node.id
-            val isBeingDragged = draggedNodeIndex == index
+            val isBeingDragged = draggedNodeId == node.id
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .onGloballyPositioned { coords ->
-                        nodeRowHeights[index] = coords.size.height
+                        nodeWindowTops[node.id] = coords.positionInWindow().y
+                        nodeRowHeights[node.id] = coords.size.height
                     }
                     .graphicsLayer {
                         translationY = if (isBeingDragged) nodeDragOffsetY else 0f
                     }
-                    .zIndex(if (isBeingDragged) 2f else 0f)
+                    .zIndex(if (isBeingDragged) 3f else 0f)
             ) {
                 if (node.isFolder) {
                     val isExpanded = expandedTreeFolderIds.contains(node.id)
@@ -1264,34 +1341,65 @@ private fun PresetManagementTree(
                                     modifier = Modifier
                                         .size(24.dp)
                                         .padding(horizontal = 2.dp)
-                                        .pointerInput(index, nodes.size) {
+                                        .pointerInput(node.id) {
                                             detectDragGesturesAfterLongPress(
-                                                onDragStart = {
-                                                    draggedNodeIndex = index
+                                                onDragStart = { offset ->
+                                                    draggedNodeId = node.id
                                                     nodeDragOffsetY = 0f
+                                                    activeAutoScrollSpeed = 0f
+                                                    initialTouchInRowY = offset.y
+                                                    initialRowWindowTop = nodeWindowTops[node.id] ?: 0f
+                                                    totalTouchDragY = 0f
                                                 },
                                                 onDragEnd = {
-                                                    draggedNodeIndex = null
+                                                    draggedNodeId = null
                                                     nodeDragOffsetY = 0f
+                                                    activeAutoScrollSpeed = 0f
                                                 },
                                                 onDragCancel = {
-                                                    draggedNodeIndex = null
+                                                    draggedNodeId = null
                                                     nodeDragOffsetY = 0f
+                                                    activeAutoScrollSpeed = 0f
                                                 },
                                                 onDrag = { change, dragAmount ->
                                                     change.consume()
                                                     nodeDragOffsetY += dragAmount.y
-                                                    val currentIndex = draggedNodeIndex ?: return@detectDragGesturesAfterLongPress
-                                                    val rowHeight = (nodeRowHeights[currentIndex] ?: 0).toFloat()
-                                                    if (rowHeight > 0f) {
-                                                        if (nodeDragOffsetY > rowHeight / 2 && currentIndex < nodes.lastIndex) {
-                                                            onReorderNode(parentFolderId, currentIndex, currentIndex + 1)
-                                                            draggedNodeIndex = currentIndex + 1
-                                                            nodeDragOffsetY -= rowHeight
-                                                        } else if (nodeDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
-                                                            onReorderNode(parentFolderId, currentIndex, currentIndex - 1)
-                                                            draggedNodeIndex = currentIndex - 1
-                                                            nodeDragOffsetY += rowHeight
+                                                    totalTouchDragY += dragAmount.y
+
+                                                    val currentId = draggedNodeId ?: return@detectDragGesturesAfterLongPress
+                                                    val list = currentNodes
+                                                    var currentIndex = list.indexOfFirst { it.id == currentId }
+                                                    if (currentIndex != -1) {
+                                                        val rowHeight = (nodeRowHeights[currentId] ?: 0).toFloat()
+                                                        if (rowHeight > 0f) {
+                                                            while (nodeDragOffsetY > rowHeight / 2 && currentIndex < list.lastIndex) {
+                                                                onReorderNode(parentFolderId, currentIndex, currentIndex + 1)
+                                                                currentIndex += 1
+                                                                nodeDragOffsetY -= rowHeight
+                                                            }
+                                                            while (nodeDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                                                onReorderNode(parentFolderId, currentIndex, currentIndex - 1)
+                                                                currentIndex -= 1
+                                                                nodeDragOffsetY += rowHeight
+                                                            }
+                                                        }
+                                                    }
+
+                                                    if (viewportBottom > viewportTop) {
+                                                        val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
+                                                        val distFromBottom = viewportBottom - currentPointerY
+                                                        val distFromTop = currentPointerY - viewportTop
+
+                                                        activeAutoScrollSpeed = when {
+                                                            distFromBottom < scrollThreshold -> {
+                                                                val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
+                                                                maxScrollSpeed * ratio
+                                                            }
+                                                            distFromTop < scrollThreshold -> {
+                                                                val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
+                                                                -maxScrollSpeed * ratio
+                                                            }
+                                                            else -> 0f
                                                         }
                                                     }
                                                 }
@@ -1364,6 +1472,8 @@ private fun PresetManagementTree(
                                 parentFolderId = node.id,
                                 editingNode = editingNode,
                                 expandedTreeFolderIds = expandedTreeFolderIds,
+                                scrollState = scrollState,
+                                dialogBoundsInWindow = dialogBoundsInWindow,
                                 onToggleExpand = onToggleExpand,
                                 onEditNode = onEditNode,
                                 onDeleteNode = onDeleteNode,
@@ -1395,34 +1505,65 @@ private fun PresetManagementTree(
                                 modifier = Modifier
                                     .size(24.dp)
                                     .padding(horizontal = 2.dp)
-                                    .pointerInput(index, nodes.size) {
+                                    .pointerInput(node.id) {
                                         detectDragGesturesAfterLongPress(
-                                            onDragStart = {
-                                                draggedNodeIndex = index
+                                            onDragStart = { offset ->
+                                                draggedNodeId = node.id
                                                 nodeDragOffsetY = 0f
+                                                activeAutoScrollSpeed = 0f
+                                                initialTouchInRowY = offset.y
+                                                initialRowWindowTop = nodeWindowTops[node.id] ?: 0f
+                                                totalTouchDragY = 0f
                                             },
                                             onDragEnd = {
-                                                draggedNodeIndex = null
+                                                draggedNodeId = null
                                                 nodeDragOffsetY = 0f
+                                                activeAutoScrollSpeed = 0f
                                             },
                                             onDragCancel = {
-                                                draggedNodeIndex = null
+                                                draggedNodeId = null
                                                 nodeDragOffsetY = 0f
+                                                activeAutoScrollSpeed = 0f
                                             },
                                             onDrag = { change, dragAmount ->
                                                 change.consume()
                                                 nodeDragOffsetY += dragAmount.y
-                                                val currentIndex = draggedNodeIndex ?: return@detectDragGesturesAfterLongPress
-                                                val rowHeight = (nodeRowHeights[currentIndex] ?: 0).toFloat()
-                                                if (rowHeight > 0f) {
-                                                    if (nodeDragOffsetY > rowHeight / 2 && currentIndex < nodes.lastIndex) {
-                                                        onReorderNode(parentFolderId, currentIndex, currentIndex + 1)
-                                                        draggedNodeIndex = currentIndex + 1
-                                                        nodeDragOffsetY -= rowHeight
-                                                    } else if (nodeDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
-                                                        onReorderNode(parentFolderId, currentIndex, currentIndex - 1)
-                                                        draggedNodeIndex = currentIndex - 1
-                                                        nodeDragOffsetY += rowHeight
+                                                totalTouchDragY += dragAmount.y
+
+                                                val currentId = draggedNodeId ?: return@detectDragGesturesAfterLongPress
+                                                val list = currentNodes
+                                                var currentIndex = list.indexOfFirst { it.id == currentId }
+                                                if (currentIndex != -1) {
+                                                    val rowHeight = (nodeRowHeights[currentId] ?: 0).toFloat()
+                                                    if (rowHeight > 0f) {
+                                                        while (nodeDragOffsetY > rowHeight / 2 && currentIndex < list.lastIndex) {
+                                                            onReorderNode(parentFolderId, currentIndex, currentIndex + 1)
+                                                            currentIndex += 1
+                                                            nodeDragOffsetY -= rowHeight
+                                                        }
+                                                        while (nodeDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                                            onReorderNode(parentFolderId, currentIndex, currentIndex - 1)
+                                                            currentIndex -= 1
+                                                            nodeDragOffsetY += rowHeight
+                                                        }
+                                                    }
+                                                }
+
+                                                if (viewportBottom > viewportTop) {
+                                                    val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
+                                                    val distFromBottom = viewportBottom - currentPointerY
+                                                    val distFromTop = currentPointerY - viewportTop
+
+                                                    activeAutoScrollSpeed = when {
+                                                        distFromBottom < scrollThreshold -> {
+                                                            val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
+                                                            maxScrollSpeed * ratio
+                                                        }
+                                                        distFromTop < scrollThreshold -> {
+                                                            val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
+                                                            -maxScrollSpeed * ratio
+                                                        }
+                                                        else -> 0f
                                                     }
                                                 }
                                             }
