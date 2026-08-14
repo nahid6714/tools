@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
@@ -58,6 +60,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,6 +70,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -76,6 +83,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import com.example.ui.theme.HeadingFontFamily
 import com.example.ui.theme.LedgerRed
 import com.example.util.BengaliUtils
@@ -1151,11 +1159,8 @@ fun ManageQuickPresetsDialog(
                         if (editingNode?.id == node.id) clearForm()
                         onRemovePreset(node)
                     },
-                    onMoveUp = { pId, idx ->
-                        if (idx > 0) onReorderPresetWithParent(pId, idx, idx - 1)
-                    },
-                    onMoveDown = { pId, idx, total ->
-                        if (idx < total - 1) onReorderPresetWithParent(pId, idx, idx + 1)
+                    onReorderNode = { pId, fromIdx, toIdx ->
+                        onReorderPresetWithParent(pId, fromIdx, toIdx)
                     }
                 )
 
@@ -1203,98 +1208,243 @@ private fun PresetManagementTree(
     onToggleExpand: (String) -> Unit,
     onEditNode: (QuickPreset) -> Unit,
     onDeleteNode: (QuickPreset) -> Unit,
-    onMoveUp: (parentFolderId: String?, index: Int) -> Unit,
-    onMoveDown: (parentFolderId: String?, index: Int, total: Int) -> Unit,
+    onReorderNode: (parentFolderId: String?, fromIndex: Int, toIndex: Int) -> Unit,
     level: Int = 0
 ) {
+    var draggedNodeIndex by remember { mutableStateOf<Int?>(null) }
+    var nodeDragOffsetY by remember { mutableFloatStateOf(0f) }
+    val nodeRowHeights = remember { mutableStateMapOf<Int, Int>() }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         nodes.forEachIndexed { index, node ->
             val isEditing = editingNode?.id == node.id
+            val isBeingDragged = draggedNodeIndex == index
 
-            if (node.isFolder) {
-                val isExpanded = expandedTreeFolderIds.contains(node.id)
-                val childItemsCount = node.children.getAllFlatItems().size
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coords ->
+                        nodeRowHeights[index] = coords.size.height
+                    }
+                    .graphicsLayer {
+                        translationY = if (isBeingDragged) nodeDragOffsetY else 0f
+                    }
+                    .zIndex(if (isBeingDragged) 2f else 0f)
+            ) {
+                if (node.isFolder) {
+                    val isExpanded = expandedTreeFolderIds.contains(node.id)
+                    val childItemsCount = node.children.getAllFlatItems().size
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = (level * 12).dp)
-                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = (level * 12).dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isEditing) MaterialTheme.colorScheme.primary else if (isBeingDragged) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                // Drag Handle (=) on left, matching Home screen
+                                Icon(
+                                    imageVector = Icons.Default.DragHandle,
+                                    contentDescription = "টেনে অবস্থান পরিবর্তন করুন",
+                                    tint = if (isEditing) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .padding(horizontal = 2.dp)
+                                        .pointerInput(index, nodes.size) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = {
+                                                    draggedNodeIndex = index
+                                                    nodeDragOffsetY = 0f
+                                                },
+                                                onDragEnd = {
+                                                    draggedNodeIndex = null
+                                                    nodeDragOffsetY = 0f
+                                                },
+                                                onDragCancel = {
+                                                    draggedNodeIndex = null
+                                                    nodeDragOffsetY = 0f
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    nodeDragOffsetY += dragAmount.y
+                                                    val currentIndex = draggedNodeIndex ?: return@detectDragGesturesAfterLongPress
+                                                    val rowHeight = (nodeRowHeights[currentIndex] ?: 0).toFloat()
+                                                    if (rowHeight > 0f) {
+                                                        if (nodeDragOffsetY > rowHeight / 2 && currentIndex < nodes.lastIndex) {
+                                                            onReorderNode(parentFolderId, currentIndex, currentIndex + 1)
+                                                            draggedNodeIndex = currentIndex + 1
+                                                            nodeDragOffsetY -= rowHeight
+                                                        } else if (nodeDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                                            onReorderNode(parentFolderId, currentIndex, currentIndex - 1)
+                                                            draggedNodeIndex = currentIndex - 1
+                                                            nodeDragOffsetY += rowHeight
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        }
+                                )
+
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onToggleExpand(node.id) },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = null,
+                                        tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "${node.name} ($childItemsCount)",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isEditing) Color.White else MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Edit button
+                                    IconButton(
+                                        onClick = { onEditNode(node) },
+                                        modifier = Modifier.size(26.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "এডিট",
+                                            tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+
+                                    // Delete button
+                                    IconButton(
+                                        onClick = { onDeleteNode(node) },
+                                        modifier = Modifier.size(26.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "ডিলিট",
+                                            tint = if (isEditing) Color(0xFFFF8A80) else LedgerRed,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (isExpanded) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            PresetManagementTree(
+                                nodes = node.children,
+                                parentFolderId = node.id,
+                                editingNode = editingNode,
+                                expandedTreeFolderIds = expandedTreeFolderIds,
+                                onToggleExpand = onToggleExpand,
+                                onEditNode = onEditNode,
+                                onDeleteNode = onDeleteNode,
+                                onReorderNode = onReorderNode,
+                                level = level + 1
+                            )
+                        }
+                    }
+                } else {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isEditing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.fillMaxWidth()
+                        color = if (isEditing) MaterialTheme.colorScheme.primary else if (isBeingDragged) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f) else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = (level * 12).dp)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 6.dp, vertical = 6.dp),
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            // Drag handle on the left matching the Home screen (= icon)
+                            Icon(
+                                imageVector = Icons.Default.DragHandle,
+                                contentDescription = "টেনে অবস্থান পরিবর্তন করুন",
+                                tint = if (isEditing) Color.White.copy(alpha = 0.8f) else Color.Gray,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .padding(horizontal = 2.dp)
+                                    .pointerInput(index, nodes.size) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = {
+                                                draggedNodeIndex = index
+                                                nodeDragOffsetY = 0f
+                                            },
+                                            onDragEnd = {
+                                                draggedNodeIndex = null
+                                                nodeDragOffsetY = 0f
+                                            },
+                                            onDragCancel = {
+                                                draggedNodeIndex = null
+                                                nodeDragOffsetY = 0f
+                                            },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                nodeDragOffsetY += dragAmount.y
+                                                val currentIndex = draggedNodeIndex ?: return@detectDragGesturesAfterLongPress
+                                                val rowHeight = (nodeRowHeights[currentIndex] ?: 0).toFloat()
+                                                if (rowHeight > 0f) {
+                                                    if (nodeDragOffsetY > rowHeight / 2 && currentIndex < nodes.lastIndex) {
+                                                        onReorderNode(parentFolderId, currentIndex, currentIndex + 1)
+                                                        draggedNodeIndex = currentIndex + 1
+                                                        nodeDragOffsetY -= rowHeight
+                                                    } else if (nodeDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
+                                                        onReorderNode(parentFolderId, currentIndex, currentIndex - 1)
+                                                        draggedNodeIndex = currentIndex - 1
+                                                        nodeDragOffsetY += rowHeight
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                            )
+
                             Row(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable { onToggleExpand(node.id) },
+                                    .clickable { onEditNode(node) },
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Folder,
-                                    contentDescription = null,
-                                    tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "${node.name} ($childItemsCount)",
+                                    text = BengaliUtils.formatPresetDisplayText(node),
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isEditing) Color.White else MaterialTheme.colorScheme.primary
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isEditing) Color.White else MaterialTheme.colorScheme.onSurface
                                 )
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Up button
-                                if (index > 0) {
-                                    IconButton(
-                                        onClick = { onMoveUp(parentFolderId, index) },
-                                        modifier = Modifier.size(26.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.ArrowUpward,
-                                            contentDescription = "উপরে নিন",
-                                            tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
-
-                                // Down button
-                                if (index < nodes.lastIndex) {
-                                    IconButton(
-                                        onClick = { onMoveDown(parentFolderId, index, nodes.size) },
-                                        modifier = Modifier.size(26.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.ArrowDownward,
-                                            contentDescription = "নিচে নিন",
-                                            tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
-
                                 // Edit button
                                 IconButton(
                                     onClick = { onEditNode(node) },
@@ -1320,109 +1470,6 @@ private fun PresetManagementTree(
                                         modifier = Modifier.size(14.dp)
                                     )
                                 }
-                            }
-                        }
-                    }
-
-                    if (isExpanded) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        PresetManagementTree(
-                            nodes = node.children,
-                            parentFolderId = node.id,
-                            editingNode = editingNode,
-                            expandedTreeFolderIds = expandedTreeFolderIds,
-                            onToggleExpand = onToggleExpand,
-                            onEditNode = onEditNode,
-                            onDeleteNode = onDeleteNode,
-                            onMoveUp = onMoveUp,
-                            onMoveDown = onMoveDown,
-                            level = level + 1
-                        )
-                    }
-                }
-            } else {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isEditing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = (level * 12).dp)
-                        .clickable { onEditNode(node) }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = BengaliUtils.formatPresetDisplayText(node),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isEditing) Color.White else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Up button
-                            if (index > 0) {
-                                IconButton(
-                                    onClick = { onMoveUp(parentFolderId, index) },
-                                    modifier = Modifier.size(26.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.ArrowUpward,
-                                        contentDescription = "উপরে নিন",
-                                        tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-
-                            // Down button
-                            if (index < nodes.lastIndex) {
-                                IconButton(
-                                    onClick = { onMoveDown(parentFolderId, index, nodes.size) },
-                                    modifier = Modifier.size(26.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.ArrowDownward,
-                                        contentDescription = "নিচে নিন",
-                                        tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-
-                            // Edit button
-                            IconButton(
-                                onClick = { onEditNode(node) },
-                                modifier = Modifier.size(26.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "এডিট",
-                                    tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-
-                            // Delete button
-                            IconButton(
-                                onClick = { onDeleteNode(node) },
-                                modifier = Modifier.size(26.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "ডিলিট",
-                                    tint = if (isEditing) Color(0xFFFF8A80) else LedgerRed,
-                                    modifier = Modifier.size(14.dp)
-                                )
                             }
                         }
                     }

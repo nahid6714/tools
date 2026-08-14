@@ -66,7 +66,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.AppSplashScreen
 import com.example.ui.components.BillHistoryList
-import com.example.ui.components.DocumentScannerScreen
 import com.example.ui.components.GlobalSettingsScreen
 import com.example.ui.components.MedicalFilterAnalysisScreen
 import com.example.ui.components.MedicalGroupManagerDialog
@@ -218,7 +217,6 @@ fun HomeScreen(
                                         else
                                             (if (isEn) "Food Bill Memo" else "খাবার বিল মেমো")
                                     }
-                                    selectedTool == "doc_scanner" -> if (isEn) "Document Scanner" else "ডকুমেন্ট স্ক্যানার"
                                     else -> if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব"
                                 },
                                 fontFamily = HeadingFontFamily,
@@ -398,9 +396,6 @@ fun HomeScreen(
                             onSelectFoodBillTool = {
                                 selectedTool = "food_bill"
                                 selectedTab = 0
-                            },
-                            onSelectDocScannerTool = {
-                                selectedTool = "doc_scanner"
                             },
                             onSelectAppSettings = {
                                 showGlobalSettings = true
@@ -711,25 +706,6 @@ fun HomeScreen(
                                 )
                             }
                         }
-                    } else if (selectedTool == "doc_scanner") {
-                        DocumentScannerScreen(
-                            onShowSnackbar = { msg ->
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(msg)
-                                }
-                            },
-                            onImportToMedicalReport = { file ->
-                                val bitmap = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
-                                if (bitmap != null) {
-                                    medicalViewModel.scanImageForMedicalReport(bitmap)
-                                    selectedTool = "medical_work"
-                                    selectedTab = 0
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar("ডকুমেন্ট থেকে মেডিক্যাল রেকর্ড অটো-ইমপোর্ট করা হচ্ছে...")
-                                    }
-                                }
-                            }
-                        )
                     }
                 }
             }
