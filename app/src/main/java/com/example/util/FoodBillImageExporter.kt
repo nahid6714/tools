@@ -25,141 +25,128 @@ import java.text.DecimalFormat
 object FoodBillImageExporter {
 
     /**
-     * Renders a clean, compact, vertical "normal list type" cash voucher / memo image.
-     * Dimensions are dynamically calculated to fit the content cleanly without wasteful A4 margins.
+     * Renders a clean, vertical cash voucher / memo image matching the exact design and ratio:
+     * - Top box with centered bold title & full-width underline
+     * - Right-aligned Date ("তারিখ : ...")
+     * - 14-row structured table with column lines, dashed row dividers, and formatted Sl (০১..১৪)
+     * - Total row ("মোট –" and amount with "/-")
+     * - Left-aligned Signature ("স্বাক্ষর") with horizontal line
      */
     fun generateMemoListBitmap(memo: PrintMemoData): Bitmap {
         val validItems = memo.items.filter { it.name.isNotBlank() || it.amount > 0 }
-        val numRows = maxOf(6, validItems.size) // minimum 6 rows for great aesthetic balance
+        val numRows = maxOf(14, validItems.size) // Exact 14 rows standard voucher ratio
 
-        val imageWidth = 840
-        val paddingX = 30f
-        val paddingY = 30f
+        val imageWidth = 900
+        val paddingX = 36f
+        val paddingTop = 32f
+        val paddingBottom = 45f
         val contentWidth = imageWidth - (paddingX * 2)
 
-        // Heights
-        val headerBoxHeight = if (memo.subtitle.isNotBlank()) 95f else 75f
-        val metaHeight = 42f
-        val tableHeaderHeight = 44f
-        val rowHeight = 42f
-        val totalRowHeight = 46f
+        // Heights & Spacing
+        val headerBoxHeight = if (memo.subtitle.isNotBlank()) 92f else 76f
+        val headerGap = 12f
+        val lineGap = 14f
+        val metaHeight = 36f
+        val tableHeaderHeight = 46f
+        val rowHeight = 44f
+        val totalRowHeight = 48f
         val tableHeight = tableHeaderHeight + (numRows * rowHeight) + totalRowHeight
-        val footerHeight = 90f
+        val footerSpace = 40f
+        val signatureHeight = 55f
 
-        val totalHeight = (paddingY * 2 + headerBoxHeight + 12f + metaHeight + tableHeight + 20f + footerHeight).toInt()
+        val totalHeight = (paddingTop + headerBoxHeight + headerGap + 2f + lineGap + metaHeight + 10f + tableHeight + footerSpace + signatureHeight + paddingBottom).toInt()
 
         val bitmap = Bitmap.createBitmap(imageWidth, totalHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        // Background (Pure White)
+        // Background (Pure Crisp White)
         val bgPaint = Paint().apply {
             color = Color.WHITE
             style = Paint.Style.FILL
         }
         canvas.drawRect(0f, 0f, imageWidth.toFloat(), totalHeight.toFloat(), bgPaint)
 
-        // Outer decorative border
-        val outerBorderPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(20, 20, 20)
-            style = Paint.Style.STROKE
-            strokeWidth = 2.5f
-        }
-        val innerBorderPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(80, 80, 80)
-            style = Paint.Style.STROKE
-            strokeWidth = 1f
-        }
-        canvas.drawRect(12f, 12f, imageWidth - 12f, totalHeight - 12f, outerBorderPaint)
-        canvas.drawRect(16f, 16f, imageWidth - 16f, totalHeight - 16f, innerBorderPaint)
-
-        var currentY = paddingY + 6f
+        var currentY = paddingTop
         val leftX = paddingX
         val rightX = imageWidth - paddingX
         val centerX = imageWidth / 2f
 
-        // 1. Header Box
+        // 1. Header Box (Top Rectangular Frame)
         val headerRect = RectF(leftX, currentY, rightX, currentY + headerBoxHeight)
-        val headerBorderPaint = Paint().apply {
+        val headerBoxBorderPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
             style = Paint.Style.STROKE
-            strokeWidth = 2f
+            strokeWidth = 2.5f
         }
-        canvas.drawRect(headerRect, headerBorderPaint)
+        canvas.drawRect(headerRect, headerBoxBorderPaint)
 
         // Header Title
         val titleText = memo.centerName.ifBlank { "খাবার বিল ক্যাশ মেমো" }
         val titlePaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            textSize = 32f
+            textSize = 34f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText(titleText, centerX, currentY + 44f, titlePaint)
 
-        // Subtitle
         if (memo.subtitle.isNotBlank()) {
+            canvas.drawText(titleText, centerX, currentY + 44f, titlePaint)
             val subPaint = Paint().apply {
                 isAntiAlias = true
-                color = Color.rgb(50, 50, 50)
-                textSize = 18f
+                color = Color.rgb(40, 40, 40)
+                textSize = 20f
                 textAlign = Paint.Align.CENTER
             }
             canvas.drawText(memo.subtitle, centerX, currentY + 76f, subPaint)
+        } else {
+            canvas.drawText(titleText, centerX, currentY + 50f, titlePaint)
         }
 
-        currentY += headerBoxHeight + 8f
+        currentY += headerBoxHeight + headerGap
 
-        // Separator line
-        val linePaint = Paint().apply {
+        // Full-width underline under header box
+        val fullLinePaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            strokeWidth = 2f
+            strokeWidth = 2.2f
         }
-        canvas.drawLine(leftX, currentY, rightX, currentY, linePaint)
-        currentY += 8f
+        canvas.drawLine(leftX, currentY, rightX, currentY, fullLinePaint)
+        currentY += lineGap
 
-        // 2. Metadata (Memo ID, Purchaser, Date)
-        val metaPaint = Paint().apply {
+        // 2. Date & Meta Info
+        val metaBoldPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            textSize = 20f
+            textSize = 22f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
 
-        val memoIdText = if (memo.memoId > 0) "মেমো নং: #${BengaliUtils.toBengaliDigits(memo.memoId.toString())}" else "চলতি বিল মেমো"
-        metaPaint.textAlign = Paint.Align.LEFT
-        canvas.drawText(memoIdText, leftX + 4f, currentY + 22f, metaPaint)
-
+        // Left meta (Memo # or Purchaser if provided)
         if (memo.purchaserName.isNotBlank()) {
-            val purchaserText = "ক্রেতা: ${memo.purchaserName}"
-            val normalMetaPaint = Paint().apply {
-                isAntiAlias = true
-                color = Color.rgb(40, 40, 40)
-                textSize = 19f
-            }
-            normalMetaPaint.textAlign = Paint.Align.LEFT
-            canvas.drawText(purchaserText, leftX + 220f, currentY + 22f, normalMetaPaint)
+            metaBoldPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText("ক্রেতা: ${memo.purchaserName}", leftX + 2f, currentY + 22f, metaBoldPaint)
+        } else if (memo.memoId > 0) {
+            metaBoldPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText("মেমো নং: #${BengaliUtils.toBengaliDigits(memo.memoId.toString())}", leftX + 2f, currentY + 22f, metaBoldPaint)
         }
 
+        // Right Date ("তারিখ : ১১/০৮/২০২৬")
         val bnDate = BengaliUtils.toBengaliDigits(memo.dateString)
-        metaPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("তারিখ: $bnDate", rightX - 4f, currentY + 22f, metaPaint)
+        metaBoldPaint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("তারিখ : $bnDate", rightX - 2f, currentY + 22f, metaBoldPaint)
 
-        currentY += metaHeight
+        currentY += metaHeight + 10f
 
-        // 3. Table Column Config
-        // Total width: contentWidth (approx 780)
-        // Sl: 80, Name: 340, Qty: 120, Rate: 100, Amount: 140 -> Sum = 780
+        // 3. Table Structure & Columns
+        // Sl: 10.5%, Name: 42.5%, Qty: 15%, Rate: 13%, Amount: 19%
         val colWidths = floatArrayOf(
-            contentWidth * 0.10f, // Sl (10%)
-            contentWidth * 0.44f, // Description (44%)
-            contentWidth * 0.15f, // Quantity (15%)
-            contentWidth * 0.13f, // Rate (13%)
-            contentWidth * 0.18f  // Amount (18%)
+            contentWidth * 0.105f, // Sl (10.5%)
+            contentWidth * 0.425f, // Description (42.5%)
+            contentWidth * 0.150f, // Quantity (15%)
+            contentWidth * 0.130f, // Rate (13%)
+            contentWidth * 0.190f  // Amount (19%)
         )
 
         val tableTop = currentY
@@ -168,22 +155,17 @@ object FoodBillImageExporter {
             isAntiAlias = true
             color = Color.BLACK
             style = Paint.Style.STROKE
-            strokeWidth = 2f
+            strokeWidth = 2.5f
         }
 
-        // Table Header
-        val headerBgPaint = Paint().apply {
-            color = Color.rgb(245, 245, 245)
-            style = Paint.Style.FILL
-        }
+        // Table Header Row
         val thRect = RectF(leftX, tableTop, rightX, tableTop + tableHeaderHeight)
-        canvas.drawRect(thRect, headerBgPaint)
         canvas.drawRect(thRect, tableBorderPaint)
 
         val thTextPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            textSize = 19f
+            textSize = 21f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
@@ -191,103 +173,109 @@ object FoodBillImageExporter {
         var curColX = leftX
         for (i in 0 until 5) {
             val colCenterX = curColX + colWidths[i] / 2f
-            canvas.drawText(colTitles[i], colCenterX, tableTop + 29f, thTextPaint)
+            canvas.drawText(colTitles[i], colCenterX, tableTop + 31f, thTextPaint)
             curColX += colWidths[i]
         }
 
         // Table Rows
         val rowDashPaint = Paint().apply {
             isAntiAlias = true
-            color = Color.rgb(120, 120, 120)
-            strokeWidth = 1f
-            pathEffect = DashPathEffect(floatArrayOf(5f, 4f), 0f)
+            color = Color.BLACK
+            strokeWidth = 1.5f
+            pathEffect = DashPathEffect(floatArrayOf(6f, 4f), 0f)
         }
         val itemTextPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            textSize = 20f
+            textSize = 21f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
-        val itemBoldPaint = Paint().apply {
+        val itemRegularPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            textSize = 20f
+            textSize = 21f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
 
         var rowY = tableTop + tableHeaderHeight
         for (r in 0 until numRows) {
             val slNo = BengaliUtils.toBengaliDigits(String.format("%02d", r + 1))
-            val textY = rowY + 28f
+            val textY = rowY + 30f
 
-            // Sl No
-            itemBoldPaint.textAlign = Paint.Align.CENTER
-            canvas.drawText(slNo, leftX + colWidths[0] / 2f, textY, itemBoldPaint)
+            // 1. Serial Number (০১, ০২...) - Bold & Centered
+            itemTextPaint.textAlign = Paint.Align.CENTER
+            canvas.drawText(slNo, leftX + colWidths[0] / 2f, textY, itemTextPaint)
 
             if (r < validItems.size) {
                 val item = validItems[r]
 
-                // Name (auto fit size if long)
-                itemBoldPaint.textAlign = Paint.Align.LEFT
-                val origSize = itemBoldPaint.textSize
-                if (item.name.length > 30) {
-                    itemBoldPaint.textSize = origSize * 0.80f
-                } else if (item.name.length > 18) {
-                    itemBoldPaint.textSize = origSize * 0.90f
+                // 2. Name / Description - Left aligned with padding
+                itemTextPaint.textAlign = Paint.Align.LEFT
+                val origSize = itemTextPaint.textSize
+                if (item.name.length > 32) {
+                    itemTextPaint.textSize = origSize * 0.80f
+                } else if (item.name.length > 20) {
+                    itemTextPaint.textSize = origSize * 0.90f
                 }
-                canvas.drawText(item.name, leftX + colWidths[0] + 10f, textY, itemBoldPaint)
-                itemBoldPaint.textSize = origSize
+                canvas.drawText(item.name, leftX + colWidths[0] + 12f, textY, itemTextPaint)
+                itemTextPaint.textSize = origSize
 
-                // Quantity
-                itemTextPaint.textAlign = Paint.Align.CENTER
+                // 3. Quantity - Centered (e.g. "২ কেজি", "১ পোয়া", "১৪ পিস")
+                itemRegularPaint.textAlign = Paint.Align.CENTER
                 val bnQty = BengaliUtils.toBengaliDigits(item.quantity)
-                canvas.drawText(bnQty, leftX + colWidths[0] + colWidths[1] + colWidths[2] / 2f, textY, itemTextPaint)
+                if (bnQty.isNotBlank()) {
+                    canvas.drawText(bnQty, leftX + colWidths[0] + colWidths[1] + colWidths[2] / 2f, textY, itemRegularPaint)
+                }
 
-                // Rate
+                // 4. Rate - Centered / Blank
                 val bnRate = if (item.rate == "0" || item.rate.isBlank()) "" else BengaliUtils.toBengaliDigits(item.rate)
-                canvas.drawText(bnRate, leftX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2f, textY, itemTextPaint)
+                if (bnRate.isNotBlank()) {
+                    itemRegularPaint.textAlign = Paint.Align.CENTER
+                    canvas.drawText(bnRate, leftX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2f, textY, itemRegularPaint)
+                }
 
-                // Amount
-                itemBoldPaint.textAlign = Paint.Align.RIGHT
+                // 5. Amount - Right aligned with "/-" or "—"
+                itemTextPaint.textAlign = Paint.Align.RIGHT
                 val bnAmount = if (item.amount <= 0) "—" else "${BengaliUtils.toBengaliDigits(DecimalFormat("#,##0").format(item.amount))}/-"
-                canvas.drawText(bnAmount, rightX - 12f, textY, itemBoldPaint)
+                canvas.drawText(bnAmount, rightX - 14f, textY, itemTextPaint)
+            } else {
+                // Empty row amount dash
+                itemTextPaint.textAlign = Paint.Align.RIGHT
+                // canvas.drawText("—", rightX - 14f, textY, itemTextPaint)
             }
 
-            // Row bottom line
+            // Draw dashed row bottom separator
             canvas.drawLine(leftX, rowY + rowHeight, rightX, rowY + rowHeight, rowDashPaint)
             rowY += rowHeight
         }
 
-        // Total Row
+        // Total Row (At the bottom of the table)
         val totalRowY = rowY
-        val totalBgPaint = Paint().apply {
-            color = Color.rgb(250, 250, 250)
-            style = Paint.Style.FILL
-        }
-        val totalRect = RectF(leftX, totalRowY, rightX, totalRowY + totalRowHeight)
-        canvas.drawRect(totalRect, totalBgPaint)
         canvas.drawLine(leftX, totalRowY, rightX, totalRowY, tableBorderPaint)
 
+        // "মোট –" label in the Rate column
         val totalLabelPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 21f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.RIGHT
-        }
-        val totalLabelX = leftX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] - 12f
-        canvas.drawText("মোট —", totalLabelX, totalRowY + 31f, totalLabelPaint)
-
-        val totalValPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
             textSize = 22f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        val totalColCenterX = leftX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2f
+        canvas.drawText("মোট –", totalColCenterX, totalRowY + 33f, totalLabelPaint)
+
+        // Total Amount Value in the Amount column
+        val totalValPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            textSize = 23f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.RIGHT
         }
-        val bnTotal = if (memo.totalAmount <= 0) "0/-" else "${BengaliUtils.formatBengaliCurrency(memo.totalAmount)}/-"
-        canvas.drawText(bnTotal, rightX - 12f, totalRowY + 31f, totalValPaint)
+        val bnTotal = if (memo.totalAmount <= 0) "০/-" else "${BengaliUtils.formatBengaliCurrency(memo.totalAmount)}/-"
+        canvas.drawText(bnTotal, rightX - 14f, totalRowY + 33f, totalValPaint)
 
-        // Draw Outer table box and vertical dividers
+        // Draw Outer table boundary and vertical column dividing lines
         canvas.drawRect(leftX, tableTop, rightX, tableBottom, tableBorderPaint)
 
         var divX = leftX
@@ -296,36 +284,29 @@ object FoodBillImageExporter {
             canvas.drawLine(divX, tableTop, divX, tableBottom, tableBorderPaint)
         }
 
-        currentY = tableBottom + 35f
+        currentY = tableBottom + footerSpace
 
-        // 4. Footer Signatures & Tag
-        val sigLineWidth = 220f
+        // 4. Footer: Left Signature ("স্বাক্ষর")
+        val sigLineWidth = 280f
         val sigLinePaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            strokeWidth = 1.5f
+            strokeWidth = 2f
         }
         val sigTextPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            textSize = 18f
+            textSize = 21f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
 
-        // Left Signature (Purchaser)
-        canvas.drawLine(leftX + 10f, currentY + 25f, leftX + 10f + sigLineWidth, currentY + 25f, sigLinePaint)
-        val sigLabel = memo.purchaserLabel.ifBlank { "ক্রয়কারীর স্বাক্ষর" }
-        canvas.drawText(sigLabel, leftX + 10f + (sigLineWidth / 2f), currentY + 48f, sigTextPaint)
-
-        // Right Tag
-        val appTagPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(100, 100, 100)
-            textSize = 15f
-            textAlign = Paint.Align.RIGHT
-        }
-        canvas.drawText("স্মার্ট ক্যাশ মেমো", rightX - 10f, currentY + 48f, appTagPaint)
+        // Left Signature line & label
+        val sigStartX = leftX
+        val sigEndX = leftX + sigLineWidth
+        canvas.drawLine(sigStartX, currentY + 10f, sigEndX, currentY + 10f, sigLinePaint)
+        val sigLabel = memo.purchaserLabel.ifBlank { "স্বাক্ষর" }
+        canvas.drawText(sigLabel, sigStartX + (sigLineWidth / 2f), currentY + 36f, sigTextPaint)
 
         return bitmap
     }
