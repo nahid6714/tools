@@ -1,7 +1,7 @@
 {
-  "versionCode": 163,
-  "versionName": "1.0.163",
-  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.163/app-release.apk",
-  "releaseNotes": "• build: upgrade JDK to 21 and Gradle to 9.3.1\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
+  "versionCode": 164,
+  "versionName": "1.0.164",
+  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.164/app-release.apk",
+  "releaseNotes": "• Add files via upload\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
   "minSupportedVersion": 1
 }
