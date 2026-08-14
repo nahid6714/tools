@@ -772,6 +772,12 @@ fun HomeScreen(
                     bottomMemo = bottomMemo,
                     position = pos
                 )
+            },
+            onShareImage = { memo ->
+                PrintUtils.shareFoodBillImage(context, memo)
+            },
+            onSaveImage = { memo ->
+                PrintUtils.saveFoodBillImage(context, memo)
             }
         )
     }

@@ -23,6 +23,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Share
@@ -48,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +67,7 @@ import com.example.ui.theme.CreamPaperBg
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.ForestGreenText
 import com.example.util.BengaliUtils
+import com.example.util.FoodBillImageExporter
 import com.example.util.PrintMemoData
 import com.example.util.PrintPosition
 
@@ -76,8 +81,11 @@ fun VoucherPreviewDialog(
     defaultPurchaserLabel: String = "",
     onDismiss: () -> Unit,
     onPrint: (PrintMemoData, PrintMemoData?, PrintPosition) -> Unit,
-    onSharePdf: (PrintMemoData, PrintMemoData?, PrintPosition) -> Unit
+    onSharePdf: (PrintMemoData, PrintMemoData?, PrintPosition) -> Unit,
+    onShareImage: ((PrintMemoData) -> Unit)? = null,
+    onSaveImage: ((PrintMemoData) -> Unit)? = null
 ) {
+    val context = LocalContext.current
     var selectedPosition by remember {
         mutableStateOf(if (initialBottomMemo != null) PrintPosition.BOTH else PrintPosition.TOP)
     }
@@ -327,45 +335,101 @@ fun VoucherPreviewDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Bottom Action Buttons
-                Row(
+                // Action Buttons: 1. Normal List Image Export (Save & Share), 2. A4 PDF/Print Export
+                val activeMemoForImage = if (selectedPosition == PrintPosition.BOTTOM) (bottomMemoState ?: topMemoState) else topMemoState
+
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Direct System Print Button
-                    Button(
-                        onClick = {
-                            onPrint(topMemoState, bottomMemoState ?: topMemoState, selectedPosition)
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .testTag("preview_print_button"),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White)
+                    // Row 1: Image Export Actions (Normal List Type Image - Not A4)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Print, contentDescription = null, tint = Color.White)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "প্রিন্ট করুন", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        // Share Image Button
+                        Button(
+                            onClick = {
+                                if (onShareImage != null) {
+                                    onShareImage(activeMemoForImage)
+                                } else {
+                                    FoodBillImageExporter.shareMemoImage(context, activeMemoForImage)
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("preview_share_image_button"),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D47A1), contentColor = Color.White)
+                        ) {
+                            Icon(imageVector = Icons.Default.Image, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "ছবি শেয়ার", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        // Save Image to Gallery Button
+                        Button(
+                            onClick = {
+                                if (onSaveImage != null) {
+                                    onSaveImage(activeMemoForImage)
+                                } else {
+                                    FoodBillImageExporter.saveMemoImageToGallery(context, activeMemoForImage)
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("preview_save_image_button"),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B), contentColor = Color.White)
+                        ) {
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "ছবি সেভ (গ্যালারি)", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
                     }
 
-                    // Share PDF / WhatsApp Button
-                    Button(
-                        onClick = {
-                            onSharePdf(topMemoState, bottomMemoState ?: topMemoState, selectedPosition)
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .testTag("preview_share_pdf_button"),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32), contentColor = Color.White)
+                    // Row 2: A4 PDF & Print Actions
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = Color.White)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "পিডিএফ শেয়ার", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        // Share PDF Button
+                        OutlinedButton(
+                            onClick = {
+                                onSharePdf(topMemoState, bottomMemoState ?: topMemoState, selectedPosition)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .testTag("preview_share_pdf_button"),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32))
+                        ) {
+                            Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = Color(0xFF2E7D32))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "পিডিএফ শেয়ার", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                        }
+
+                        // Print A4 Button
+                        Button(
+                            onClick = {
+                                onPrint(topMemoState, bottomMemoState ?: topMemoState, selectedPosition)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .testTag("preview_print_button"),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen, contentColor = Color.White)
+                        ) {
+                            Icon(imageVector = Icons.Default.Print, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "A4 প্রিন্ট", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
                     }
                 }
             }
