@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -92,8 +93,16 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         resetToInitialTemplate()
 
         viewModelScope.launch {
-            repository.allBills.collectLatest { bills ->
-                _historyBills.value = bills
+            try {
+                repository.allBills
+                    .catch { e ->
+                        e.printStackTrace()
+                    }
+                    .collectLatest { bills ->
+                        _historyBills.value = bills
+                    }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
