@@ -161,7 +161,6 @@ fun MemoVoucherCard(
             List(4) { FocusRequester() }
         }
     }
-    val purchaserLabelFocusRequester = remember { FocusRequester() }
 
     var containerBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
 
@@ -209,7 +208,8 @@ fun MemoVoucherCard(
                         ),
                         cursorBrush = SolidColor(Color.White),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                         decorationBox = { innerTextField ->
                             Box(contentAlignment = Alignment.Center) {
                                 if (state.centerName.isBlank()) {
@@ -231,43 +231,6 @@ fun MemoVoucherCard(
                             .fillMaxWidth()
                             .testTag("memo_center_name_input")
                     )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Subtitle Field
-                    BasicTextField(
-                        value = state.subtitle,
-                        onValueChange = { onSubtitleChange?.invoke(it) },
-                        textStyle = TextStyle(
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.95f),
-                            textAlign = TextAlign.Center
-                        ),
-                        cursorBrush = SolidColor(Color.White),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                        decorationBox = { innerTextField ->
-                            Box(contentAlignment = Alignment.Center) {
-                                if (state.subtitle.isBlank()) {
-                                    Text(
-                                        text = "সাব-টাইটেল (যেমন: দৈনিক খাবার বিল)...",
-                                        style = TextStyle(
-                                            fontSize = 12.5.sp,
-                                            fontWeight = FontWeight.Normal,
-                                            color = Color.White.copy(alpha = 0.60f),
-                                            textAlign = TextAlign.Center
-                                        )
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("memo_subtitle_input")
-                    )
                 }
             }
 
@@ -277,16 +240,22 @@ fun MemoVoucherCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(14.dp)
             ) {
-                // Date Row
+                // Date & Action Buttons Compact Header Row
+                val canAddItem = state.items.size < 18
+                val addedItemNames = remember(state.items) {
+                    state.items.map { it.name.trim() }.filter { it.isNotBlank() }.toSet()
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp),
+                        .padding(bottom = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Left: Date Selector with Calendar icon
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -297,127 +266,79 @@ fun MemoVoucherCard(
                             text = "তারিখ:",
                             style = TextStyle(
                                 fontFamily = HeadingFontFamily,
-                                fontSize = 16.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = BengaliUtils.toBengaliDigits(state.dateString),
                             style = TextStyle(
-                                fontSize = 16.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = "তারিখ পরিবর্তন",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 2.dp)
-                        )
-                    }
-                }
-
-                Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Action Buttons Row (Left: নতুন আইটেম যোগ করুন, Right: দ্রুত আইটেম যোগ করুন)
-                val canAddItem = state.items.size < 18
-                val addedItemNames = remember(state.items) {
-                    state.items.map { it.name.trim() }.filter { it.isNotBlank() }.toSet()
-                }
-
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val isNarrow = maxWidth < 340.dp
-                    if (isNarrow) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            modifier = Modifier.size(28.dp)
                         ) {
-                            OutlinedButton(
-                                onClick = onAddItemRow,
-                                enabled = canAddItem,
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
-                                    .testTag("add_item_button"),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = DarkForestGreen
-                                )
-                            ) {
+                            Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = DarkForestGreen,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = if (canAddItem) "নতুন আইটেম যোগ করুন" else "সর্বোচ্চ ১৮ টি",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkForestGreen,
-                                    maxLines = 1
+                                    imageVector = Icons.Default.CalendarToday,
+                                    contentDescription = "তারিখ পরিবর্তন",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(15.dp)
                                 )
                             }
-
-                            QuickItemSelectorButton(
-                                presets = quickPresets,
-                                addedItemNames = addedItemNames,
-                                onPresetClick = onPresetClick,
-                                onManagePresetsClick = { showManagePresetsDialog = true },
-                                modifier = Modifier.fillMaxWidth()
-                            )
                         }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    }
+
+                    // Right: Compact Action Buttons (Add Item & Quick Preset)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Compact Add Item Button
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier
+                                .height(32.dp)
+                                .clickable(enabled = canAddItem) { onAddItemRow() }
+                                .testTag("add_item_button")
                         ) {
-                            OutlinedButton(
-                                onClick = onAddItemRow,
-                                enabled = canAddItem,
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(44.dp)
-                                    .testTag("add_item_button"),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = DarkForestGreen
-                                )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = DarkForestGreen,
+                                    contentDescription = "নতুন আইটেম",
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(15.dp)
                                 )
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Text(
-                                    text = if (canAddItem) "নতুন আইটেম যোগ করুন" else "সর্বোচ্চ ১৮ টি",
+                                    text = "আইটেম",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = DarkForestGreen,
-                                    maxLines = 1,
-                                    softWrap = false
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
-
-                            QuickItemSelectorButton(
-                                presets = quickPresets,
-                                addedItemNames = addedItemNames,
-                                onPresetClick = onPresetClick,
-                                onManagePresetsClick = { showManagePresetsDialog = true },
-                                modifier = Modifier.weight(1f)
-                            )
                         }
+
+                        // Compact Quick Item Selector Button
+                        QuickItemSelectorButton(
+                            presets = quickPresets,
+                            addedItemNames = addedItemNames,
+                            onPresetClick = onPresetClick,
+                            onManagePresetsClick = { showManagePresetsDialog = true }
+                        )
                     }
                 }
 
@@ -434,7 +355,7 @@ fun MemoVoucherCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Table Header Row
                 Row(
@@ -551,7 +472,6 @@ fun MemoVoucherCard(
                     val rowRequesters = itemFocusRequesters.getOrNull(index)
                     val nextItemRowNameRequester = itemFocusRequesters.getOrNull(index + 1)?.getOrNull(0)
                     val nextTargetRequester = nextItemRowNameRequester
-                        ?: if (onPurchaserLabelChange != null) purchaserLabelFocusRequester else null
                     val isBeingDragged = draggedItemIndex == index
 
                     Box(
@@ -687,67 +607,6 @@ fun MemoVoucherCard(
                             ),
                             modifier = Modifier.testTag("total_amount_text")
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Signatures Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.width(160.dp)
-                    ) {
-                        Divider(color = MaterialTheme.colorScheme.primary, thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        if (onPurchaserLabelChange != null) {
-                            BasicTextField(
-                                value = state.purchaserLabel,
-                                onValueChange = onPurchaserLabelChange,
-                                textStyle = TextStyle(
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    textAlign = TextAlign.Center
-                                ),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = {
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                }),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(purchaserLabelFocusRequester)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
-                                    .padding(vertical = 2.dp, horizontal = 4.dp)
-                                    .testTag("purchaser_label_input"),
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                decorationBox = { innerTextField ->
-                                    Box(contentAlignment = Alignment.Center) {
-                                        if (state.purchaserLabel.isEmpty()) {
-                                            Text(
-                                                text = "স্বাক্ষরের টাইটেল...",
-                                                fontSize = 11.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                                textAlign = TextAlign.Center
-                                            )
-                                        }
-                                        innerTextField()
-                                    }
-                                }
-                            )
-                        } else {
-                            Text(
-                                text = state.purchaserLabel,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
             }
@@ -1098,32 +957,28 @@ fun QuickItemSelectorButton(
     val isPopupVisible = transitionState.currentState || transitionState.targetState
 
     Box(modifier = modifier) {
-        Button(
-            onClick = { expandedDropdown = !expandedDropdown },
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .testTag("quick_item_select_button"),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = DarkForestGreen,
-                contentColor = Color.White
-            )
+                .height(32.dp)
+                .clickable { expandedDropdown = !expandedDropdown }
+                .testTag("quick_item_select_button")
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                modifier = Modifier.padding(horizontal = 8.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(15.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(2.dp))
                 Text(
-                    text = if (expandedDropdown) "দ্রুত আইটেম বন্ধ করুন ▴" else "দ্রুত আইটেম যোগ করুন ▾",
-                    fontSize = 13.sp,
+                    text = if (expandedDropdown) "দ্রুত ▴" else "দ্রুত ▾",
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 1,
