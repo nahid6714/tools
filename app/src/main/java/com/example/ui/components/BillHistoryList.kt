@@ -21,7 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
@@ -51,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -62,6 +65,8 @@ import androidx.compose.ui.unit.sp
 import com.example.data.FoodBillUiModel
 import com.example.ui.theme.LedgerRed
 import com.example.util.BengaliUtils
+import com.example.util.FoodBillImageExporter
+import com.example.util.PrintMemoData
 
 @Composable
 fun BillHistoryList(
@@ -72,9 +77,12 @@ fun BillHistoryList(
     onPrintBill: (FoodBillUiModel) -> Unit,
     onPrintDualBills: (FoodBillUiModel, FoodBillUiModel) -> Unit,
     onSharePdfBill: (FoodBillUiModel) -> Unit,
+    onShareImageBill: ((FoodBillUiModel) -> Unit)? = null,
+    onSaveImageBill: ((FoodBillUiModel) -> Unit)? = null,
     onDeleteBill: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var billToDelete by remember { mutableStateOf<FoodBillUiModel?>(null) }
     val selectedBillIds = remember { mutableStateListOf<Long>() }
 
@@ -282,6 +290,38 @@ fun BillHistoryList(
                         onEdit = { onEditBill(bill) },
                         onPrint = { onPrintBill(bill) },
                         onSharePdf = { onSharePdfBill(bill) },
+                        onShareImage = {
+                            if (onShareImageBill != null) {
+                                onShareImageBill(bill)
+                            } else {
+                                val printMemo = PrintMemoData(
+                                    memoId = bill.id,
+                                    centerName = bill.centerName,
+                                    subtitle = bill.subtitle,
+                                    dateString = bill.dateString,
+                                    purchaserName = bill.purchaserName,
+                                    items = bill.items.filter { it.name.isNotBlank() || it.amount > 0 },
+                                    totalAmount = bill.totalAmount
+                                )
+                                FoodBillImageExporter.shareMemoImage(context, printMemo)
+                            }
+                        },
+                        onSaveImage = {
+                            if (onSaveImageBill != null) {
+                                onSaveImageBill(bill)
+                            } else {
+                                val printMemo = PrintMemoData(
+                                    memoId = bill.id,
+                                    centerName = bill.centerName,
+                                    subtitle = bill.subtitle,
+                                    dateString = bill.dateString,
+                                    purchaserName = bill.purchaserName,
+                                    items = bill.items.filter { it.name.isNotBlank() || it.amount > 0 },
+                                    totalAmount = bill.totalAmount
+                                )
+                                FoodBillImageExporter.saveMemoImageToGallery(context, printMemo)
+                            }
+                        },
                         onDelete = { billToDelete = bill }
                     )
                 }
@@ -323,6 +363,8 @@ fun HistoryBillItemCard(
     onEdit: () -> Unit,
     onPrint: () -> Unit,
     onSharePdf: () -> Unit,
+    onShareImage: () -> Unit = {},
+    onSaveImage: () -> Unit = {},
     onDelete: () -> Unit
 ) {
     Card(
@@ -427,7 +469,11 @@ fun HistoryBillItemCard(
                     )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    // Edit
                     IconButton(
                         onClick = onEdit,
                         modifier = Modifier.testTag("edit_history_bill_${bill.id}")
@@ -435,20 +481,31 @@ fun HistoryBillItemCard(
                         Icon(imageVector = Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = MaterialTheme.colorScheme.primary)
                     }
 
+                    // Share Image (Normal list receipt image)
+                    IconButton(
+                        onClick = onShareImage,
+                        modifier = Modifier.testTag("share_image_history_bill_${bill.id}")
+                    ) {
+                        Icon(imageVector = Icons.Default.Image, contentDescription = "ছবি শেয়ার করুন", tint = Color(0xFF0D47A1))
+                    }
+
+                    // Save Image (Save receipt image to gallery)
+                    IconButton(
+                        onClick = onSaveImage,
+                        modifier = Modifier.testTag("save_image_history_bill_${bill.id}")
+                    ) {
+                        Icon(imageVector = Icons.Default.Download, contentDescription = "ছবি সেভ করুন", tint = Color(0xFF00796B))
+                    }
+
+                    // Print / PDF Preview
                     IconButton(
                         onClick = onPrint,
                         modifier = Modifier.testTag("print_history_bill_${bill.id}")
                     ) {
-                        Icon(imageVector = Icons.Default.Print, contentDescription = "প্রিন্ট করুন", tint = MaterialTheme.colorScheme.primary)
+                        Icon(imageVector = Icons.Default.Print, contentDescription = "প্রিন্ট ও পিডিএফ", tint = MaterialTheme.colorScheme.primary)
                     }
 
-                    IconButton(
-                        onClick = onSharePdf,
-                        modifier = Modifier.testTag("share_history_bill_${bill.id}")
-                    ) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = "পিডিএফ শেয়ার করুন", tint = MaterialTheme.colorScheme.primary)
-                    }
-
+                    // Delete
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier.testTag("delete_history_bill_${bill.id}")

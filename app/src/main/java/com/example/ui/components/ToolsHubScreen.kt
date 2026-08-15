@@ -75,8 +75,6 @@ fun ToolsHubScreen(
     onCheckUpdate: () -> Unit = {},
     onOpenUpdateDialog: (UpdateInfo) -> Unit = {},
     onSelectFoodBillTool: () -> Unit,
-    onSelectDocScannerTool: () -> Unit = {},
-    onSelectMedicalWorkTool: () -> Unit = {},
     onSelectAppSettings: () -> Unit = {},
     onSelectUpcomingTool: (title: String) -> Unit,
     modifier: Modifier = Modifier
@@ -85,28 +83,10 @@ fun ToolsHubScreen(
 
     val toolsList = listOf(
         AppToolItem(
-            id = "medical_work",
-            title = if (isEn) "Medical Work Tracking & Report" else "মেডিকেল ওয়ার্ক ট্র্যাকিং ও রিপোর্ট",
-            subtitle = if (isEn) "Scan handwritten IDs/codes with AI/OCR, generate reports and group filters" else "হাতে লেখা আইডি/কোডের ছবি স্ক্যান, ডেইলি রিপোর্ট তৈরি, প্রিন্ট ও গ্রুপ ফিল্টার",
-            icon = Icons.Default.DocumentScanner,
-            isAvailable = true,
-            badgeText = if (isEn) "Active" else "চালু আছে",
-            accentColor = Color(0xFF0D47A1)
-        ),
-        AppToolItem(
             id = "food_bill",
             title = if (isEn) "Food Bill Memo" else "খাবার বিল মেমো",
             subtitle = if (isEn) "Create, print and save daily grocery bill memos" else "দৈনিক খাবার বাজার বিল তৈরি, প্রিন্ট ও হিসাব সংরক্ষণ করুন",
             icon = Icons.Default.Restaurant,
-            isAvailable = true,
-            badgeText = if (isEn) "Active" else "চালু আছে",
-            accentColor = Color(0xFF1565C0)
-        ),
-        AppToolItem(
-            id = "doc_scanner",
-            title = if (isEn) "Document Scanner (NID/Card)" else "ডকুমেন্ট স্ক্যানার (NID/কার্ড)",
-            subtitle = if (isEn) "Smartly scan, crop and filter NID, ID card or documents" else "NID, আইডি কার্ড বা যেকোনো কাগজ স্মার্টলি স্ক্যান, ক্রপ ও ফিল্টার করুন",
-            icon = Icons.Default.DocumentScanner,
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
             accentColor = Color(0xFF1565C0)
@@ -273,9 +253,7 @@ fun ToolsHubScreen(
                 tool = tool,
                 onClick = {
                     when (tool.id) {
-                        "medical_work" -> onSelectMedicalWorkTool()
                         "food_bill" -> onSelectFoodBillTool()
-                        "doc_scanner" -> onSelectDocScannerTool()
                         "app_settings" -> onSelectAppSettings()
                         else -> onSelectUpcomingTool(tool.title)
                     }

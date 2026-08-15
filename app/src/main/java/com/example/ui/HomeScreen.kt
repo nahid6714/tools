@@ -24,10 +24,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -66,19 +64,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.AppSplashScreen
 import com.example.ui.components.BillHistoryList
-import com.example.ui.components.DocumentScannerScreen
 import com.example.ui.components.GlobalSettingsScreen
-import com.example.ui.components.MedicalFilterAnalysisScreen
-import com.example.ui.components.MedicalGroupManagerDialog
-import com.example.ui.components.MedicalReportGeneratorScreen
 import com.example.ui.components.MemoVoucherCard
 import com.example.ui.components.QuickPresetChips
 import com.example.ui.components.SettingsScreen
 import com.example.ui.components.ToolsHubScreen
 import com.example.ui.components.VoucherPreviewDialog
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.FolderSpecial
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.HeadingFontFamily
 import com.example.ui.theme.LightForestGreen
@@ -95,8 +86,7 @@ import java.util.Calendar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: FoodBillViewModel,
-    medicalViewModel: MedicalWorkViewModel = viewModel()
+    viewModel: FoodBillViewModel
 ) {
     val context = LocalContext.current
     val currentBillState by viewModel.currentBillState.collectAsStateWithLifecycle()
@@ -105,25 +95,6 @@ fun HomeScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
-
-    // Medical ViewModel States
-    val reportDate by medicalViewModel.reportDate.collectAsStateWithLifecycle()
-    val editableItems by medicalViewModel.editableItems.collectAsStateWithLifecycle()
-    val isScanning by medicalViewModel.isScanning.collectAsStateWithLifecycle()
-    val scanStatusText by medicalViewModel.scanStatusText.collectAsStateWithLifecycle()
-    val presetCodes by medicalViewModel.allPresetCodes.collectAsStateWithLifecycle()
-    val analysisSummary by medicalViewModel.analysisSummary.collectAsStateWithLifecycle()
-    val codeGroups by medicalViewModel.allCodeGroups.collectAsStateWithLifecycle()
-    val groupItems by medicalViewModel.allGroupItems.collectAsStateWithLifecycle()
-    val allMedicalRecords by medicalViewModel.allRecords.collectAsStateWithLifecycle()
-    val activeDateFilter by medicalViewModel.dateFilterType.collectAsStateWithLifecycle()
-    val selectedSpecificDate by medicalViewModel.selectedSpecificDate.collectAsStateWithLifecycle()
-    val customStartDate by medicalViewModel.customStartDate.collectAsStateWithLifecycle()
-    val customEndDate by medicalViewModel.customEndDate.collectAsStateWithLifecycle()
-    val selectedCodeFilter by medicalViewModel.selectedCodeFilter.collectAsStateWithLifecycle()
-    val selectedGroupFilter by medicalViewModel.selectedGroupFilter.collectAsStateWithLifecycle()
-
-    var showGroupManagerDialog by remember { mutableStateOf(false) }
 
     val isEn = appLanguage == "en"
 
@@ -143,10 +114,15 @@ fun HomeScreen(
     var updateDialogInfoToShow by remember { mutableStateOf<UpdateInfo?>(null) }
 
     LaunchedEffect(Unit) {
-        isCheckingUpdate = true
-        val info = updateManager.checkForUpdate(context, forceCheck = false)
-        updateInfo = info
-        isCheckingUpdate = false
+        try {
+            isCheckingUpdate = true
+            val info = updateManager.checkForUpdate(context, forceCheck = false)
+            updateInfo = info
+        } catch (e: Exception) {
+            // Keep app safe from network/parsing exceptions
+        } finally {
+            isCheckingUpdate = false
+        }
     }
 
     BackHandler(enabled = showGlobalSettings || selectedTool != null) {
@@ -164,12 +140,6 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { msg ->
-            snackbarHostState.showSnackbar(msg)
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        medicalViewModel.uiEvent.collectLatest { msg ->
             snackbarHostState.showSnackbar(msg)
         }
     }
@@ -208,10 +178,6 @@ fun HomeScreen(
                             Text(
                                 text = when {
                                     showGlobalSettings -> if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস"
-                                    selectedTool == "medical_work" -> when (selectedTab) {
-                                        1 -> if (isEn) "Filter & Analysis" else "ফিল্টার ও এনালাইসিস"
-                                        else -> if (isEn) "Daily Report Generator" else "ডেইলি রিপোর্ট জেনারেটর"
-                                    }
                                     selectedTool == "food_bill" -> when (selectedTab) {
                                         1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
                                         2 -> if (isEn) "Memo Settings" else "মেমো সেটিংস"
@@ -220,7 +186,6 @@ fun HomeScreen(
                                         else
                                             (if (isEn) "Food Bill Memo" else "খাবার বিল মেমো")
                                     }
-                                    selectedTool == "doc_scanner" -> if (isEn) "Document Scanner" else "ডকুমেন্ট স্ক্যানার"
                                     else -> if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব"
                                 },
                                 fontFamily = HeadingFontFamily,
@@ -246,18 +211,7 @@ fun HomeScreen(
                             }
                         },
                         actions = {
-                            if (!showGlobalSettings && selectedTool == "medical_work") {
-                                IconButton(
-                                    onClick = { showGroupManagerDialog = true },
-                                    modifier = Modifier.testTag("group_manager_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.FolderSpecial,
-                                        contentDescription = "কোড গ্রুপ ম্যানেজার",
-                                        tint = Color.White
-                                    )
-                                }
-                            } else if (!showGlobalSettings && selectedTool == null) {
+                            if (!showGlobalSettings && selectedTool == null) {
                                 IconButton(
                                     onClick = { showGlobalSettings = true },
                                     modifier = Modifier.testTag("global_settings_button")
@@ -277,44 +231,7 @@ fun HomeScreen(
                     )
                 },
                 bottomBar = {
-                    if (!showGlobalSettings && selectedTool == "medical_work") {
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ) {
-                            val darkUnselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-                            NavigationBarItem(
-                                selected = selectedTab == 0,
-                                onClick = { selectedTab = 0 },
-                                icon = { Icon(Icons.Default.DocumentScanner, contentDescription = if (isEn) "Daily Report" else "ডেইলি রিপোর্ট") },
-                                label = { Text(if (isEn) "Daily Report" else "ডেইলি রিপোর্ট", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color.White,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    indicatorColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = darkUnselectedColor,
-                                    unselectedTextColor = darkUnselectedColor
-                                ),
-                                modifier = Modifier.testTag("tab_medical_report")
-                            )
-
-                            NavigationBarItem(
-                                selected = selectedTab == 1,
-                                onClick = { selectedTab = 1 },
-                                icon = { Icon(Icons.Default.Analytics, contentDescription = if (isEn) "Filter & Analysis" else "ফিল্টার ও এনালাইসিস") },
-                                label = { Text(if (isEn) "Filter & Analysis" else "ফিল্টার ও এনালাইসিস", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color.White,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    indicatorColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = darkUnselectedColor,
-                                    unselectedTextColor = darkUnselectedColor
-                                ),
-                                modifier = Modifier.testTag("tab_medical_analysis")
-                            )
-                        }
-                    } else if (!showGlobalSettings && selectedTool == "food_bill") {
+                    if (!showGlobalSettings && selectedTool == "food_bill") {
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.surface,
                             contentColor = MaterialTheme.colorScheme.onSurface
@@ -404,16 +321,9 @@ fun HomeScreen(
                             onOpenUpdateDialog = { info ->
                                 updateDialogInfoToShow = info
                             },
-                            onSelectMedicalWorkTool = {
-                                selectedTool = "medical_work"
-                                selectedTab = 0
-                            },
                             onSelectFoodBillTool = {
                                 selectedTool = "food_bill"
                                 selectedTab = 0
-                            },
-                            onSelectDocScannerTool = {
-                                selectedTool = "doc_scanner"
                             },
                             onSelectAppSettings = {
                                 showGlobalSettings = true
@@ -426,61 +336,6 @@ fun HomeScreen(
                                 }
                             }
                         )
-                    } else if (selectedTool == "medical_work") {
-                        when (selectedTab) {
-                            0 -> {
-                                MedicalReportGeneratorScreen(
-                                    reportDate = reportDate,
-                                    editableItems = editableItems,
-                                    presetCodes = presetCodes,
-                                    isScanning = isScanning,
-                                    scanStatusText = scanStatusText,
-                                    onDateChange = { medicalViewModel.setReportDate(it) },
-                                    onAddItem = { pId, code -> medicalViewModel.addItemToGenerator(pId, code) },
-                                    onUpdateItem = { idx, pId, code -> medicalViewModel.updateGeneratorItem(idx, pId, code) },
-                                    onRemoveItem = { idx -> medicalViewModel.removeGeneratorItem(idx) },
-                                    onClearAll = { medicalViewModel.clearGeneratorItems() },
-                                    onScanImage = { bitmap -> medicalViewModel.scanImageForMedicalReport(bitmap) },
-                                    onSaveAndConfirm = { medicalViewModel.saveAndConfirmDailyReport() },
-                                    onDuplicateItem = { idx -> medicalViewModel.duplicateGeneratorItem(idx) },
-                                    onMoveItem = { from, to -> medicalViewModel.moveGeneratorItem(from, to) },
-                                    onAutoSequenceIds = { prefix -> medicalViewModel.autoSequencePatientIds(prefix) },
-                                    onBatchApplyCode = { code -> medicalViewModel.batchApplyCode(code) },
-                                    onParseRawText = { raw -> medicalViewModel.parseRawTextForMedicalReport(raw) },
-                                    onAddPresetCode = { code, name, cat -> medicalViewModel.addPresetCode(code, name, cat) },
-                                    onDeletePresetCode = { code -> medicalViewModel.deletePresetCode(code) },
-                                    codeGroups = codeGroups,
-                                    groupItems = groupItems,
-                                    allMedicalRecords = allMedicalRecords,
-                                    onAssignCodeOwner = { code, ownerId -> medicalViewModel.reassignCodeOwner(code, ownerId) },
-                                    onAddPresetCodeWithOwner = { code, name, cat, ownerId -> medicalViewModel.addPresetCodeWithOwner(code, name, cat, ownerId) },
-                                    onCreateOwner = { name -> medicalViewModel.createOwner(name) },
-                                    onReassignCodeOwner = { code, ownerId -> medicalViewModel.reassignCodeOwner(code, ownerId) },
-                                    onRemoveCodeOwnership = { code -> medicalViewModel.removeCodeOwnership(code) },
-                                    nextSuggestedPatientId = medicalViewModel.getNextSuggestedPatientId()
-                                )
-                            }
-                            1 -> {
-                                MedicalFilterAnalysisScreen(
-                                    summary = analysisSummary,
-                                    codeGroups = codeGroups,
-                                    groupItems = groupItems,
-                                    presetCodes = presetCodes,
-                                    activeDateFilter = activeDateFilter,
-                                    selectedSpecificDate = selectedSpecificDate,
-                                    customStartDate = customStartDate,
-                                    customEndDate = customEndDate,
-                                    selectedCodeFilter = selectedCodeFilter,
-                                    selectedGroupFilter = selectedGroupFilter,
-                                    onSelectDateFilter = { medicalViewModel.setDateFilterType(it) },
-                                    onSelectSpecificDate = { medicalViewModel.setSelectedSpecificDate(it) },
-                                    onSelectCustomDateRange = { s, e -> medicalViewModel.setCustomDateRange(s, e) },
-                                    onSelectCodeFilter = { medicalViewModel.setSelectedCodeFilter(it) },
-                                    onSelectGroupFilter = { medicalViewModel.setSelectedGroupFilter(it) },
-                                    onOpenGroupManager = { showGroupManagerDialog = true }
-                                )
-                            }
-                        }
                     } else if (selectedTool == "food_bill") {
                         when (selectedTab) {
                             0 -> {
@@ -505,6 +360,15 @@ fun HomeScreen(
                                         onAddCustomPreset = { name, qty, rate, amount ->
                                             viewModel.addCustomQuickPreset(name, qty, rate, amount)
                                         },
+                                        onAddCustomPresetWithParent = { name, qty, rate, amount, parentId ->
+                                            viewModel.addCustomQuickPreset(name, qty, rate, amount, parentId)
+                                        },
+                                        onAddFolder = { folderName, parentId ->
+                                            viewModel.addQuickPresetFolder(folderName, parentId)
+                                        },
+                                        onUpdatePresetNode = { nodeId, name, qty, rate, amount, isFolder, parentId, children ->
+                                            viewModel.updateQuickPresetNode(nodeId, name, qty, rate, amount, isFolder, parentId, children)
+                                        },
                                         onRemovePreset = { preset ->
                                             viewModel.removeQuickPreset(preset)
                                         },
@@ -513,6 +377,9 @@ fun HomeScreen(
                                         },
                                         onReorderPreset = { from, to ->
                                             viewModel.reorderQuickPresets(from, to)
+                                        },
+                                        onReorderPresetWithParent = { parentId, from, to ->
+                                            viewModel.reorderQuickPresets(parentId, from, to)
                                         },
                                         onUpdateDateClick = { showDatePicker() },
                                         onUpdateItemName = { id, name -> viewModel.updateItemName(id, name) },
@@ -719,25 +586,6 @@ fun HomeScreen(
                                 )
                             }
                         }
-                    } else if (selectedTool == "doc_scanner") {
-                        DocumentScannerScreen(
-                            onShowSnackbar = { msg ->
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(msg)
-                                }
-                            },
-                            onImportToMedicalReport = { file ->
-                                val bitmap = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
-                                if (bitmap != null) {
-                                    medicalViewModel.scanImageForMedicalReport(bitmap)
-                                    selectedTool = "medical_work"
-                                    selectedTab = 0
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar("ডকুমেন্ট থেকে মেডিক্যাল রেকর্ড অটো-ইমপোর্ট করা হচ্ছে...")
-                                    }
-                                }
-                            }
-                        )
                     }
                 }
             }
@@ -780,27 +628,26 @@ fun HomeScreen(
                     bottomMemo = bottomMemo,
                     position = pos
                 )
+            },
+            onSaveImage = { memo ->
+                PrintUtils.saveFoodBillImage(
+                    context = context,
+                    memo = memo
+                )
+            },
+            onShareImage = { memo ->
+                PrintUtils.shareFoodBillImage(
+                    context = context,
+                    memo = memo
+                )
             }
         )
     }
 
-    if (showGroupManagerDialog) {
-        MedicalGroupManagerDialog(
-            groups = codeGroups,
-            groupItems = groupItems,
-            presetCodes = presetCodes,
-            onDismiss = { showGroupManagerDialog = false },
-            onCreateGroup = { name, desc, codes -> medicalViewModel.createCodeGroup(name, desc, codes) },
-            onUpdateGroup = { id, name, desc, codes -> medicalViewModel.updateCodeGroup(id, name, desc, codes) },
-            onDeleteGroup = { id, name -> medicalViewModel.deleteCodeGroup(id, name) },
-            onAddPresetCode = { code, name, cat -> medicalViewModel.addPresetCode(code, name, cat) },
-            onDeletePresetCode = { code -> medicalViewModel.deletePresetCode(code) }
-        )
-    }
-
-    if (updateDialogInfoToShow != null) {
+    // In-App Update Dialog
+    updateDialogInfoToShow?.let { info ->
         UpdateDialog(
-            updateInfo = updateDialogInfoToShow!!,
+            updateInfo = info,
             updateManager = updateManager,
             onDismiss = { updateDialogInfoToShow = null }
         )

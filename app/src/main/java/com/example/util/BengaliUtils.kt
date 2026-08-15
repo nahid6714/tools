@@ -78,8 +78,177 @@ object BengaliUtils {
 }
 
 data class QuickPreset(
+    val id: String = java.util.UUID.randomUUID().toString(),
     val name: String,
     val defaultQty: String = "",
     val defaultRate: String = "",
-    val defaultAmount: String = ""
+    val defaultAmount: String = "",
+    val isFolder: Boolean = false,
+    val children: List<QuickPreset> = emptyList()
 )
+
+data class FolderOption(
+    val id: String,
+    val displayName: String,
+    val level: Int = 0
+)
+
+fun List<QuickPreset>.getAllFlatItems(): List<QuickPreset> {
+    val result = mutableListOf<QuickPreset>()
+    for (preset in this) {
+        if (preset.isFolder) {
+            result.addAll(preset.children.getAllFlatItems())
+        } else {
+            result.add(preset)
+        }
+    }
+    return result
+}
+
+fun List<QuickPreset>.getFolderOptions(
+    excludeFolderId: String? = null,
+    parentPath: String = "",
+    level: Int = 0
+): List<FolderOption> {
+    val list = mutableListOf<FolderOption>()
+    if (level == 0) {
+        list.add(FolderOption(id = "", displayName = "🏠 প্রধান তালিকা (Main List)", level = 0))
+    }
+    for (node in this) {
+        if (node.isFolder && node.id != excludeFolderId) {
+            val currentPath = if (parentPath.isEmpty()) node.name else "$parentPath > ${node.name}"
+            list.add(FolderOption(id = node.id, displayName = currentPath, level = level + 1))
+            list.addAll(node.children.getFolderOptions(excludeFolderId, currentPath, level + 1))
+        }
+    }
+    return list
+}
+
+fun List<QuickPreset>.findParentFolderId(nodeId: String): String? {
+    for (node in this) {
+        if (node.id == nodeId) return ""
+        if (node.isFolder) {
+            if (node.children.any { it.id == nodeId }) return node.id
+            val subParent = node.children.findParentFolderId(nodeId)
+            if (subParent != null) return subParent
+        }
+    }
+    return null
+}
+
+fun List<QuickPreset>.removeNodeById(nodeId: String): List<QuickPreset> {
+    val result = mutableListOf<QuickPreset>()
+    for (node in this) {
+        if (node.id == nodeId || (!node.isFolder && node.name.equals(nodeId, ignoreCase = true))) {
+            continue
+        }
+        if (node.isFolder) {
+            val updatedChildren = node.children.removeNodeById(nodeId)
+            result.add(node.copy(children = updatedChildren))
+        } else {
+            result.add(node)
+        }
+    }
+    return result
+}
+
+fun List<QuickPreset>.addNodeToParent(node: QuickPreset, targetFolderId: String?): List<QuickPreset> {
+    if (targetFolderId.isNullOrBlank() || targetFolderId == "ROOT") {
+        return listOf(node) + this
+    }
+    return this.map { current ->
+        if (current.isFolder && current.id == targetFolderId) {
+            current.copy(children = listOf(node) + current.children)
+        } else if (current.isFolder) {
+            current.copy(children = current.children.addNodeToParent(node, targetFolderId))
+        } else {
+            current
+        }
+    }
+}
+
+fun List<QuickPreset>.updateOrMoveNode(
+    nodeId: String,
+    updatedNode: QuickPreset,
+    targetFolderId: String?
+): List<QuickPreset> {
+    val treeWithoutNode = this.removeNodeById(nodeId)
+    return treeWithoutNode.addNodeToParent(updatedNode, targetFolderId)
+}
+
+fun List<QuickPreset>.reorderNodesInParent(
+    parentFolderId: String?,
+    fromIndex: Int,
+    toIndex: Int
+): List<QuickPreset> {
+    if (parentFolderId.isNullOrBlank() || parentFolderId == "ROOT") {
+        if (fromIndex !in indices || toIndex !in indices || fromIndex == toIndex) return this
+        val mutable = this.toMutableList()
+        val moved = mutable.removeAt(fromIndex)
+        mutable.add(toIndex, moved)
+        return mutable
+    }
+    return this.map { node ->
+        if (node.isFolder && node.id == parentFolderId) {
+            val children = node.children.toMutableList()
+            if (fromIndex in children.indices && toIndex in children.indices && fromIndex != toIndex) {
+                val moved = children.removeAt(fromIndex)
+                children.add(toIndex, moved)
+            }
+            node.copy(children = children)
+        } else if (node.isFolder) {
+            node.copy(children = node.children.reorderNodesInParent(parentFolderId, fromIndex, toIndex))
+        } else {
+            node
+        }
+    }
+}
+
+fun parseQuickPresetFromJsonObject(obj: org.json.JSONObject): QuickPreset {
+    val id = obj.optString("id", "").ifBlank { java.util.UUID.randomUUID().toString() }
+    val name = obj.optString("name", "")
+    val defaultQty = obj.optString("defaultQty", "")
+    val defaultRate = obj.optString("defaultRate", "")
+    val defaultAmount = obj.optString("defaultAmount", "")
+    val isFolder = obj.optBoolean("isFolder", false)
+    val childrenList = mutableListOf<QuickPreset>()
+    val childrenArray = obj.optJSONArray("children")
+    if (childrenArray != null) {
+        for (i in 0 until childrenArray.length()) {
+            val childObj = childrenArray.optJSONObject(i)
+            if (childObj != null) {
+                val child = parseQuickPresetFromJsonObject(childObj)
+                if (child.name.isNotBlank()) {
+                    childrenList.add(child)
+                }
+            }
+        }
+    }
+    return QuickPreset(
+        id = id,
+        name = name,
+        defaultQty = defaultQty,
+        defaultRate = defaultRate,
+        defaultAmount = defaultAmount,
+        isFolder = isFolder,
+        children = childrenList
+    )
+}
+
+fun quickPresetToJsonObject(preset: QuickPreset): org.json.JSONObject {
+    val obj = org.json.JSONObject()
+    obj.put("id", preset.id)
+    obj.put("name", preset.name)
+    obj.put("defaultQty", preset.defaultQty)
+    obj.put("defaultRate", preset.defaultRate)
+    obj.put("defaultAmount", preset.defaultAmount)
+    obj.put("isFolder", preset.isFolder)
+    if (preset.isFolder) {
+        val array = org.json.JSONArray()
+        preset.children.forEach { child ->
+            array.put(quickPresetToJsonObject(child))
+        }
+        obj.put("children", array)
+    }
+    return obj
+}

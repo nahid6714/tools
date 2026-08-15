@@ -9,18 +9,13 @@ import androidx.room.migration.Migration
 
 @Database(
     entities = [
-        FoodBillEntity::class,
-        MedicalRecordEntity::class,
-        CodeGroupEntity::class,
-        CodeGroupItemEntity::class,
-        PresetMedicalCodeEntity::class
+        FoodBillEntity::class
     ],
     version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun foodBillDao(): FoodBillDao
-    abstract fun medicalDao(): MedicalDao
 
     companion object {
         @Volatile
@@ -33,39 +28,24 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_2_3 = object : Migration(2, 3) {
+        // Version 3 briefly added a "Medical Work" feature (now removed) with its own
+        // tables; it made no changes to food_bills itself, so users still on version 2
+        // can jump straight to version 4 with no schema change needed.
+        private val MIGRATION_2_4 = object : Migration(2, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("CREATE TABLE IF NOT EXISTS `medical_records` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `patientId` TEXT NOT NULL, `code` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `notes` TEXT NOT NULL)")
-                db.execSQL("CREATE TABLE IF NOT EXISTS `code_groups` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `groupName` TEXT NOT NULL, `description` TEXT NOT NULL)")
-                db.execSQL("CREATE TABLE IF NOT EXISTS `code_group_items` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `groupId` INTEGER NOT NULL, `code` TEXT NOT NULL)")
-                db.execSQL("CREATE TABLE IF NOT EXISTS `preset_medical_codes` (`code` TEXT PRIMARY KEY NOT NULL, `name` TEXT NOT NULL, `category` TEXT NOT NULL)")
+                // No food_bills schema change between v2 and v4.
             }
         }
 
-        // Enforces ONE CODE = ONE OWNER: rebuilds code_group_items with a unique,
-        // case-insensitive index on `code`. If old data already had the same code
-        // under more than one owner (previously allowed), we keep only the earliest
-        // assignment (lowest id) for that code and drop the later duplicates so
-        // existing records are preserved instead of destroyed.
+        // Users who briefly installed the version-3 build will have the now-unused
+        // Medical tables on disk; drop them cleanly instead of leaving orphaned tables
+        // or wiping the whole database via fallbackToDestructiveMigration.
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    "CREATE TABLE IF NOT EXISTS `code_group_items_new` (" +
-                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
-                        "`groupId` INTEGER NOT NULL, " +
-                        "`code` TEXT NOT NULL COLLATE NOCASE)"
-                )
-                db.execSQL(
-                    "INSERT INTO code_group_items_new (id, groupId, code) " +
-                        "SELECT id, groupId, code FROM code_group_items " +
-                        "WHERE id IN (SELECT MIN(id) FROM code_group_items GROUP BY code COLLATE NOCASE)"
-                )
-                db.execSQL("DROP TABLE code_group_items")
-                db.execSQL("ALTER TABLE code_group_items_new RENAME TO code_group_items")
-                db.execSQL(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_code_group_items_code` " +
-                        "ON `code_group_items` (`code`)"
-                )
+                db.execSQL("DROP TABLE IF EXISTS medical_records")
+                db.execSQL("DROP TABLE IF EXISTS code_groups")
+                db.execSQL("DROP TABLE IF EXISTS code_group_items")
+                db.execSQL("DROP TABLE IF EXISTS preset_medical_codes")
             }
         }
 
@@ -76,7 +56,9 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "albaraka_food_bill_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4)
+                    // Safety net only: if some other unexpected version gap is hit,
+                    // fall back to a clean database rather than crashing on launch.
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

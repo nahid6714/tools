@@ -9,12 +9,19 @@ import com.example.data.BillRepository
 import com.example.data.FoodBillUiModel
 import com.example.util.BengaliUtils
 import com.example.util.QuickPreset
+import com.example.util.parseQuickPresetFromJsonObject
+import com.example.util.quickPresetToJsonObject
+import com.example.util.removeNodeById
+import com.example.util.addNodeToParent
+import com.example.util.updateOrMoveNode
+import com.example.util.reorderNodesInParent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -86,8 +93,16 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         resetToInitialTemplate()
 
         viewModelScope.launch {
-            repository.allBills.collectLatest { bills ->
-                _historyBills.value = bills
+            try {
+                repository.allBills
+                    .catch { e ->
+                        e.printStackTrace()
+                    }
+                    .collectLatest { bills ->
+                        _historyBills.value = bills
+                    }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -102,12 +117,9 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
                 val list = mutableListOf<QuickPreset>()
                 for (i in 0 until array.length()) {
                     val obj = array.getJSONObject(i)
-                    val name = obj.optString("name", "")
-                    val qty = obj.optString("defaultQty", "")
-                    val rate = obj.optString("defaultRate", "")
-                    val amount = obj.optString("defaultAmount", "")
-                    if (name.isNotBlank()) {
-                        list.add(QuickPreset(name, qty, rate, amount))
+                    val preset = parseQuickPresetFromJsonObject(obj)
+                    if (preset.name.isNotBlank()) {
+                        list.add(preset)
                     }
                 }
                 _quickPresets.value = list
@@ -121,12 +133,7 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         try {
             val array = org.json.JSONArray()
             presets.forEach { p ->
-                val obj = org.json.JSONObject()
-                obj.put("name", p.name)
-                obj.put("defaultQty", p.defaultQty)
-                obj.put("defaultRate", p.defaultRate)
-                obj.put("defaultAmount", p.defaultAmount)
-                array.put(obj)
+                array.put(quickPresetToJsonObject(p))
             }
             prefs.edit().putString("quick_presets_json", array.toString()).apply()
         } catch (e: Exception) {
@@ -134,41 +141,90 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun addCustomQuickPreset(name: String, qty: String, rate: String = "", amount: String = "") {
+    fun addCustomQuickPreset(
+        name: String,
+        qty: String,
+        rate: String = "",
+        amount: String = "",
+        parentFolderId: String? = null
+    ) {
         val trimmedName = name.trim()
         if (trimmedName.isBlank()) return
 
-        val currentList = _quickPresets.value.toMutableList()
-        // Replace if already exists or add to beginning
-        val existingIndex = currentList.indexOfFirst { it.name.equals(trimmedName, ignoreCase = true) }
-        val newPreset = QuickPreset(trimmedName, qty.trim(), rate.trim(), amount.trim())
-        if (existingIndex != -1) {
-            currentList[existingIndex] = newPreset
-        } else {
-            currentList.add(0, newPreset)
-        }
+        val newPreset = QuickPreset(
+            name = trimmedName,
+            defaultQty = qty.trim(),
+            defaultRate = rate.trim(),
+            defaultAmount = amount.trim(),
+            isFolder = false
+        )
+        val updatedTree = _quickPresets.value.addNodeToParent(newPreset, parentFolderId)
+        _quickPresets.value = updatedTree
+        saveQuickPresetsToPrefs(updatedTree)
+        viewModelScope.launch { _uiEvent.emit("'$trimmedName' প্রিসেট তালিকায় যোগ করা হয়েছে") }
+    }
 
-        _quickPresets.value = currentList
-        saveQuickPresetsToPrefs(currentList)
-        viewModelScope.launch { _uiEvent.emit("'$trimmedName' দ্রুত তালিকায় যোগ করা হয়েছে") }
+    fun addQuickPresetFolder(
+        folderName: String,
+        parentFolderId: String? = null
+    ) {
+        val trimmedName = folderName.trim()
+        if (trimmedName.isBlank()) return
+
+        val newFolder = QuickPreset(
+            name = trimmedName,
+            isFolder = true,
+            children = emptyList()
+        )
+        val updatedTree = _quickPresets.value.addNodeToParent(newFolder, parentFolderId)
+        _quickPresets.value = updatedTree
+        saveQuickPresetsToPrefs(updatedTree)
+        viewModelScope.launch { _uiEvent.emit("'$trimmedName' ফোল্ডার তৈরি করা হয়েছে") }
+    }
+
+    fun updateQuickPresetNode(
+        nodeId: String,
+        newName: String,
+        newQty: String = "",
+        newRate: String = "",
+        newAmount: String = "",
+        isFolder: Boolean = false,
+        targetFolderId: String? = null,
+        existingChildren: List<QuickPreset> = emptyList()
+    ) {
+        val trimmedName = newName.trim()
+        if (trimmedName.isBlank()) return
+
+        val updatedNode = QuickPreset(
+            id = nodeId,
+            name = trimmedName,
+            defaultQty = newQty.trim(),
+            defaultRate = newRate.trim(),
+            defaultAmount = newAmount.trim(),
+            isFolder = isFolder,
+            children = existingChildren
+        )
+        val updatedTree = _quickPresets.value.updateOrMoveNode(nodeId, updatedNode, targetFolderId)
+        _quickPresets.value = updatedTree
+        saveQuickPresetsToPrefs(updatedTree)
+        viewModelScope.launch { _uiEvent.emit("'$trimmedName' আপডেট করা হয়েছে") }
     }
 
     fun removeQuickPreset(preset: QuickPreset) {
-        val currentList = _quickPresets.value.filterNot { it.name == preset.name }
-        _quickPresets.value = currentList
-        saveQuickPresetsToPrefs(currentList)
-        viewModelScope.launch { _uiEvent.emit("'${preset.name}' দ্রুত তালিকা থেকে সরানো হয়েছে") }
+        val updatedTree = _quickPresets.value.removeNodeById(preset.id)
+        _quickPresets.value = updatedTree
+        saveQuickPresetsToPrefs(updatedTree)
+        viewModelScope.launch { _uiEvent.emit("'${preset.name}' সরানো হয়েছে") }
     }
 
-    /** Reorders a quick preset from [fromIndex] to [toIndex], used for drag-to-reorder in the management dialog. */
+    fun reorderQuickPresets(parentFolderId: String?, fromIndex: Int, toIndex: Int) {
+        val updatedTree = _quickPresets.value.reorderNodesInParent(parentFolderId, fromIndex, toIndex)
+        _quickPresets.value = updatedTree
+        saveQuickPresetsToPrefs(updatedTree)
+    }
+
     fun reorderQuickPresets(fromIndex: Int, toIndex: Int) {
-        val list = _quickPresets.value
-        if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return
-        val mutableList = list.toMutableList()
-        val moved = mutableList.removeAt(fromIndex)
-        mutableList.add(toIndex, moved)
-        _quickPresets.value = mutableList
-        saveQuickPresetsToPrefs(mutableList)
+        reorderQuickPresets(null, fromIndex, toIndex)
     }
 
     fun resetQuickPresetsToDefault() {

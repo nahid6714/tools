@@ -175,6 +175,14 @@ object PrintUtils {
         shareFoodBillPdfDual(context, topMemo = memo, bottomMemo = memo, position = position)
     }
 
+    fun saveFoodBillImage(context: Context, memo: PrintMemoData): Boolean {
+        return FoodBillImageExporter.saveMemoImageToGallery(context, memo)
+    }
+
+    fun shareFoodBillImage(context: Context, memo: PrintMemoData) {
+        FoodBillImageExporter.shareMemoImage(context, memo)
+    }
+
     private fun createFoodBillPdfDocument(
         topMemo: PrintMemoData?,
         bottomMemo: PrintMemoData?,
