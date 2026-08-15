@@ -114,10 +114,15 @@ fun HomeScreen(
     var updateDialogInfoToShow by remember { mutableStateOf<UpdateInfo?>(null) }
 
     LaunchedEffect(Unit) {
-        isCheckingUpdate = true
-        val info = updateManager.checkForUpdate(context, forceCheck = false)
-        updateInfo = info
-        isCheckingUpdate = false
+        try {
+            isCheckingUpdate = true
+            val info = updateManager.checkForUpdate(context, forceCheck = false)
+            updateInfo = info
+        } catch (e: Exception) {
+            // Keep app safe from network/parsing exceptions
+        } finally {
+            isCheckingUpdate = false
+        }
     }
 
     BackHandler(enabled = showGlobalSettings || selectedTool != null) {
