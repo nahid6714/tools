@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Warning
@@ -47,7 +48,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -354,8 +357,10 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                var showResetConfirmDialog by remember { mutableStateOf(false) }
+
                 Button(
-                    onClick = onResetAllData,
+                    onClick = { showResetConfirmDialog = true },
                     colors = ButtonDefaults.buttonColors(containerColor = MaroonHeaderColor, contentColor = Color.White),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
@@ -377,6 +382,30 @@ fun SettingsScreen(
                             fontSize = 13.sp
                         )
                     }
+                }
+
+                if (showResetConfirmDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showResetConfirmDialog = false },
+                        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaroonHeaderColor) },
+                        title = { Text("নিশ্চিত করুন", fontWeight = FontWeight.Bold) },
+                        text = {
+                            Text("এই কাজটি করলে প্রতিষ্ঠানের নাম, সাব-টাইটেল, দ্রুত আইটেম প্রিসেট এবং অন্যান্য সব সেটিংস স্থায়ীভাবে মুছে যাবে। এটি ফিরিয়ে আনা যাবে না। (সংরক্ষিত পুরনো বিলের হিসাব এতে মুছবে না।) আপনি কি নিশ্চিত?")
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showResetConfirmDialog = false
+                                onResetAllData()
+                            }) {
+                                Text("হ্যাঁ, রিসেট করুন", color = MaroonHeaderColor, fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showResetConfirmDialog = false }) {
+                                Text("বাতিল")
+                            }
+                        }
+                    )
                 }
             }
         }

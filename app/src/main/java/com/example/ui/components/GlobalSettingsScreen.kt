@@ -37,7 +37,10 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -83,8 +86,11 @@ import kotlinx.coroutines.launch
 fun GlobalSettingsScreen(
     themeMode: String = "system",
     appLanguage: String = "bn",
+    fontScale: Float = 1.0f,
     onThemeModeChange: (String) -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
+    onFontScaleChange: (Float) -> Unit = {},
+    onOpenMemoSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -153,6 +159,61 @@ fun GlobalSettingsScreen(
                 )
             }
         }
+
+        // Quick access: Memo Header Settings (centre name, subtitle, quick-preset items)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenMemoSettings() }
+                .testTag("open_memo_settings_button")
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Receipt,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isEn) "Memo Header Settings" else "মেমো হেডার সেটিংস",
+                        fontSize = 14.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (isEn) "Business name, subtitle, quick-preset items"
+                        else "প্রতিষ্ঠানের নাম, সাব-টাইটেল, দ্রুত আইটেম তালিকা",
+                        fontSize = 11.5.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         // 1. App Update Section
         SettingsCard(
@@ -344,6 +405,48 @@ fun GlobalSettingsScreen(
                         Text(
                             text = label,
                             fontSize = 13.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 3.5 Font Size Settings — larger touch-friendly text for users who need it
+        SettingsCard(
+            title = if (isEn) "Text Size" else "লেখার আকার (Text Size)",
+            icon = Icons.Default.FormatSize
+        ) {
+            val sizes = listOf(
+                0.9f to (if (isEn) "Small" else "ছোট"),
+                1.0f to (if (isEn) "Normal (Default)" else "স্বাভাবিক (ডিফল্ট)"),
+                1.15f to (if (isEn) "Large" else "বড়"),
+                1.3f to (if (isEn) "Extra Large" else "অতিরিক্ত বড়")
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                sizes.forEach { (scale, label) ->
+                    val isSelected = kotlin.math.abs(fontScale - scale) < 0.01f
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onFontScaleChange(scale) }
+                            .padding(vertical = 4.dp, horizontal = 6.dp)
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = { onFontScaleChange(scale) },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = label,
+                            fontSize = (13.5f * scale).sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )

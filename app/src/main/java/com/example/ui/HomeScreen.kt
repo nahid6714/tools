@@ -66,9 +66,9 @@ import com.example.ui.components.AppSplashScreen
 import com.example.ui.components.BillHistoryList
 import com.example.ui.components.GlobalSettingsScreen
 import com.example.ui.components.MemoVoucherCard
+import com.example.ui.components.OnboardingDialog
 import com.example.ui.components.QuickPresetChips
 import com.example.ui.components.SettingsScreen
-import com.example.ui.components.ToolsHubScreen
 import com.example.ui.components.VoucherPreviewDialog
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.HeadingFontFamily
@@ -95,12 +95,15 @@ fun HomeScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+    val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
+    val showOnboarding by viewModel.showOnboarding.collectAsStateWithLifecycle()
 
     val isEn = appLanguage == "en"
 
-    var selectedTool by remember { mutableStateOf<String?>(null) }
+    var selectedTool by remember { mutableStateOf<String?>("food_bill") }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showGlobalSettings by remember { mutableStateOf(false) }
+    var showMemoSettings by remember { mutableStateOf(false) }
     var showPreviewDialog by remember { mutableStateOf(false) }
     var previewTopMemo by remember { mutableStateOf<PrintMemoData?>(null) }
     var previewBottomMemo by remember { mutableStateOf<PrintMemoData?>(null) }
@@ -118,6 +121,9 @@ fun HomeScreen(
             isCheckingUpdate = true
             val info = updateManager.checkForUpdate(context, forceCheck = false)
             updateInfo = info
+            if (info.hasUpdate) {
+                updateDialogInfoToShow = info
+            }
         } catch (e: Exception) {
             // Keep app safe from network/parsing exceptions
         } finally {
@@ -125,11 +131,11 @@ fun HomeScreen(
         }
     }
 
-    BackHandler(enabled = showGlobalSettings || selectedTool != null) {
-        if (showGlobalSettings) {
-            showGlobalSettings = false
+    BackHandler(enabled = showGlobalSettings || showMemoSettings) {
+        if (showMemoSettings) {
+            showMemoSettings = false
         } else {
-            selectedTool = null
+            showGlobalSettings = false
         }
     }
 
@@ -168,9 +174,16 @@ fun HomeScreen(
         if (loading) {
             AppSplashScreen(
                 appName = "Digital Tool",
-                subtitle = "Smart Digital Tools Hub"
+                subtitle = "স্মার্ট বিলিং সহকারী"
             )
         } else {
+            val baseDensity = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(
+                    density = baseDensity.density,
+                    fontScale = baseDensity.fontScale * fontScale
+                )
+            ) {
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -178,9 +191,9 @@ fun HomeScreen(
                             Text(
                                 text = when {
                                     showGlobalSettings -> if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস"
+                                    showMemoSettings -> if (isEn) "Memo Header Settings" else "মেমো হেডার সেটিংস"
                                     selectedTool == "food_bill" -> when (selectedTab) {
                                         1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
-                                        2 -> if (isEn) "Memo Settings" else "মেমো সেটিংস"
                                         else -> if (currentBillState.centerName.isNotBlank())
                                             (if (isEn) "Food Bill - " else "খাবার বিল - ") + currentBillState.centerName
                                         else
@@ -194,12 +207,12 @@ fun HomeScreen(
                             )
                         },
                         navigationIcon = {
-                            if (showGlobalSettings || selectedTool != null) {
+                            if (showGlobalSettings || showMemoSettings) {
                                 IconButton(onClick = {
-                                    if (showGlobalSettings) {
-                                        showGlobalSettings = false
+                                    if (showMemoSettings) {
+                                        showMemoSettings = false
                                     } else {
-                                        selectedTool = null
+                                        showGlobalSettings = false
                                     }
                                 }) {
                                     Icon(
@@ -211,7 +224,7 @@ fun HomeScreen(
                             }
                         },
                         actions = {
-                            if (!showGlobalSettings && selectedTool == null) {
+                            if (!showGlobalSettings && !showMemoSettings) {
                                 IconButton(
                                     onClick = { showGlobalSettings = true },
                                     modifier = Modifier.testTag("global_settings_button")
@@ -231,7 +244,7 @@ fun HomeScreen(
                     )
                 },
                 bottomBar = {
-                    if (!showGlobalSettings && selectedTool == "food_bill") {
+                    if (!showGlobalSettings && !showMemoSettings && selectedTool == "food_bill") {
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.surface,
                             contentColor = MaterialTheme.colorScheme.onSurface
@@ -267,21 +280,6 @@ fun HomeScreen(
                                 ),
                                 modifier = Modifier.testTag("tab_saved_history")
                             )
-
-                            NavigationBarItem(
-                                selected = selectedTab == 2,
-                                onClick = { selectedTab = 2 },
-                                icon = { Icon(Icons.Default.Settings, contentDescription = if (isEn) "Memo Settings" else "মেমো সেটিংস") },
-                                label = { Text(if (isEn) "Memo Settings" else "মেমো সেটিংস", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color.White,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    indicatorColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = darkUnselectedColor,
-                                    unselectedTextColor = darkUnselectedColor
-                                ),
-                                modifier = Modifier.testTag("tab_settings")
-                            )
                         }
                     }
                 },
@@ -297,44 +295,36 @@ fun HomeScreen(
                         GlobalSettingsScreen(
                             themeMode = themeMode,
                             appLanguage = appLanguage,
+                            fontScale = fontScale,
                             onThemeModeChange = { mode -> viewModel.setThemeMode(mode) },
-                            onLanguageChange = { lang -> viewModel.setAppLanguage(lang) }
-                        )
-                    } else if (selectedTool == null) {
-                        ToolsHubScreen(
-                            appLanguage = appLanguage,
-                            updateInfo = updateInfo,
-                            isCheckingUpdate = isCheckingUpdate,
-                            onCheckUpdate = {
-                                if (!isCheckingUpdate) {
-                                    coroutineScope.launch {
-                                        isCheckingUpdate = true
-                                        val info = updateManager.checkForUpdate(context, forceCheck = true)
-                                        updateInfo = info
-                                        isCheckingUpdate = false
-                                        if (info.hasUpdate) {
-                                            updateDialogInfoToShow = info
-                                        }
-                                    }
-                                }
-                            },
-                            onOpenUpdateDialog = { info ->
-                                updateDialogInfoToShow = info
-                            },
-                            onSelectFoodBillTool = {
-                                selectedTool = "food_bill"
-                                selectedTab = 0
-                            },
-                            onSelectAppSettings = {
-                                showGlobalSettings = true
-                            },
-                            onSelectUpcomingTool = { toolTitle ->
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        if (isEn) "'$toolTitle' tool will be added soon!" else "'$toolTitle' টুলটি খুব শীঘ্রই যোগ করা হচ্ছে!"
-                                    )
-                                }
+                            onLanguageChange = { lang -> viewModel.setAppLanguage(lang) },
+                            onFontScaleChange = { scale -> viewModel.setFontScale(scale) },
+                            onOpenMemoSettings = {
+                                showGlobalSettings = false
+                                showMemoSettings = true
                             }
+                        )
+                    } else if (showMemoSettings) {
+                        SettingsScreen(
+                            state = currentBillState,
+                            quickPresets = quickPresets,
+                            onAddCustomPreset = { name, qty, rate, amount ->
+                                viewModel.addCustomQuickPreset(name, qty, rate, amount)
+                            },
+                            onRemovePreset = { preset ->
+                                viewModel.removeQuickPreset(preset)
+                            },
+                            onResetPresetsDefault = {
+                                viewModel.resetQuickPresetsToDefault()
+                            },
+                            onCenterNameChange = { viewModel.updateCenterName(it) },
+                            onSubtitleChange = { viewModel.updateSubtitle(it) },
+                            onPurchaserLabelChange = { viewModel.updatePurchaserLabel(it) },
+                            onSaveSettings = { centerName, subtitle, purchaserLabel ->
+                                viewModel.saveSettings(centerName, subtitle, purchaserLabel)
+                            },
+                            onResetTemplate = { viewModel.resetToInitialTemplate() },
+                            onResetAllData = { viewModel.resetAllUserData() }
                         )
                     } else if (selectedTool == "food_bill") {
                         when (selectedTab) {
@@ -589,6 +579,7 @@ fun HomeScreen(
                     }
                 }
             }
+            }
         }
     }
 
@@ -651,5 +642,10 @@ fun HomeScreen(
             updateManager = updateManager,
             onDismiss = { updateDialogInfoToShow = null }
         )
+    }
+
+    // First-launch walkthrough (shown once)
+    if (showOnboarding && !isSplashLoading) {
+        OnboardingDialog(onDismiss = { viewModel.dismissOnboarding() })
     }
 }

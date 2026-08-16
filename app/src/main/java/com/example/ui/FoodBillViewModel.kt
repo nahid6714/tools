@@ -63,6 +63,25 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
     private val _appLanguage = MutableStateFlow(prefs.getString("app_language", "bn") ?: "bn")
     val appLanguage: StateFlow<String> = _appLanguage.asStateFlow()
 
+    // Accessibility: lets users with difficulty reading small text scale up the whole app's
+    // font size. Stored as a plain multiplier (1.0 = normal) applied via CompositionLocalProvider.
+    private val _fontScale = MutableStateFlow(prefs.getFloat("app_font_scale", 1.0f))
+    val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
+
+    fun setFontScale(scale: Float) {
+        _fontScale.value = scale
+        prefs.edit().putFloat("app_font_scale", scale).apply()
+    }
+
+    // First-launch onboarding: shown once, then permanently dismissed.
+    private val _showOnboarding = MutableStateFlow(!prefs.getBoolean("onboarding_shown", false))
+    val showOnboarding: StateFlow<Boolean> = _showOnboarding.asStateFlow()
+
+    fun dismissOnboarding() {
+        _showOnboarding.value = false
+        prefs.edit().putBoolean("onboarding_shown", true).apply()
+    }
+
     fun setThemeMode(mode: String) {
         _themeMode.value = mode
         prefs.edit().putString("app_theme_mode", mode).apply()
