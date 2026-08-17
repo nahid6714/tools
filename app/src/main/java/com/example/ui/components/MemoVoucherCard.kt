@@ -58,8 +58,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -419,7 +419,6 @@ fun MemoVoucherCard(
 
                 // Item Rows
                 var draggedItemId by remember { mutableStateOf<String?>(null) }
-                var draggedCurrentIndex by remember { mutableIntStateOf(-1) }
                 var itemDragOffsetY by remember { mutableFloatStateOf(0f) }
                 var activeAutoScrollSpeed by remember { mutableFloatStateOf(0f) }
                 val itemRowHeights = remember { mutableStateMapOf<String, Int>() }
@@ -431,13 +430,6 @@ fun MemoVoucherCard(
 
                 val currentBillItems by rememberUpdatedState(state.items)
                 val currentOnMoveItem by rememberUpdatedState(onMoveItem)
-
-                LaunchedEffect(state.items, draggedItemId) {
-                    if (draggedItemId != null) {
-                        val idx = state.items.indexOfFirst { it.id == draggedItemId }
-                        if (idx != -1) draggedCurrentIndex = idx
-                    }
-                }
 
                 val density = LocalDensity.current
                 val configuration = LocalConfiguration.current
@@ -459,30 +451,24 @@ fun MemoVoucherCard(
                                 initialRowWindowTop -= consumed
                                 itemDragOffsetY += consumed
 
-                                var safety = 0
-                                while (safety++ < currentBillItems.size) {
-                                    val curIndex = draggedCurrentIndex
-                                    if (curIndex == -1) break
+                                val list = currentBillItems
+                                val curIndex = list.indexOfFirst { it.id == draggedItemId }
+                                if (curIndex != -1) {
                                     if (itemDragOffsetY < 0f && curIndex > 0) {
-                                        val prevItem = currentBillItems.getOrNull(curIndex - 1) ?: break
+                                        val prevItem = list[curIndex - 1]
                                         val prevHeight = maxOf((itemRowHeights[prevItem.id] ?: 48).toFloat(), 30f)
-                                        if (itemDragOffsetY < -(prevHeight * 0.55f)) {
+                                        if (itemDragOffsetY < -(prevHeight * 0.45f)) {
                                             currentOnMoveItem(curIndex, curIndex - 1)
                                             itemDragOffsetY += prevHeight
-                                            draggedCurrentIndex = curIndex - 1
-                                            continue
                                         }
-                                    } else if (itemDragOffsetY > 0f && curIndex < currentBillItems.lastIndex) {
-                                        val nextItem = currentBillItems.getOrNull(curIndex + 1) ?: break
+                                    } else if (itemDragOffsetY > 0f && curIndex < list.lastIndex) {
+                                        val nextItem = list[curIndex + 1]
                                         val nextHeight = maxOf((itemRowHeights[nextItem.id] ?: 48).toFloat(), 30f)
-                                        if (itemDragOffsetY > (nextHeight * 0.55f)) {
+                                        if (itemDragOffsetY > (nextHeight * 0.45f)) {
                                             currentOnMoveItem(curIndex, curIndex + 1)
                                             itemDragOffsetY -= nextHeight
-                                            draggedCurrentIndex = curIndex + 1
-                                            continue
                                         }
                                     }
-                                    break
                                 }
                             } else {
                                 activeAutoScrollSpeed = 0f
@@ -493,112 +479,105 @@ fun MemoVoucherCard(
                 }
 
                 state.items.forEachIndexed { index, item ->
-                    val rowRequesters = itemFocusRequesters.getOrNull(index)
-                    val nextItemRowNameRequester = itemFocusRequesters.getOrNull(index + 1)?.getOrNull(0)
-                    val nextTargetRequester = nextItemRowNameRequester
-                    val isBeingDragged = draggedItemId == item.id
+                    key(item.id) {
+                        val rowRequesters = itemFocusRequesters.getOrNull(index)
+                        val nextItemRowNameRequester = itemFocusRequesters.getOrNull(index + 1)?.getOrNull(0)
+                        val nextTargetRequester = nextItemRowNameRequester
+                        val isBeingDragged = draggedItemId == item.id
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onGloballyPositioned { coords ->
-                                rowWindowTops[item.id] = coords.positionInWindow().y
-                                itemRowHeights[item.id] = coords.size.height
-                            }
-                            .graphicsLayer {
-                                translationY = if (isBeingDragged) itemDragOffsetY else 0f
-                            }
-                            .zIndex(if (isBeingDragged) 10f else 0f)
-                            .background(if (isBeingDragged) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
-                    ) {
-                        MemoItemRow(
-                            index = index,
-                            item = item,
-                            nameFocusRequester = rowRequesters?.getOrNull(0) ?: remember { FocusRequester() },
-                            qtyFocusRequester = rowRequesters?.getOrNull(1) ?: remember { FocusRequester() },
-                            rateFocusRequester = rowRequesters?.getOrNull(2) ?: remember { FocusRequester() },
-                            amountFocusRequester = rowRequesters?.getOrNull(3) ?: remember { FocusRequester() },
-                            nextTargetRequester = nextTargetRequester,
-                            onNameChange = { onUpdateItemName(item.id, it) },
-                            onQtyChange = { onUpdateItemQty(item.id, it) },
-                            onRateChange = { onUpdateItemRate(item.id, it) },
-                            onAmountChange = { onUpdateItemAmount(item.id, it) },
-                            onRemove = { onRemoveItem(item.id) },
-                            dragHandleModifier = Modifier.pointerInput(item.id) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = { offset ->
-                                        draggedItemId = item.id
-                                        draggedCurrentIndex = currentBillItems.indexOfFirst { it.id == item.id }
-                                        itemDragOffsetY = 0f
-                                        activeAutoScrollSpeed = 0f
-                                        initialTouchInRowY = offset.y
-                                        initialRowWindowTop = rowWindowTops[item.id] ?: 0f
-                                        totalTouchDragY = 0f
-                                    },
-                                    onDragEnd = {
-                                        draggedItemId = null
-                                        draggedCurrentIndex = -1
-                                        itemDragOffsetY = 0f
-                                        activeAutoScrollSpeed = 0f
-                                    },
-                                    onDragCancel = {
-                                        draggedItemId = null
-                                        draggedCurrentIndex = -1
-                                        itemDragOffsetY = 0f
-                                        activeAutoScrollSpeed = 0f
-                                    },
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        itemDragOffsetY += dragAmount.y
-                                        totalTouchDragY += dragAmount.y
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onGloballyPositioned { coords ->
+                                    rowWindowTops[item.id] = coords.positionInWindow().y
+                                    itemRowHeights[item.id] = coords.size.height
+                                }
+                                .graphicsLayer {
+                                    translationY = if (isBeingDragged) itemDragOffsetY else 0f
+                                }
+                                .zIndex(if (isBeingDragged) 10f else 0f)
+                                .background(if (isBeingDragged) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
+                        ) {
+                            MemoItemRow(
+                                index = index,
+                                item = item,
+                                nameFocusRequester = rowRequesters?.getOrNull(0) ?: remember { FocusRequester() },
+                                qtyFocusRequester = rowRequesters?.getOrNull(1) ?: remember { FocusRequester() },
+                                rateFocusRequester = rowRequesters?.getOrNull(2) ?: remember { FocusRequester() },
+                                amountFocusRequester = rowRequesters?.getOrNull(3) ?: remember { FocusRequester() },
+                                nextTargetRequester = nextTargetRequester,
+                                onNameChange = { onUpdateItemName(item.id, it) },
+                                onQtyChange = { onUpdateItemQty(item.id, it) },
+                                onRateChange = { onUpdateItemRate(item.id, it) },
+                                onAmountChange = { onUpdateItemAmount(item.id, it) },
+                                onRemove = { onRemoveItem(item.id) },
+                                dragHandleModifier = Modifier.pointerInput(Unit) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = { offset ->
+                                            draggedItemId = item.id
+                                            itemDragOffsetY = 0f
+                                            activeAutoScrollSpeed = 0f
+                                            initialTouchInRowY = offset.y
+                                            initialRowWindowTop = rowWindowTops[item.id] ?: 0f
+                                            totalTouchDragY = 0f
+                                        },
+                                        onDragEnd = {
+                                            draggedItemId = null
+                                            itemDragOffsetY = 0f
+                                            activeAutoScrollSpeed = 0f
+                                        },
+                                        onDragCancel = {
+                                            draggedItemId = null
+                                            itemDragOffsetY = 0f
+                                            activeAutoScrollSpeed = 0f
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            itemDragOffsetY += dragAmount.y
+                                            totalTouchDragY += dragAmount.y
 
-                                        var safety = 0
-                                        while (safety++ < currentBillItems.size) {
-                                            val curIndex = draggedCurrentIndex
-                                            if (curIndex == -1) break
-                                            if (itemDragOffsetY < 0f && curIndex > 0) {
-                                                val prevItem = currentBillItems.getOrNull(curIndex - 1) ?: break
-                                                val prevHeight = maxOf((itemRowHeights[prevItem.id] ?: 48).toFloat(), 30f)
-                                                if (itemDragOffsetY < -(prevHeight * 0.55f)) {
-                                                    currentOnMoveItem(curIndex, curIndex - 1)
-                                                    itemDragOffsetY += prevHeight
-                                                    draggedCurrentIndex = curIndex - 1
-                                                    continue
-                                                }
-                                            } else if (itemDragOffsetY > 0f && curIndex < currentBillItems.lastIndex) {
-                                                val nextItem = currentBillItems.getOrNull(curIndex + 1) ?: break
-                                                val nextHeight = maxOf((itemRowHeights[nextItem.id] ?: 48).toFloat(), 30f)
-                                                if (itemDragOffsetY > (nextHeight * 0.55f)) {
-                                                    currentOnMoveItem(curIndex, curIndex + 1)
-                                                    itemDragOffsetY -= nextHeight
-                                                    draggedCurrentIndex = curIndex + 1
-                                                    continue
+                                            val list = currentBillItems
+                                            val curIndex = list.indexOfFirst { it.id == draggedItemId }
+                                            if (curIndex != -1) {
+                                                if (itemDragOffsetY < 0f && curIndex > 0) {
+                                                    val prevItem = list[curIndex - 1]
+                                                    val prevHeight = maxOf((itemRowHeights[prevItem.id] ?: 48).toFloat(), 30f)
+                                                    if (itemDragOffsetY < -(prevHeight * 0.45f)) {
+                                                        currentOnMoveItem(curIndex, curIndex - 1)
+                                                        itemDragOffsetY += prevHeight
+                                                    }
+                                                } else if (itemDragOffsetY > 0f && curIndex < list.lastIndex) {
+                                                    val nextItem = list[curIndex + 1]
+                                                    val nextHeight = maxOf((itemRowHeights[nextItem.id] ?: 48).toFloat(), 30f)
+                                                    if (itemDragOffsetY > (nextHeight * 0.45f)) {
+                                                        currentOnMoveItem(curIndex, curIndex + 1)
+                                                        itemDragOffsetY -= nextHeight
+                                                    }
                                                 }
                                             }
-                                            break
-                                        }
 
-                                        val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
-                                        val distFromBottom = viewportBottom - currentPointerY
-                                        val distFromTop = currentPointerY - viewportTop
+                                            val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
+                                            val distFromBottom = viewportBottom - currentPointerY
+                                            val distFromTop = currentPointerY - viewportTop
 
-                                        activeAutoScrollSpeed = when {
-                                            distFromBottom < scrollThreshold -> {
-                                                val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
-                                                maxScrollSpeed * ratio
+                                            activeAutoScrollSpeed = when {
+                                                distFromBottom < scrollThreshold -> {
+                                                    val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
+                                                    maxScrollSpeed * ratio
+                                                }
+                                                distFromTop < scrollThreshold -> {
+                                                    val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
+                                                    -maxScrollSpeed * ratio
+                                                }
+                                                else -> 0f
                                             }
-                                            distFromTop < scrollThreshold -> {
-                                                val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
-                                                -maxScrollSpeed * ratio
-                                            }
-                                            else -> 0f
                                         }
-                                    }
-                                )
-                            }
-                        )
+                                    )
+                                }
+                            )
+                        }
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                     }
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

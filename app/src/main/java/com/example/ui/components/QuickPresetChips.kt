@@ -63,8 +63,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1237,7 +1237,6 @@ private fun PresetManagementTree(
     level: Int = 0
 ) {
     var draggedNodeId by remember { mutableStateOf<String?>(null) }
-    var draggedCurrentIndex by remember { mutableIntStateOf(-1) }
     var nodeDragOffsetY by remember { mutableFloatStateOf(0f) }
     var activeAutoScrollSpeed by remember { mutableFloatStateOf(0f) }
     val nodeRowHeights = remember { mutableStateMapOf<String, Int>() }
@@ -1249,13 +1248,6 @@ private fun PresetManagementTree(
 
     val currentNodes by rememberUpdatedState(nodes)
     val currentOnReorder by rememberUpdatedState(onReorderNode)
-
-    LaunchedEffect(nodes, draggedNodeId) {
-        if (draggedNodeId != null) {
-            val idx = nodes.indexOfFirst { it.id == draggedNodeId }
-            if (idx != -1) draggedCurrentIndex = idx
-        }
-    }
 
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
@@ -1276,30 +1268,24 @@ private fun PresetManagementTree(
                     initialRowWindowTop -= consumed
                     nodeDragOffsetY += consumed
 
-                    var safety = 0
-                    while (safety++ < currentNodes.size) {
-                        val curIndex = draggedCurrentIndex
-                        if (curIndex == -1) break
+                    val list = currentNodes
+                    val curIndex = list.indexOfFirst { it.id == draggedNodeId }
+                    if (curIndex != -1) {
                         if (nodeDragOffsetY < 0f && curIndex > 0) {
-                            val prevNode = currentNodes.getOrNull(curIndex - 1) ?: break
+                            val prevNode = list[curIndex - 1]
                             val prevHeight = maxOf((nodeRowHeights[prevNode.id] ?: 48).toFloat(), 30f)
-                            if (nodeDragOffsetY < -(prevHeight * 0.55f)) {
+                            if (nodeDragOffsetY < -(prevHeight * 0.45f)) {
                                 currentOnReorder(parentFolderId, curIndex, curIndex - 1)
                                 nodeDragOffsetY += prevHeight
-                                draggedCurrentIndex = curIndex - 1
-                                continue
                             }
-                        } else if (nodeDragOffsetY > 0f && curIndex < currentNodes.lastIndex) {
-                            val nextNode = currentNodes.getOrNull(curIndex + 1) ?: break
+                        } else if (nodeDragOffsetY > 0f && curIndex < list.lastIndex) {
+                            val nextNode = list[curIndex + 1]
                             val nextHeight = maxOf((nodeRowHeights[nextNode.id] ?: 48).toFloat(), 30f)
-                            if (nodeDragOffsetY > (nextHeight * 0.55f)) {
+                            if (nodeDragOffsetY > (nextHeight * 0.45f)) {
                                 currentOnReorder(parentFolderId, curIndex, curIndex + 1)
                                 nodeDragOffsetY -= nextHeight
-                                draggedCurrentIndex = curIndex + 1
-                                continue
                             }
                         }
-                        break
                     }
                 } else {
                     activeAutoScrollSpeed = 0f
@@ -1314,56 +1300,221 @@ private fun PresetManagementTree(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         nodes.forEachIndexed { index, node ->
-            val isEditing = editingNode?.id == node.id
-            val isBeingDragged = draggedNodeId == node.id
+            key(node.id) {
+                val isEditing = editingNode?.id == node.id
+                val isBeingDragged = draggedNodeId == node.id
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { coords ->
-                        nodeWindowTops[node.id] = coords.positionInWindow().y
-                        nodeRowHeights[node.id] = coords.size.height
-                    }
-                    .graphicsLayer {
-                        translationY = if (isBeingDragged) nodeDragOffsetY else 0f
-                    }
-                    .zIndex(if (isBeingDragged) 10f else 0f)
-            ) {
-                if (node.isFolder) {
-                    val isExpanded = expandedTreeFolderIds.contains(node.id)
-                    val childItemsCount = node.children.getAllFlatItems().size
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onGloballyPositioned { coords ->
+                            nodeWindowTops[node.id] = coords.positionInWindow().y
+                            nodeRowHeights[node.id] = coords.size.height
+                        }
+                        .graphicsLayer {
+                            translationY = if (isBeingDragged) nodeDragOffsetY else 0f
+                        }
+                        .zIndex(if (isBeingDragged) 10f else 0f)
+                ) {
+                    if (node.isFolder) {
+                        val isExpanded = expandedTreeFolderIds.contains(node.id)
+                        val childItemsCount = node.children.getAllFlatItems().size
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = (level * 12).dp)
-                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = (level * 12).dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isEditing) MaterialTheme.colorScheme.primary else if (isBeingDragged) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 6.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // Drag Handle (=) on left, matching Home screen
+                                    Icon(
+                                        imageVector = Icons.Default.DragHandle,
+                                        contentDescription = "টেনে অবস্থান পরিবর্তন করুন",
+                                        tint = if (isEditing) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .padding(horizontal = 2.dp)
+                                            .pointerInput(Unit) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { offset ->
+                                                        draggedNodeId = node.id
+                                                        nodeDragOffsetY = 0f
+                                                        activeAutoScrollSpeed = 0f
+                                                        initialTouchInRowY = offset.y
+                                                        initialRowWindowTop = nodeWindowTops[node.id] ?: 0f
+                                                        totalTouchDragY = 0f
+                                                    },
+                                                    onDragEnd = {
+                                                        draggedNodeId = null
+                                                        nodeDragOffsetY = 0f
+                                                        activeAutoScrollSpeed = 0f
+                                                    },
+                                                    onDragCancel = {
+                                                        draggedNodeId = null
+                                                        nodeDragOffsetY = 0f
+                                                        activeAutoScrollSpeed = 0f
+                                                    },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        nodeDragOffsetY += dragAmount.y
+                                                        totalTouchDragY += dragAmount.y
+
+                                                        val list = currentNodes
+                                                        val curIndex = list.indexOfFirst { it.id == draggedNodeId }
+                                                        if (curIndex != -1) {
+                                                            if (nodeDragOffsetY < 0f && curIndex > 0) {
+                                                                val prevNode = list[curIndex - 1]
+                                                                val prevHeight = maxOf((nodeRowHeights[prevNode.id] ?: 48).toFloat(), 30f)
+                                                                if (nodeDragOffsetY < -(prevHeight * 0.45f)) {
+                                                                    currentOnReorder(parentFolderId, curIndex, curIndex - 1)
+                                                                    nodeDragOffsetY += prevHeight
+                                                                }
+                                                            } else if (nodeDragOffsetY > 0f && curIndex < list.lastIndex) {
+                                                                val nextNode = list[curIndex + 1]
+                                                                val nextHeight = maxOf((nodeRowHeights[nextNode.id] ?: 48).toFloat(), 30f)
+                                                                if (nodeDragOffsetY > (nextHeight * 0.45f)) {
+                                                                    currentOnReorder(parentFolderId, curIndex, curIndex + 1)
+                                                                    nodeDragOffsetY -= nextHeight
+                                                                }
+                                                            }
+                                                        }
+
+                                                        if (viewportBottom > viewportTop) {
+                                                            val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
+                                                            val distFromBottom = viewportBottom - currentPointerY
+                                                            val distFromTop = currentPointerY - viewportTop
+
+                                                            activeAutoScrollSpeed = when {
+                                                                distFromBottom < scrollThreshold -> {
+                                                                    val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
+                                                                    maxScrollSpeed * ratio
+                                                                }
+                                                                distFromTop < scrollThreshold -> {
+                                                                    val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
+                                                                    -maxScrollSpeed * ratio
+                                                                }
+                                                                else -> 0f
+                                                            }
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                    )
+
+                                    Row(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { onToggleExpand(node.id) },
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                                            contentDescription = null,
+                                            tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Folder,
+                                            contentDescription = null,
+                                            tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "${node.name} ($childItemsCount)",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isEditing) Color.White else MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        // Edit button
+                                        IconButton(
+                                            onClick = { onEditNode(node) },
+                                            modifier = Modifier.size(26.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = "এডিট",
+                                                tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+
+                                        // Delete button
+                                        IconButton(
+                                            onClick = { onDeleteNode(node) },
+                                            modifier = Modifier.size(26.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = "ডিলিট",
+                                                tint = if (isEditing) Color(0xFFFF8A80) else LedgerRed,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (isExpanded) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                PresetManagementTree(
+                                    nodes = node.children,
+                                    parentFolderId = node.id,
+                                    editingNode = editingNode,
+                                    expandedTreeFolderIds = expandedTreeFolderIds,
+                                    scrollState = scrollState,
+                                    dialogBoundsInWindow = dialogBoundsInWindow,
+                                    onToggleExpand = onToggleExpand,
+                                    onEditNode = onEditNode,
+                                    onDeleteNode = onDeleteNode,
+                                    onReorderNode = onReorderNode,
+                                    level = level + 1
+                                )
+                            }
+                        }
+                    } else {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isEditing) MaterialTheme.colorScheme.primary else if (isBeingDragged) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                            modifier = Modifier.fillMaxWidth()
+                            color = if (isEditing) MaterialTheme.colorScheme.primary else if (isBeingDragged) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f) else MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = (level * 12).dp)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                // Drag Handle (=) on left, matching Home screen
+                                // Drag handle on the left matching the Home screen (= icon)
                                 Icon(
                                     imageVector = Icons.Default.DragHandle,
                                     contentDescription = "টেনে অবস্থান পরিবর্তন করুন",
-                                    tint = if (isEditing) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    tint = if (isEditing) Color.White.copy(alpha = 0.8f) else Color.Gray,
                                     modifier = Modifier
                                         .size(24.dp)
                                         .padding(horizontal = 2.dp)
-                                        .pointerInput(node.id) {
+                                        .pointerInput(Unit) {
                                             detectDragGesturesAfterLongPress(
                                                 onDragStart = { offset ->
                                                     draggedNodeId = node.id
-                                                    draggedCurrentIndex = currentNodes.indexOfFirst { it.id == node.id }
                                                     nodeDragOffsetY = 0f
                                                     activeAutoScrollSpeed = 0f
                                                     initialTouchInRowY = offset.y
@@ -1372,13 +1523,11 @@ private fun PresetManagementTree(
                                                 },
                                                 onDragEnd = {
                                                     draggedNodeId = null
-                                                    draggedCurrentIndex = -1
                                                     nodeDragOffsetY = 0f
                                                     activeAutoScrollSpeed = 0f
                                                 },
                                                 onDragCancel = {
                                                     draggedNodeId = null
-                                                    draggedCurrentIndex = -1
                                                     nodeDragOffsetY = 0f
                                                     activeAutoScrollSpeed = 0f
                                                 },
@@ -1387,30 +1536,24 @@ private fun PresetManagementTree(
                                                     nodeDragOffsetY += dragAmount.y
                                                     totalTouchDragY += dragAmount.y
 
-                                                    var safety = 0
-                                                    while (safety++ < currentNodes.size) {
-                                                        val curIndex = draggedCurrentIndex
-                                                        if (curIndex == -1) break
+                                                    val list = currentNodes
+                                                    val curIndex = list.indexOfFirst { it.id == draggedNodeId }
+                                                    if (curIndex != -1) {
                                                         if (nodeDragOffsetY < 0f && curIndex > 0) {
-                                                            val prevNode = currentNodes.getOrNull(curIndex - 1) ?: break
+                                                            val prevNode = list[curIndex - 1]
                                                             val prevHeight = maxOf((nodeRowHeights[prevNode.id] ?: 48).toFloat(), 30f)
-                                                            if (nodeDragOffsetY < -(prevHeight * 0.55f)) {
+                                                            if (nodeDragOffsetY < -(prevHeight * 0.45f)) {
                                                                 currentOnReorder(parentFolderId, curIndex, curIndex - 1)
                                                                 nodeDragOffsetY += prevHeight
-                                                                draggedCurrentIndex = curIndex - 1
-                                                                continue
                                                             }
-                                                        } else if (nodeDragOffsetY > 0f && curIndex < currentNodes.lastIndex) {
-                                                            val nextNode = currentNodes.getOrNull(curIndex + 1) ?: break
+                                                        } else if (nodeDragOffsetY > 0f && curIndex < list.lastIndex) {
+                                                            val nextNode = list[curIndex + 1]
                                                             val nextHeight = maxOf((nodeRowHeights[nextNode.id] ?: 48).toFloat(), 30f)
-                                                            if (nodeDragOffsetY > (nextHeight * 0.55f)) {
+                                                            if (nodeDragOffsetY > (nextHeight * 0.45f)) {
                                                                 currentOnReorder(parentFolderId, curIndex, curIndex + 1)
                                                                 nodeDragOffsetY -= nextHeight
-                                                                draggedCurrentIndex = curIndex + 1
-                                                                continue
                                                             }
                                                         }
-                                                        break
                                                     }
 
                                                     if (viewportBottom > viewportTop) {
@@ -1438,28 +1581,14 @@ private fun PresetManagementTree(
                                 Row(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onToggleExpand(node.id) },
+                                        .clickable { onEditNode(node) },
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    Icon(
-                                        imageVector = Icons.Default.Folder,
-                                        contentDescription = null,
-                                        tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "${node.name} ($childItemsCount)",
+                                        text = BengaliUtils.formatPresetDisplayText(node),
                                         fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isEditing) Color.White else MaterialTheme.colorScheme.primary
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isEditing) Color.White else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
 
@@ -1489,165 +1618,6 @@ private fun PresetManagementTree(
                                             modifier = Modifier.size(14.dp)
                                         )
                                     }
-                                }
-                            }
-                        }
-
-                        if (isExpanded) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            PresetManagementTree(
-                                nodes = node.children,
-                                parentFolderId = node.id,
-                                editingNode = editingNode,
-                                expandedTreeFolderIds = expandedTreeFolderIds,
-                                scrollState = scrollState,
-                                dialogBoundsInWindow = dialogBoundsInWindow,
-                                onToggleExpand = onToggleExpand,
-                                onEditNode = onEditNode,
-                                onDeleteNode = onDeleteNode,
-                                onReorderNode = onReorderNode,
-                                level = level + 1
-                            )
-                        }
-                    }
-                } else {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isEditing) MaterialTheme.colorScheme.primary else if (isBeingDragged) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f) else MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = (level * 12).dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Drag handle on the left matching the Home screen (= icon)
-                            Icon(
-                                imageVector = Icons.Default.DragHandle,
-                                contentDescription = "টেনে অবস্থান পরিবর্তন করুন",
-                                tint = if (isEditing) Color.White.copy(alpha = 0.8f) else Color.Gray,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .padding(horizontal = 2.dp)
-                                    .pointerInput(node.id) {
-                                        detectDragGesturesAfterLongPress(
-                                            onDragStart = { offset ->
-                                                draggedNodeId = node.id
-                                                draggedCurrentIndex = currentNodes.indexOfFirst { it.id == node.id }
-                                                nodeDragOffsetY = 0f
-                                                activeAutoScrollSpeed = 0f
-                                                initialTouchInRowY = offset.y
-                                                initialRowWindowTop = nodeWindowTops[node.id] ?: 0f
-                                                totalTouchDragY = 0f
-                                            },
-                                            onDragEnd = {
-                                                draggedNodeId = null
-                                                draggedCurrentIndex = -1
-                                                nodeDragOffsetY = 0f
-                                                activeAutoScrollSpeed = 0f
-                                            },
-                                            onDragCancel = {
-                                                draggedNodeId = null
-                                                draggedCurrentIndex = -1
-                                                nodeDragOffsetY = 0f
-                                                activeAutoScrollSpeed = 0f
-                                            },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                nodeDragOffsetY += dragAmount.y
-                                                totalTouchDragY += dragAmount.y
-
-                                                var safety = 0
-                                                while (safety++ < currentNodes.size) {
-                                                    val curIndex = draggedCurrentIndex
-                                                    if (curIndex == -1) break
-                                                    if (nodeDragOffsetY < 0f && curIndex > 0) {
-                                                        val prevNode = currentNodes.getOrNull(curIndex - 1) ?: break
-                                                        val prevHeight = maxOf((nodeRowHeights[prevNode.id] ?: 48).toFloat(), 30f)
-                                                        if (nodeDragOffsetY < -(prevHeight * 0.55f)) {
-                                                            currentOnReorder(parentFolderId, curIndex, curIndex - 1)
-                                                            nodeDragOffsetY += prevHeight
-                                                            draggedCurrentIndex = curIndex - 1
-                                                            continue
-                                                        }
-                                                    } else if (nodeDragOffsetY > 0f && curIndex < currentNodes.lastIndex) {
-                                                        val nextNode = currentNodes.getOrNull(curIndex + 1) ?: break
-                                                        val nextHeight = maxOf((nodeRowHeights[nextNode.id] ?: 48).toFloat(), 30f)
-                                                        if (nodeDragOffsetY > (nextHeight * 0.55f)) {
-                                                            currentOnReorder(parentFolderId, curIndex, curIndex + 1)
-                                                            nodeDragOffsetY -= nextHeight
-                                                            draggedCurrentIndex = curIndex + 1
-                                                            continue
-                                                        }
-                                                    }
-                                                    break
-                                                }
-
-                                                if (viewportBottom > viewportTop) {
-                                                    val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
-                                                    val distFromBottom = viewportBottom - currentPointerY
-                                                    val distFromTop = currentPointerY - viewportTop
-
-                                                    activeAutoScrollSpeed = when {
-                                                        distFromBottom < scrollThreshold -> {
-                                                            val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
-                                                            maxScrollSpeed * ratio
-                                                        }
-                                                        distFromTop < scrollThreshold -> {
-                                                            val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
-                                                            -maxScrollSpeed * ratio
-                                                        }
-                                                        else -> 0f
-                                                    }
-                                                }
-                                            }
-                                        )
-                                    }
-                            )
-
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { onEditNode(node) },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = BengaliUtils.formatPresetDisplayText(node),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isEditing) Color.White else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Edit button
-                                IconButton(
-                                    onClick = { onEditNode(node) },
-                                    modifier = Modifier.size(26.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "এডিট",
-                                        tint = if (isEditing) Color.White else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-
-                                // Delete button
-                                IconButton(
-                                    onClick = { onDeleteNode(node) },
-                                    modifier = Modifier.size(26.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "ডিলিট",
-                                        tint = if (isEditing) Color(0xFFFF8A80) else LedgerRed,
-                                        modifier = Modifier.size(14.dp)
-                                    )
                                 }
                             }
                         }
