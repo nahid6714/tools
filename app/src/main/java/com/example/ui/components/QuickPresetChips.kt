@@ -1267,29 +1267,24 @@ private fun PresetManagementTree(
                     initialRowWindowTop -= consumed
                     nodeDragOffsetY += consumed
 
-                    while (true) {
-                        val list = currentNodes
-                        val curIndex = list.indexOfFirst { it.id == draggedNodeId }
-                        if (curIndex == -1) break
-
+                    val list = currentNodes
+                    val curIndex = list.indexOfFirst { it.id == draggedNodeId }
+                    if (curIndex != -1) {
                         if (nodeDragOffsetY < 0f && curIndex > 0) {
                             val prevNode = list[curIndex - 1]
-                            val prevHeight = (nodeRowHeights[prevNode.id] ?: 48).toFloat()
+                            val prevHeight = maxOf((nodeRowHeights[prevNode.id] ?: 48).toFloat(), 30f)
                             if (nodeDragOffsetY < -(prevHeight * 0.45f)) {
                                 currentOnReorder(parentFolderId, curIndex, curIndex - 1)
                                 nodeDragOffsetY += prevHeight
-                                continue
                             }
                         } else if (nodeDragOffsetY > 0f && curIndex < list.lastIndex) {
                             val nextNode = list[curIndex + 1]
-                            val nextHeight = (nodeRowHeights[nextNode.id] ?: 48).toFloat()
+                            val nextHeight = maxOf((nodeRowHeights[nextNode.id] ?: 48).toFloat(), 30f)
                             if (nodeDragOffsetY > (nextHeight * 0.45f)) {
                                 currentOnReorder(parentFolderId, curIndex, curIndex + 1)
                                 nodeDragOffsetY -= nextHeight
-                                continue
                             }
                         }
-                        break
                     }
                 } else {
                     activeAutoScrollSpeed = 0f
@@ -1374,29 +1369,24 @@ private fun PresetManagementTree(
                                                     nodeDragOffsetY += dragAmount.y
                                                     totalTouchDragY += dragAmount.y
 
-                                                    while (true) {
-                                                        val list = currentNodes
-                                                        val curIndex = list.indexOfFirst { it.id == draggedNodeId }
-                                                        if (curIndex == -1) break
-
+                                                    val list = currentNodes
+                                                    val curIndex = list.indexOfFirst { it.id == draggedNodeId }
+                                                    if (curIndex != -1) {
                                                         if (nodeDragOffsetY < 0f && curIndex > 0) {
                                                             val prevNode = list[curIndex - 1]
-                                                            val prevHeight = (nodeRowHeights[prevNode.id] ?: 48).toFloat()
+                                                            val prevHeight = maxOf((nodeRowHeights[prevNode.id] ?: 48).toFloat(), 30f)
                                                             if (nodeDragOffsetY < -(prevHeight * 0.45f)) {
                                                                 currentOnReorder(parentFolderId, curIndex, curIndex - 1)
                                                                 nodeDragOffsetY += prevHeight
-                                                                continue
                                                             }
                                                         } else if (nodeDragOffsetY > 0f && curIndex < list.lastIndex) {
                                                             val nextNode = list[curIndex + 1]
-                                                            val nextHeight = (nodeRowHeights[nextNode.id] ?: 48).toFloat()
+                                                            val nextHeight = maxOf((nodeRowHeights[nextNode.id] ?: 48).toFloat(), 30f)
                                                             if (nodeDragOffsetY > (nextHeight * 0.45f)) {
                                                                 currentOnReorder(parentFolderId, curIndex, curIndex + 1)
                                                                 nodeDragOffsetY -= nextHeight
-                                                                continue
                                                             }
                                                         }
-                                                        break
                                                     }
 
                                                     if (viewportBottom > viewportTop) {
@@ -1544,29 +1534,24 @@ private fun PresetManagementTree(
                                                 nodeDragOffsetY += dragAmount.y
                                                 totalTouchDragY += dragAmount.y
 
-                                                while (true) {
-                                                    val list = currentNodes
-                                                    val curIndex = list.indexOfFirst { it.id == draggedNodeId }
-                                                    if (curIndex == -1) break
-
+                                                val list = currentNodes
+                                                val curIndex = list.indexOfFirst { it.id == draggedNodeId }
+                                                if (curIndex != -1) {
                                                     if (nodeDragOffsetY < 0f && curIndex > 0) {
                                                         val prevNode = list[curIndex - 1]
-                                                        val prevHeight = (nodeRowHeights[prevNode.id] ?: 48).toFloat()
+                                                        val prevHeight = maxOf((nodeRowHeights[prevNode.id] ?: 48).toFloat(), 30f)
                                                         if (nodeDragOffsetY < -(prevHeight * 0.45f)) {
                                                             currentOnReorder(parentFolderId, curIndex, curIndex - 1)
                                                             nodeDragOffsetY += prevHeight
-                                                            continue
                                                         }
                                                     } else if (nodeDragOffsetY > 0f && curIndex < list.lastIndex) {
                                                         val nextNode = list[curIndex + 1]
-                                                        val nextHeight = (nodeRowHeights[nextNode.id] ?: 48).toFloat()
+                                                        val nextHeight = maxOf((nodeRowHeights[nextNode.id] ?: 48).toFloat(), 30f)
                                                         if (nodeDragOffsetY > (nextHeight * 0.45f)) {
                                                             currentOnReorder(parentFolderId, curIndex, curIndex + 1)
                                                             nodeDragOffsetY -= nextHeight
-                                                            continue
                                                         }
                                                     }
-                                                    break
                                                 }
 
                                                 if (viewportBottom > viewportTop) {
