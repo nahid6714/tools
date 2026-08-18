@@ -58,9 +58,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -113,7 +116,6 @@ import androidx.compose.material3.Button
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -415,15 +417,18 @@ fun MemoVoucherCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Item Rows
-                var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
+                var draggedItemId by remember { mutableStateOf<String?>(null) }
                 var itemDragOffsetY by remember { mutableFloatStateOf(0f) }
                 var activeAutoScrollSpeed by remember { mutableFloatStateOf(0f) }
-                val itemRowHeights = remember { mutableStateMapOf<Int, Int>() }
-                val rowWindowTops = remember { mutableStateMapOf<Int, Float>() }
+                val itemRowHeights = remember { mutableStateMapOf<String, Int>() }
+                val rowWindowTops = remember { mutableStateMapOf<String, Float>() }
 
                 var initialRowWindowTop by remember { mutableFloatStateOf(0f) }
                 var initialTouchInRowY by remember { mutableFloatStateOf(0f) }
                 var totalTouchDragY by remember { mutableFloatStateOf(0f) }
+
+                val currentBillItems by rememberUpdatedState(state.items)
+                val currentOnMoveItem by rememberUpdatedState(onMoveItem)
 
                 val density = LocalDensity.current
                 val configuration = LocalConfiguration.current
@@ -435,9 +440,9 @@ fun MemoVoucherCard(
                 val scrollThreshold = with(density) { 100.dp.toPx() }
                 val maxScrollSpeed = with(density) { 20.dp.toPx() }
 
-                LaunchedEffect(draggedItemIndex) {
-                    if (draggedItemIndex == null) return@LaunchedEffect
-                    while (isActive && draggedItemIndex != null) {
+                LaunchedEffect(draggedItemId) {
+                    if (draggedItemId == null) return@LaunchedEffect
+                    while (isActive && draggedItemId != null) {
                         val speed = activeAutoScrollSpeed
                         if (speed != 0f && scrollState != null) {
                             val consumed = scrollState.scrollBy(speed)
@@ -445,20 +450,28 @@ fun MemoVoucherCard(
                                 initialRowWindowTop -= consumed
                                 itemDragOffsetY += consumed
 
-                                val currentIndex = draggedItemIndex
-                                if (currentIndex != null) {
-                                    val rowHeight = (itemRowHeights[currentIndex] ?: 0).toFloat()
-                                    if (rowHeight > 0f) {
-                                        if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
-                                            onMoveItem(currentIndex, currentIndex + 1)
-                                            draggedItemIndex = currentIndex + 1
-                                            itemDragOffsetY -= rowHeight
-                                        } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
-                                            onMoveItem(currentIndex, currentIndex - 1)
-                                            draggedItemIndex = currentIndex - 1
-                                            itemDragOffsetY += rowHeight
-                                        }
-                                    }
+                                val workingList = currentBillItems.toMutableList()
+                                var curIndex = workingList.indexOfFirst { it.id == draggedItemId }
+                                while (curIndex != -1) {
+                                    if (itemDragOffsetY < 0f && curIndex > 0) {
+                                        val prevItem = workingList[curIndex - 1]
+                                        val prevHeight = maxOf((itemRowHeights[prevItem.id] ?: 48).toFloat(), 30f)
+                                        if (itemDragOffsetY < -(prevHeight * 0.45f)) {
+                                            currentOnMoveItem(curIndex, curIndex - 1)
+                                            workingList[curIndex] = workingList[curIndex - 1].also { workingList[curIndex - 1] = workingList[curIndex] }
+                                            itemDragOffsetY += prevHeight
+                                            curIndex -= 1
+                                        } else break
+                                    } else if (itemDragOffsetY > 0f && curIndex < workingList.lastIndex) {
+                                        val nextItem = workingList[curIndex + 1]
+                                        val nextHeight = maxOf((itemRowHeights[nextItem.id] ?: 48).toFloat(), 30f)
+                                        if (itemDragOffsetY > (nextHeight * 0.45f)) {
+                                            currentOnMoveItem(curIndex, curIndex + 1)
+                                            workingList[curIndex] = workingList[curIndex + 1].also { workingList[curIndex + 1] = workingList[curIndex] }
+                                            itemDragOffsetY -= nextHeight
+                                            curIndex += 1
+                                        } else break
+                                    } else break
                                 }
                             } else {
                                 activeAutoScrollSpeed = 0f
@@ -469,97 +482,109 @@ fun MemoVoucherCard(
                 }
 
                 state.items.forEachIndexed { index, item ->
-                    val rowRequesters = itemFocusRequesters.getOrNull(index)
-                    val nextItemRowNameRequester = itemFocusRequesters.getOrNull(index + 1)?.getOrNull(0)
-                    val nextTargetRequester = nextItemRowNameRequester
-                    val isBeingDragged = draggedItemIndex == index
+                    key(item.id) {
+                        val rowRequesters = itemFocusRequesters.getOrNull(index)
+                        val nextItemRowNameRequester = itemFocusRequesters.getOrNull(index + 1)?.getOrNull(0)
+                        val nextTargetRequester = nextItemRowNameRequester
+                        val isBeingDragged = draggedItemId == item.id
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onGloballyPositioned { coords ->
-                                rowWindowTops[index] = coords.positionInWindow().y
-                                itemRowHeights[index] = coords.size.height
-                            }
-                            .graphicsLayer {
-                                translationY = if (isBeingDragged) itemDragOffsetY else 0f
-                            }
-                            .zIndex(if (isBeingDragged) 1f else 0f)
-                            .background(if (isBeingDragged) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
-                    ) {
-                        MemoItemRow(
-                            index = index,
-                            item = item,
-                            nameFocusRequester = rowRequesters?.getOrNull(0) ?: remember { FocusRequester() },
-                            qtyFocusRequester = rowRequesters?.getOrNull(1) ?: remember { FocusRequester() },
-                            rateFocusRequester = rowRequesters?.getOrNull(2) ?: remember { FocusRequester() },
-                            amountFocusRequester = rowRequesters?.getOrNull(3) ?: remember { FocusRequester() },
-                            nextTargetRequester = nextTargetRequester,
-                            onNameChange = { onUpdateItemName(item.id, it) },
-                            onQtyChange = { onUpdateItemQty(item.id, it) },
-                            onRateChange = { onUpdateItemRate(item.id, it) },
-                            onAmountChange = { onUpdateItemAmount(item.id, it) },
-                            onRemove = { onRemoveItem(item.id) },
-                            dragHandleModifier = Modifier.pointerInput(index, state.items.size) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = { offset ->
-                                        draggedItemIndex = index
-                                        itemDragOffsetY = 0f
-                                        activeAutoScrollSpeed = 0f
-                                        initialTouchInRowY = offset.y
-                                        initialRowWindowTop = rowWindowTops[index] ?: 0f
-                                        totalTouchDragY = 0f
-                                    },
-                                    onDragEnd = {
-                                        draggedItemIndex = null
-                                        itemDragOffsetY = 0f
-                                        activeAutoScrollSpeed = 0f
-                                    },
-                                    onDragCancel = {
-                                        draggedItemIndex = null
-                                        itemDragOffsetY = 0f
-                                        activeAutoScrollSpeed = 0f
-                                    },
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        itemDragOffsetY += dragAmount.y
-                                        totalTouchDragY += dragAmount.y
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onGloballyPositioned { coords ->
+                                    rowWindowTops[item.id] = coords.positionInWindow().y
+                                    itemRowHeights[item.id] = coords.size.height
+                                }
+                                .graphicsLayer {
+                                    translationY = if (isBeingDragged) itemDragOffsetY else 0f
+                                }
+                                .zIndex(if (isBeingDragged) 10f else 0f)
+                                .background(if (isBeingDragged) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
+                        ) {
+                            MemoItemRow(
+                                index = index,
+                                item = item,
+                                nameFocusRequester = rowRequesters?.getOrNull(0) ?: remember { FocusRequester() },
+                                qtyFocusRequester = rowRequesters?.getOrNull(1) ?: remember { FocusRequester() },
+                                rateFocusRequester = rowRequesters?.getOrNull(2) ?: remember { FocusRequester() },
+                                amountFocusRequester = rowRequesters?.getOrNull(3) ?: remember { FocusRequester() },
+                                nextTargetRequester = nextTargetRequester,
+                                onNameChange = { onUpdateItemName(item.id, it) },
+                                onQtyChange = { onUpdateItemQty(item.id, it) },
+                                onRateChange = { onUpdateItemRate(item.id, it) },
+                                onAmountChange = { onUpdateItemAmount(item.id, it) },
+                                onRemove = { onRemoveItem(item.id) },
+                                dragHandleModifier = Modifier.pointerInput(Unit) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = { offset ->
+                                            draggedItemId = item.id
+                                            itemDragOffsetY = 0f
+                                            activeAutoScrollSpeed = 0f
+                                            initialTouchInRowY = offset.y
+                                            initialRowWindowTop = rowWindowTops[item.id] ?: 0f
+                                            totalTouchDragY = 0f
+                                        },
+                                        onDragEnd = {
+                                            draggedItemId = null
+                                            itemDragOffsetY = 0f
+                                            activeAutoScrollSpeed = 0f
+                                        },
+                                        onDragCancel = {
+                                            draggedItemId = null
+                                            itemDragOffsetY = 0f
+                                            activeAutoScrollSpeed = 0f
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            itemDragOffsetY += dragAmount.y
+                                            totalTouchDragY += dragAmount.y
 
-                                        val currentIndex = draggedItemIndex ?: return@detectDragGesturesAfterLongPress
-                                        val rowHeight = (itemRowHeights[currentIndex] ?: 0).toFloat()
-                                        if (rowHeight > 0f) {
-                                            if (itemDragOffsetY > rowHeight / 2 && currentIndex < state.items.lastIndex) {
-                                                onMoveItem(currentIndex, currentIndex + 1)
-                                                draggedItemIndex = currentIndex + 1
-                                                itemDragOffsetY -= rowHeight
-                                            } else if (itemDragOffsetY < -rowHeight / 2 && currentIndex > 0) {
-                                                onMoveItem(currentIndex, currentIndex - 1)
-                                                draggedItemIndex = currentIndex - 1
-                                                itemDragOffsetY += rowHeight
+                                            val workingList = currentBillItems.toMutableList()
+                                            var curIndex = workingList.indexOfFirst { it.id == draggedItemId }
+                                            while (curIndex != -1) {
+                                                if (itemDragOffsetY < 0f && curIndex > 0) {
+                                                    val prevItem = workingList[curIndex - 1]
+                                                    val prevHeight = maxOf((itemRowHeights[prevItem.id] ?: 48).toFloat(), 30f)
+                                                    if (itemDragOffsetY < -(prevHeight * 0.45f)) {
+                                                        currentOnMoveItem(curIndex, curIndex - 1)
+                                                        workingList[curIndex] = workingList[curIndex - 1].also { workingList[curIndex - 1] = workingList[curIndex] }
+                                                        itemDragOffsetY += prevHeight
+                                                        curIndex -= 1
+                                                    } else break
+                                                } else if (itemDragOffsetY > 0f && curIndex < workingList.lastIndex) {
+                                                    val nextItem = workingList[curIndex + 1]
+                                                    val nextHeight = maxOf((itemRowHeights[nextItem.id] ?: 48).toFloat(), 30f)
+                                                    if (itemDragOffsetY > (nextHeight * 0.45f)) {
+                                                        currentOnMoveItem(curIndex, curIndex + 1)
+                                                        workingList[curIndex] = workingList[curIndex + 1].also { workingList[curIndex + 1] = workingList[curIndex] }
+                                                        itemDragOffsetY -= nextHeight
+                                                        curIndex += 1
+                                                    } else break
+                                                } else break
+                                            }
+
+                                            val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
+                                            val distFromBottom = viewportBottom - currentPointerY
+                                            val distFromTop = currentPointerY - viewportTop
+
+                                            activeAutoScrollSpeed = when {
+                                                distFromBottom < scrollThreshold -> {
+                                                    val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
+                                                    maxScrollSpeed * ratio
+                                                }
+                                                distFromTop < scrollThreshold -> {
+                                                    val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
+                                                    -maxScrollSpeed * ratio
+                                                }
+                                                else -> 0f
                                             }
                                         }
-
-                                        val currentPointerY = initialRowWindowTop + initialTouchInRowY + totalTouchDragY
-                                        val distFromBottom = viewportBottom - currentPointerY
-                                        val distFromTop = currentPointerY - viewportTop
-
-                                        activeAutoScrollSpeed = when {
-                                            distFromBottom < scrollThreshold -> {
-                                                val ratio = ((scrollThreshold - distFromBottom) / scrollThreshold).coerceIn(0f, 1f)
-                                                maxScrollSpeed * ratio
-                                            }
-                                            distFromTop < scrollThreshold -> {
-                                                val ratio = ((scrollThreshold - distFromTop) / scrollThreshold).coerceIn(0f, 1f)
-                                                -maxScrollSpeed * ratio
-                                            }
-                                            else -> 0f
-                                        }
-                                    }
-                                )
-                            }
-                        )
+                                    )
+                                }
+                            )
+                        }
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                     }
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
