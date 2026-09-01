@@ -111,6 +111,11 @@ fun HomeScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showGlobalSettings by remember { mutableStateOf(false) }
     var showMemoSettings by remember { mutableStateOf(false) }
+    // Which bill type's header (title/subtitle/signature) is being edited on the memo
+    // settings screen. Resets to whatever the live bill's type is each time the settings
+    // screen is opened, then can be switched independently via the dropdown in the app bar
+    // so the user can edit and save "যাতায়াত ভাড়া" and "খাবার বিল" settings separately.
+    var memoSettingsBillType by remember(showMemoSettings) { mutableStateOf(currentBillState.billType) }
     var showPreviewDialog by remember { mutableStateOf(false) }
     var previewTopMemo by remember { mutableStateOf<PrintMemoData?>(null) }
     var previewBottomMemo by remember { mutableStateOf<PrintMemoData?>(null) }
@@ -207,9 +212,14 @@ fun HomeScreen(
                             } else {
                                 if (isEn) "Food Bill" else "খাবার বিল"
                             }
+                            val memoSettingsTypeLabel = if (memoSettingsBillType == "transport") {
+                                if (isEn) "Transport Fare" else "যাতায়াত ভাড়া"
+                            } else {
+                                if (isEn) "Food Bill" else "খাবার বিল"
+                            }
                             val titleText = when {
                                 showGlobalSettings -> if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস"
-                                showMemoSettings -> if (isEn) "Memo Header Settings" else "মেমো হেডার সেটিংস"
+                                showMemoSettings -> if (isEn) "Memo Settings – $memoSettingsTypeLabel" else "মেমো হেডার সেটিংস – $memoSettingsTypeLabel"
                                 selectedTool == "food_bill" -> when (selectedTab) {
                                     1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
                                     else -> if (currentBillState.centerName.isNotBlank())
@@ -272,6 +282,44 @@ fun HomeScreen(
                                                     showMemoSettings = true
                                                 },
                                                 modifier = Modifier.testTag("title_menu_edit")
+                                            )
+                                        }
+                                    }
+                                }
+                                if (showMemoSettings) {
+                                    Box {
+                                        var showMemoSettingsTypeMenu by remember { mutableStateOf(false) }
+                                        IconButton(
+                                            onClick = { showMemoSettingsTypeMenu = true },
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .testTag("memo_settings_type_menu_trigger")
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ArrowDropDown,
+                                                contentDescription = if (isEn) "Switch settings for bill type" else "কোন বিলের সেটিংস সম্পাদনা করবেন তা নির্বাচন করুন",
+                                                tint = Color.White
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showMemoSettingsTypeMenu,
+                                            onDismissRequest = { showMemoSettingsTypeMenu = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(if (isEn) "🛒 Market List" else "🛒 বাজার লিস্ট") },
+                                                onClick = {
+                                                    showMemoSettingsTypeMenu = false
+                                                    memoSettingsBillType = "market"
+                                                },
+                                                modifier = Modifier.testTag("memo_settings_type_market")
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text(if (isEn) "🚌 Transport Fare" else "🚌 যাতায়াত ভাড়া") },
+                                                onClick = {
+                                                    showMemoSettingsTypeMenu = false
+                                                    memoSettingsBillType = "transport"
+                                                },
+                                                modifier = Modifier.testTag("memo_settings_type_transport")
                                             )
                                         }
                                     }
@@ -379,6 +427,8 @@ fun HomeScreen(
                     } else if (showMemoSettings) {
                         SettingsScreen(
                             state = currentBillState,
+                            editingBillType = memoSettingsBillType,
+                            getSavedSettingsForType = { type -> viewModel.getSavedSettingsForType(type) },
                             quickPresets = quickPresets,
                             onAddCustomPreset = { name, qty, rate, amount ->
                                 viewModel.addCustomQuickPreset(name, qty, rate, amount)
@@ -389,11 +439,8 @@ fun HomeScreen(
                             onResetPresetsDefault = {
                                 viewModel.resetQuickPresetsToDefault()
                             },
-                            onCenterNameChange = { viewModel.updateCenterName(it) },
-                            onSubtitleChange = { viewModel.updateSubtitle(it) },
-                            onPurchaserLabelChange = { viewModel.updatePurchaserLabel(it) },
-                            onSaveSettings = { centerName, subtitle, purchaserLabel ->
-                                viewModel.saveSettings(centerName, subtitle, purchaserLabel)
+                            onSaveSettings = { billType, centerName, subtitle, purchaserLabel ->
+                                viewModel.saveSettings(billType, centerName, subtitle, purchaserLabel)
                             },
                             onResetTemplate = { viewModel.resetToInitialTemplate() },
                             onResetAllData = { viewModel.resetAllUserData() }
@@ -638,6 +685,8 @@ fun HomeScreen(
                                 // Settings View
                                 SettingsScreen(
                                     state = currentBillState,
+                                    editingBillType = memoSettingsBillType,
+                                    getSavedSettingsForType = { type -> viewModel.getSavedSettingsForType(type) },
                                     quickPresets = quickPresets,
                                     onAddCustomPreset = { name, qty, rate, amount ->
                                         viewModel.addCustomQuickPreset(name, qty, rate, amount)
@@ -648,11 +697,8 @@ fun HomeScreen(
                                     onResetPresetsDefault = {
                                         viewModel.resetQuickPresetsToDefault()
                                     },
-                                    onCenterNameChange = { viewModel.updateCenterName(it) },
-                                    onSubtitleChange = { viewModel.updateSubtitle(it) },
-                                    onPurchaserLabelChange = { viewModel.updatePurchaserLabel(it) },
-                                    onSaveSettings = { centerName, subtitle, purchaserLabel ->
-                                        viewModel.saveSettings(centerName, subtitle, purchaserLabel)
+                                    onSaveSettings = { billType, centerName, subtitle, purchaserLabel ->
+                                        viewModel.saveSettings(billType, centerName, subtitle, purchaserLabel)
                                     },
                                     onResetTemplate = { viewModel.resetToInitialTemplate() },
                                     onResetAllData = { viewModel.resetAllUserData() }

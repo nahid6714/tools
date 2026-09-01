@@ -252,18 +252,42 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { _uiEvent.emit("প্রিসেট তালিকা রিসেট করা হয়েছে") }
     }
 
-    fun saveSettings(centerName: String, subtitle: String, purchaserLabel: String) {
+    // The header (title/subtitle/signature) is kept separately per bill type — "market"
+    // (খাবার বিল / বাজার লিস্ট) and "transport" (যাতায়াত ভাড়া) — so switching type doesn't
+    // overwrite one memo's saved header with the other's. Falls back to the old shared
+    // "market"-only keys used before this per-type split existed, so upgrading users don't
+    // lose their previously saved header.
+    private fun centerNameKey(type: String) = "saved_center_name_$type"
+    private fun subtitleKey(type: String) = "saved_subtitle_$type"
+    private fun purchaserLabelKey(type: String) = "saved_purchaser_label_$type"
+
+    fun getSavedSettingsForType(type: String): Triple<String, String, String> {
+        val centerName = prefs.getString(centerNameKey(type), null)
+            ?: (if (type == "market") prefs.getString("saved_center_name", "") else "") ?: ""
+        val subtitle = prefs.getString(subtitleKey(type), null)
+            ?: (if (type == "market") prefs.getString("saved_subtitle", "") else "") ?: ""
+        val purchaserLabel = prefs.getString(purchaserLabelKey(type), null)
+            ?: (if (type == "market") prefs.getString("saved_purchaser_label", "") else "") ?: ""
+        return Triple(centerName, subtitle, purchaserLabel)
+    }
+
+    fun saveSettings(billType: String, centerName: String, subtitle: String, purchaserLabel: String) {
         prefs.edit()
-            .putString("saved_center_name", centerName.trim())
-            .putString("saved_subtitle", subtitle.trim())
-            .putString("saved_purchaser_label", purchaserLabel.trim())
+            .putString(centerNameKey(billType), centerName.trim())
+            .putString(subtitleKey(billType), subtitle.trim())
+            .putString(purchaserLabelKey(billType), purchaserLabel.trim())
             .apply()
-        _currentBillState.update {
-            it.copy(
-                centerName = centerName.trim(),
-                subtitle = subtitle.trim(),
-                purchaserLabel = purchaserLabel.trim()
-            )
+        // Only push these into the live in-progress bill if we're editing settings for the
+        // type that's actually active right now — otherwise editing "খাবার বিল" settings
+        // while a "যাতায়াত ভাড়া" memo is open would overwrite what's on screen.
+        if (_currentBillState.value.billType == billType) {
+            _currentBillState.update {
+                it.copy(
+                    centerName = centerName.trim(),
+                    subtitle = subtitle.trim(),
+                    purchaserLabel = purchaserLabel.trim()
+                )
+            }
         }
         viewModelScope.launch { _uiEvent.emit("সেটিংস সফলভাবে সংরক্ষণ করা হয়েছে!") }
     }
@@ -277,9 +301,7 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
 
     fun resetToInitialTemplate() {
         val todayStr = dateFormat.format(Date())
-        val savedCenterName = prefs.getString("saved_center_name", "") ?: ""
-        val savedSubtitle = prefs.getString("saved_subtitle", "") ?: ""
-        val savedPurchaserLabel = prefs.getString("saved_purchaser_label", "") ?: ""
+        val (savedCenterName, savedSubtitle, savedPurchaserLabel) = getSavedSettingsForType("market")
 
         _currentBillState.value = CurrentBillState(
             editingBillId = 0L,
@@ -302,7 +324,16 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
             // traveler name), so clear it when switching types to avoid a leftover number
             // being misread as a traveler name, or vice versa.
             val clearedItems = state.items.map { it.copy(rate = "0") }
-            state.copy(billType = type, items = clearedItems)
+            // Each bill type keeps its own saved title/subtitle/signature, so load them
+            // whenever the user switches type from the app bar dropdown.
+            val (newCenterName, newSubtitle, newPurchaserLabel) = getSavedSettingsForType(type)
+            state.copy(
+                billType = type,
+                items = clearedItems,
+                centerName = newCenterName,
+                subtitle = newSubtitle,
+                purchaserLabel = newPurchaserLabel
+            )
         }
     }
 
@@ -504,7 +535,7 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun loadBillForEditing(bill: FoodBillUiModel) {
-        val savedPurchaserLabel = prefs.getString("saved_purchaser_label", "") ?: ""
+        val savedPurchaserLabel = getSavedSettingsForType(bill.billType).third
 
         _currentBillState.value = CurrentBillState(
             editingBillId = bill.id,

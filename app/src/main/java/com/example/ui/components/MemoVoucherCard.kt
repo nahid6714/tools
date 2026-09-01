@@ -801,7 +801,12 @@ fun MemoItemRow(
                     }
                     BasicTextField(
                         value = item.quantity,
-                        onValueChange = { onQtyChange(BengaliUtils.toBengaliDigits(it)) },
+                        onValueChange = { newValue ->
+                            // Transport mode's "মাধ্যম" field holds free text (a custom medium
+                            // name like "লেগুনা" or "উবার"), not a quantity, so typed letters
+                            // must pass through as-is instead of being digit-converted.
+                            onQtyChange(if (isTransport) newValue else BengaliUtils.toBengaliDigits(newValue))
+                        },
                         textStyle = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -810,7 +815,13 @@ fun MemoItemRow(
                         ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(
+                            // Market mode counts units (numeric), transport mode names a
+                            // medium (text) — forcing the numeric keyboard here was blocking
+                            // users from typing a custom medium name at all.
+                            keyboardType = if (isTransport) KeyboardType.Text else KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
                         keyboardActions = KeyboardActions(onNext = { rateFocusRequester.requestFocus() }),
                         modifier = Modifier
                             .fillMaxWidth()
