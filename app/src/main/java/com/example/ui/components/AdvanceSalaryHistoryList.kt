@@ -310,8 +310,13 @@ fun AdvanceSalaryHistoryCardItem(
                     color = Color(0xFF2E7D32)
                 )
 
+                val timeStr = if (entity.createdAt > 0L) {
+                    val sdf = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US)
+                    sdf.format(java.util.Date(entity.createdAt))
+                } else ""
+
                 Text(
-                    text = "Date: ${entity.dateString}",
+                    text = "Date: ${entity.dateString}${if (timeStr.isNotBlank()) " • Time: $timeStr" else ""}",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

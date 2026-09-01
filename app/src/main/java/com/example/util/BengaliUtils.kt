@@ -36,6 +36,19 @@ object BengaliUtils {
         return toBengaliDigits(formattedNumber)
     }
 
+    fun formatBengaliTime(timestamp: Long): String {
+        if (timestamp <= 0L) return ""
+        val sdf = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US)
+        val formatted = sdf.format(java.util.Date(timestamp))
+        return toBengaliDigits(formatted)
+    }
+
+    fun formatEnglishTime(timestamp: Long): String {
+        if (timestamp <= 0L) return ""
+        val sdf = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US)
+        return sdf.format(java.util.Date(timestamp))
+    }
+
     fun parseBengaliNumber(input: String): Double {
         val engString = toEnglishDigits(input).replace(",", "").trim()
         val direct = engString.toDoubleOrNull()

@@ -545,7 +545,9 @@ fun HomeScreen(
                                                     // Auto-save so sharing/printing never requires a separate
                                                     // "সংরক্ষণ" tap first — the bill is safely persisted (or
                                                     // updated, if already saved) the moment share/preview opens.
-                                                    viewModel.saveCurrentBill()
+                                                    viewModel.saveCurrentBill(notifyUser = false) { savedId ->
+                                                        previewTopMemo = previewTopMemo?.copy(memoId = savedId)
+                                                    }
                                                     previewTopMemo = PrintMemoData(
                                                         memoId = currentBillState.editingBillId,
                                                         centerName = currentBillState.centerName,

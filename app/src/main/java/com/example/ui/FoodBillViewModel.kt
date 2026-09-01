@@ -508,19 +508,20 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         _searchQuery.value = query
     }
 
-    fun saveCurrentBill() {
+    fun saveCurrentBill(notifyUser: Boolean = true, onSaved: ((Long) -> Unit)? = null) {
         val currentState = _currentBillState.value
         val validItems = currentState.items.filter { it.name.isNotBlank() || it.amount > 0 }
         
         if (validItems.isEmpty()) {
-            viewModelScope.launch { _uiEvent.emit("কমপক্ষে একটি আইটেমের বিবরণ বা টাকা লিখুন") }
+            if (notifyUser) {
+                viewModelScope.launch { _uiEvent.emit("কমপক্ষে একটি আইটেমের বিবরণ বা টাকা লিখুন") }
+            }
             return
         }
 
         viewModelScope.launch {
             val total = validItems.sumOf { it.amount }
-            val dateObj = try { dateFormat.parse(currentState.dateString) } catch (e: Exception) { null }
-            val timestamp = dateObj?.time ?: System.currentTimeMillis()
+            val timestamp = System.currentTimeMillis()
 
             val id = repository.saveBill(
                 id = currentState.editingBillId,
@@ -537,7 +538,10 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
             )
 
             _currentBillState.update { it.copy(editingBillId = id) }
-            _uiEvent.emit("বিল সফলভাবে সংরক্ষণ করা হয়েছে!")
+            if (notifyUser) {
+                _uiEvent.emit("বিল সফলভাবে সংরক্ষণ করা হয়েছে!")
+            }
+            onSaved?.invoke(id)
         }
     }
 

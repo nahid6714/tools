@@ -36,6 +36,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -85,15 +88,21 @@ fun BillHistoryList(
     val context = LocalContext.current
     var billToDelete by remember { mutableStateOf<FoodBillUiModel?>(null) }
     val selectedBillIds = remember { mutableStateListOf<Long>() }
+    var selectedBillTypeFilter by remember { mutableStateOf("all") } // "all", "market", "transport"
 
-    val filteredBills = remember(bills, searchQuery) {
-        if (searchQuery.isBlank()) {
-            bills
-        } else {
+    val marketCount = remember(bills) { bills.count { it.billType == "market" } }
+    val transportCount = remember(bills) { bills.count { it.billType == "transport" } }
+
+    val filteredBills = remember(bills, searchQuery, selectedBillTypeFilter) {
+        var list = bills
+        if (selectedBillTypeFilter != "all") {
+            list = list.filter { it.billType == selectedBillTypeFilter }
+        }
+        if (searchQuery.isNotBlank()) {
             val q = searchQuery.lowercase().trim()
             val englishQ = BengaliUtils.toEnglishDigits(q)
             val bengaliQ = BengaliUtils.toBengaliDigits(q)
-            bills.filter { bill ->
+            list = list.filter { bill ->
                 bill.id.toString().contains(q) ||
                 bill.id.toString().contains(englishQ) ||
                 bill.dateString.lowercase().contains(q) ||
@@ -108,6 +117,7 @@ fun BillHistoryList(
                 }
             }
         }
+        list
     }
 
     val totalSpent = remember(filteredBills) {
@@ -147,7 +157,68 @@ fun BillHistoryList(
                 .testTag("search_history_input")
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Bill Type Filter Chips (খাবার বিল / যাতায়াত ভাড়া)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            FilterChip(
+                selected = selectedBillTypeFilter == "all",
+                onClick = { selectedBillTypeFilter = "all" },
+                label = {
+                    Text(
+                        text = "সকল (${BengaliUtils.toBengaliDigits(bills.size.toString())})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = Color.White
+                ),
+                modifier = Modifier.weight(1f).testTag("filter_chip_all")
+            )
+
+            FilterChip(
+                selected = selectedBillTypeFilter == "market",
+                onClick = { selectedBillTypeFilter = "market" },
+                label = {
+                    Text(
+                        text = "খাবার বিল (${BengaliUtils.toBengaliDigits(marketCount.toString())})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFF1565C0),
+                    selectedLabelColor = Color.White
+                ),
+                modifier = Modifier.weight(1.1f).testTag("filter_chip_food_bill")
+            )
+
+            FilterChip(
+                selected = selectedBillTypeFilter == "transport",
+                onClick = { selectedBillTypeFilter = "transport" },
+                label = {
+                    Text(
+                        text = "যাতায়াত ভাড়া (${BengaliUtils.toBengaliDigits(transportCount.toString())})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFF00695C),
+                    selectedLabelColor = Color.White
+                ),
+                modifier = Modifier.weight(1.2f).testTag("filter_chip_transport_bill")
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Dual Selection Action Banner (When bills are selected for A4 Dual Print)
         if (selectedBillIds.isNotEmpty()) {
@@ -402,18 +473,54 @@ fun HistoryBillItemCard(
                     )
 
                     Column {
-                        Text(
-                            text = "মেমো #${BengaliUtils.toBengaliDigits(bill.id.toString())}",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "তারিখ: ${BengaliUtils.toBengaliDigits(bill.dateString)}",
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "মেমো #${BengaliUtils.toBengaliDigits(bill.id.toString())}",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            // Bill Type Badge
+                            val isTransport = bill.billType == "transport"
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(if (isTransport) Color(0xFFE0F2F1) else Color(0xFFE3F2FD))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (isTransport) "যাতায়াত" else "খাবার বিল",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isTransport) Color(0xFF00695C) else Color(0xFF1565C0)
+                                )
+                            }
+                        }
+                        val formattedTime = remember(bill.timestamp) {
+                            BengaliUtils.formatBengaliTime(bill.timestamp)
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "তারিখ: ${BengaliUtils.toBengaliDigits(bill.dateString)}",
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (formattedTime.isNotBlank()) {
+                                Text(
+                                    text = "• সময়: $formattedTime",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                         if (bill.purchaserName.isNotBlank()) {
                             Text(
                                 text = "ক্রয়কারী: ${bill.purchaserName}",
