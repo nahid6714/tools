@@ -29,6 +29,10 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -187,27 +191,92 @@ fun HomeScreen(
                     fontScale = baseDensity.fontScale * fontScale
                 )
             ) {
+            // Whether the title area should act as a quick "title type menu" — lets the user
+            // jump between বাজার লিস্ট (market) and যাতায়াত ভাড়া (transport) mode right from
+            // the app bar, without losing their place or needing to open the memo card first.
+            val titleMenuEnabled = !showGlobalSettings && !showMemoSettings &&
+                selectedTool == "food_bill" && selectedTab == 0
+            var showTitleTypeMenu by remember { mutableStateOf(false) }
+
             Scaffold(
                 topBar = {
                     TopAppBar(
                         title = {
-                            Text(
-                                text = when {
-                                    showGlobalSettings -> if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস"
-                                    showMemoSettings -> if (isEn) "Memo Header Settings" else "মেমো হেডার সেটিংস"
-                                    selectedTool == "food_bill" -> when (selectedTab) {
-                                        1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
-                                        else -> if (currentBillState.centerName.isNotBlank())
-                                            (if (isEn) "Food Bill - " else "খাবার বিল - ") + currentBillState.centerName
-                                        else
-                                            (if (isEn) "Food Bill Memo" else "খাবার বিল মেমো")
+                            val billTypeLabel = if (currentBillState.billType == "transport") {
+                                if (isEn) "Transport Fare" else "যাতায়াত ভাড়া"
+                            } else {
+                                if (isEn) "Food Bill" else "খাবার বিল"
+                            }
+                            val titleText = when {
+                                showGlobalSettings -> if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস"
+                                showMemoSettings -> if (isEn) "Memo Header Settings" else "মেমো হেডার সেটিংস"
+                                selectedTool == "food_bill" -> when (selectedTab) {
+                                    1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
+                                    else -> if (currentBillState.centerName.isNotBlank())
+                                        "$billTypeLabel - ${currentBillState.centerName}"
+                                    else
+                                        (if (isEn) "$billTypeLabel Memo" else "$billTypeLabel মেমো")
+                                }
+                                else -> if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব"
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = titleText,
+                                    fontFamily = HeadingFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 19.sp,
+                                    modifier = if (titleMenuEnabled) {
+                                        Modifier
+                                            .clickable { showTitleTypeMenu = true }
+                                            .testTag("title_type_menu_trigger")
+                                    } else Modifier
+                                )
+                                if (titleMenuEnabled) {
+                                    Box {
+                                        IconButton(
+                                            onClick = { showTitleTypeMenu = true },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ArrowDropDown,
+                                                contentDescription = if (isEn) "Switch bill type" else "বিলের ধরন পরিবর্তন করুন",
+                                                tint = Color.White
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showTitleTypeMenu,
+                                            onDismissRequest = { showTitleTypeMenu = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(if (isEn) "🛒 Market List" else "🛒 বাজার লিস্ট") },
+                                                onClick = {
+                                                    showTitleTypeMenu = false
+                                                    viewModel.setBillType("market")
+                                                },
+                                                modifier = Modifier.testTag("title_menu_market")
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text(if (isEn) "🚌 Transport Fare" else "🚌 যাতায়াত ভাড়া") },
+                                                onClick = {
+                                                    showTitleTypeMenu = false
+                                                    viewModel.setBillType("transport")
+                                                },
+                                                modifier = Modifier.testTag("title_menu_transport")
+                                            )
+                                            Divider()
+                                            DropdownMenuItem(
+                                                text = { Text(if (isEn) "✏️ Edit memo title" else "✏️ মেমোর টাইটেল সম্পাদনা") },
+                                                onClick = {
+                                                    showTitleTypeMenu = false
+                                                    showMemoSettings = true
+                                                },
+                                                modifier = Modifier.testTag("title_menu_edit")
+                                            )
+                                        }
                                     }
-                                    else -> if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব"
-                                },
-                                fontFamily = HeadingFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 19.sp
-                            )
+                                }
+                            }
                         },
                         navigationIcon = {
                             if (showGlobalSettings || showMemoSettings) {
@@ -378,6 +447,7 @@ fun HomeScreen(
                                         onUpdateItemName = { id, name -> viewModel.updateItemName(id, name) },
                                         onUpdateItemQty = { id, qty -> viewModel.updateItemQuantity(id, qty) },
                                         onUpdateItemRate = { id, rate -> viewModel.updateItemRate(id, rate) },
+                                        onUpdateItemTraveler = { id, name -> viewModel.updateItemTraveler(id, name) },
                                         onUpdateItemAmount = { id, amount -> viewModel.updateItemAmount(id, amount) },
                                         onRemoveItem = { id -> viewModel.removeItemRow(id) },
                                         onMoveItem = { from, to -> viewModel.moveItem(from, to) },

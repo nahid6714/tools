@@ -206,7 +206,7 @@ object FoodBillImageExporter {
             textAlign = Paint.Align.CENTER
         }
         val colTitles = if (memo.billType == "transport") {
-            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "দর", "টাকা")
+            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "যাত্রী", "টাকা")
         } else {
             arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
         }

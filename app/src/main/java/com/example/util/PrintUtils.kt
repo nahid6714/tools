@@ -319,7 +319,7 @@ object PrintUtils {
             textAlign = Paint.Align.CENTER
         }
         val colTitles = if (memo.billType == "transport") {
-            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "দর", "টাকা")
+            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "যাত্রী", "টাকা")
         } else {
             arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
         }
@@ -573,7 +573,7 @@ object PrintUtils {
                                     <th style="width: 12%;">ক্র. নং</th>
                                     <th style="width: 43%;">${if (memo.billType == "transport") "বিবরণ / রুট" else "খাবারের নাম / বিবরণ"}</th>
                                     <th style="width: 15%;">${if (memo.billType == "transport") "মাধ্যম" else "পরিমাণ"}</th>
-                                    <th style="width: 12%;">দর</th>
+                                    <th style="width: 12%;">${if (memo.billType == "transport") "যাত্রী" else "দর"}</th>
                                     <th style="width: 18%;">টাকা</th>
                                 </tr>
                             </thead>

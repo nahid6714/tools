@@ -296,7 +296,14 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setBillType(type: String) {
-        _currentBillState.update { it.copy(billType = type) }
+        _currentBillState.update { state ->
+            if (state.billType == type) return@update state
+            // The "rate" field means different things in each mode (৳ price vs. "যাত্রী" /
+            // traveler name), so clear it when switching types to avoid a leftover number
+            // being misread as a traveler name, or vice versa.
+            val clearedItems = state.items.map { it.copy(rate = "0") }
+            state.copy(billType = type, items = clearedItems)
+        }
     }
 
     fun updateDate(newDate: String) {
@@ -420,6 +427,20 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
                     val calcAmount = if (qtyVal > 0) rateVal * qtyVal else rateVal
                     item.copy(rate = rate, amount = calcAmount)
                 } else item
+            }
+            state.copy(items = updated)
+        }
+    }
+
+    /**
+     * Used only for transport ("যাতায়াত ভাড়া") bills, where the column that used to be
+     * "দর" (rate) is repurposed to record "যাত্রী" (who is traveling). Unlike [updateItemRate],
+     * this never recalculates [BillItem.amount] since the value here is a name/text, not a price.
+     */
+    fun updateItemTraveler(id: String, travelerName: String) {
+        _currentBillState.update { state ->
+            val updated = state.items.map { item ->
+                if (item.id == id) item.copy(rate = travelerName) else item
             }
             state.copy(items = updated)
         }
