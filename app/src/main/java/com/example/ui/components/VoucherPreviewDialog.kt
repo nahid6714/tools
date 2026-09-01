@@ -174,7 +174,8 @@ fun VoucherPreviewDialog(
                                                 purchaserLabel = defaultPurchaserLabel.ifBlank { topMemoState.purchaserLabel },
                                                 items = otherBill.items,
                                                 totalAmount = otherBill.totalAmount,
-                                                billType = otherBill.billType
+                                                billType = otherBill.billType,
+                                                showSignature = otherBill.showSignature
                                             )
                                         } else {
                                             topMemoState
@@ -590,10 +591,7 @@ private fun SingleMemoVoucherCard(
                         .fillMaxWidth()
                         .border(1.5.dp, memoThemeBorder, RoundedCornerShape(4.dp))
                 ) {
-                    // Table Header Row — labels follow memo.billType so a transport ("যাতায়াত
-                    // ভাড়া") memo previews with its own columns instead of looking like a
-                    // বাজার লিস্ট (market list).
-                    val isTransportMemo = memo.billType == "transport"
+                    // Table Header Row
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -610,7 +608,7 @@ private fun SingleMemoVoucherCard(
                         )
                         Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.Black))
                         Text(
-                            text = if (isTransportMemo) "বিবরণ / রুট" else "খাবারের নাম / বিবরণ",
+                            text = "খাবারের নাম / বিবরণ",
                             modifier = Modifier.weight(2.5f).padding(start = 4.dp),
                             style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Start),
                             maxLines = 1,
@@ -618,13 +616,13 @@ private fun SingleMemoVoucherCard(
                         )
                         Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.Black))
                         Text(
-                            text = if (isTransportMemo) "মাধ্যম" else "পরিমাণ",
+                            text = "পরিমাণ",
                             modifier = Modifier.weight(1.2f),
                             style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
                         )
                         Box(modifier = Modifier.width(1.2.dp).height(12.dp).background(Color.Black))
                         Text(
-                            text = if (isTransportMemo) "যাত্রী" else "দর",
+                            text = "দর",
                             modifier = Modifier.weight(0.9f),
                             style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
                         )
@@ -897,7 +895,8 @@ private fun MemoSelectionDialog(
                                             purchaserLabel = defaultPurchaserLabel.ifBlank { initialMemo.purchaserLabel },
                                             items = bill.items,
                                             totalAmount = bill.totalAmount,
-                                            billType = bill.billType
+                                            billType = bill.billType,
+                                            showSignature = bill.showSignature
                                         )
                                         onSelect(printMemo)
                                     },

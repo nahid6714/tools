@@ -14,7 +14,8 @@ data class FoodBillEntity(
     val note: String = "",
     val totalAmount: Double,
     val itemsJson: String, // Serialized list of items
-    val billType: String = "market" // "market" (বাজার লিস্ট) or "transport" (যাতায়াত ভাড়া)
+    val billType: String = "market", // "market" (বাজার লিস্ট) or "transport" (যাতায়াত ভাড়া)
+    val showSignature: Boolean = true // false হলে স্বাক্ষরের ঘর প্রিন্ট/PDF/ছবিতে দেখানো হবে না
 )
 
 data class BillItem(

@@ -11,7 +11,7 @@ import androidx.room.migration.Migration
     entities = [
         FoodBillEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -49,11 +49,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Adds the "ধরন" (bill type) field so a bill remembers whether it's a market
-        // list or a transport-fare memo, and re-opens with the matching form.
+        // Version 5 adds a "billType" flag ("market" | "transport") so a saved bill
+        // remembers whether it's a grocery/বাজার বিল or a যাতায়াত ভাড়া বিল, and
+        // reopening it for editing shows the correct form.
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE food_bills ADD COLUMN billType TEXT NOT NULL DEFAULT 'market'")
+            }
+        }
+
+        // Version 6 adds a "showSignature" flag so a bill remembers whether the
+        // signature box/line should be printed or hidden.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE food_bills ADD COLUMN showSignature INTEGER NOT NULL DEFAULT 1")
             }
         }
 
@@ -64,7 +73,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "albaraka_food_bill_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     // Safety net only: if some other unexpected version gap is hit,
                     // fall back to a clean database rather than crashing on launch.
                     .fallbackToDestructiveMigration()

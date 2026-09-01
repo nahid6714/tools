@@ -51,7 +51,7 @@ object FoodBillImageExporter {
         val baseRowHeight = 44f
         val totalRowHeight = 48f
         val footerSpace = 40f
-        val signatureHeight = 55f
+        val signatureHeight = if (memo.showSignature) 55f else 10f
 
         // Column widths are needed early now, so we can pre-measure how many
         // lines each item name will wrap onto and size each row accordingly
@@ -118,7 +118,9 @@ object FoodBillImageExporter {
         canvas.drawRect(headerRect, headerBoxBorderPaint)
 
         // Header Title
-        val titleText = memo.centerName.ifBlank { "খাবার বিল ক্যাশ মেমো" }
+        val titleText = memo.centerName.ifBlank {
+            if (memo.billType == "transport") "যাতায়াত ভাড়া" else "খাবার বিল ক্যাশ মেমো"
+        }
         val titlePaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
@@ -205,11 +207,14 @@ object FoodBillImageExporter {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        val colTitles = if (memo.billType == "transport") {
-            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "যাত্রী", "টাকা")
-        } else {
-            arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
-        }
+        val isTransport = memo.billType == "transport"
+        val colTitles = arrayOf(
+            "ক্র. নং",
+            if (isTransport) "বিবরণ / রুট" else "খাবারের নাম / বিবরণ",
+            if (isTransport) "মাধ্যম" else "পরিমাণ",
+            "দর",
+            "টাকা"
+        )
         var curColX = leftX
         for (i in 0 until 5) {
             val colCenterX = curColX + colWidths[i] / 2f
@@ -326,27 +331,29 @@ object FoodBillImageExporter {
 
         currentY = tableBottom + footerSpace
 
-        // 4. Footer: Left Signature ("স্বাক্ষর")
-        val sigLineWidth = 280f
-        val sigLinePaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            strokeWidth = 2f
-        }
-        val sigTextPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 21f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
-        }
+        // 4. Footer: Left Signature ("স্বাক্ষর") — skipped entirely if the user disabled it
+        if (memo.showSignature) {
+            val sigLineWidth = 280f
+            val sigLinePaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.BLACK
+                strokeWidth = 2f
+            }
+            val sigTextPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.BLACK
+                textSize = 21f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
 
-        // Left Signature line & label
-        val sigStartX = leftX
-        val sigEndX = leftX + sigLineWidth
-        canvas.drawLine(sigStartX, currentY + 10f, sigEndX, currentY + 10f, sigLinePaint)
-        val sigLabel = memo.purchaserLabel.ifBlank { "স্বাক্ষর" }
-        canvas.drawText(sigLabel, sigStartX + (sigLineWidth / 2f), currentY + 36f, sigTextPaint)
+            // Left Signature line & label
+            val sigStartX = leftX
+            val sigEndX = leftX + sigLineWidth
+            canvas.drawLine(sigStartX, currentY + 10f, sigEndX, currentY + 10f, sigLinePaint)
+            val sigLabel = memo.purchaserLabel.ifBlank { "স্বাক্ষর" }
+            canvas.drawText(sigLabel, sigStartX + (sigLineWidth / 2f), currentY + 36f, sigTextPaint)
+        }
 
         return bitmap
     }
