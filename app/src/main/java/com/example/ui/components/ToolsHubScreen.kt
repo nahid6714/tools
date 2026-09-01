@@ -22,12 +22,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Store
@@ -75,6 +75,7 @@ fun ToolsHubScreen(
     onCheckUpdate: () -> Unit = {},
     onOpenUpdateDialog: (UpdateInfo) -> Unit = {},
     onSelectFoodBillTool: () -> Unit,
+    onSelectAdvanceSalaryTool: () -> Unit = {},
     onSelectAppSettings: () -> Unit = {},
     onSelectUpcomingTool: (title: String) -> Unit,
     modifier: Modifier = Modifier
@@ -90,6 +91,15 @@ fun ToolsHubScreen(
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
             accentColor = Color(0xFF1565C0)
+        ),
+        AppToolItem(
+            id = "advance_salary",
+            title = if (isEn) "Advance Salary Application" else "অগ্রিম বেতন আবেদন",
+            subtitle = if (isEn) "Create, save and print advance salary applications with installments" else "কর্মকর্তা-কর্মচারীদের অগ্রিম বেতন আবেদনপত্র তৈরি, কিস্তি হিসাব, প্রিন্ট ও সংরক্ষণ করুন",
+            icon = Icons.AutoMirrored.Filled.ReceiptLong,
+            isAvailable = true,
+            badgeText = if (isEn) "Active" else "চালু আছে",
+            accentColor = Color(0xFF1B5E20)
         )
     )
 
@@ -254,6 +264,7 @@ fun ToolsHubScreen(
                 onClick = {
                     when (tool.id) {
                         "food_bill" -> onSelectFoodBillTool()
+                        "advance_salary" -> onSelectAdvanceSalaryTool()
                         "app_settings" -> onSelectAppSettings()
                         else -> onSelectUpcomingTool(tool.title)
                     }
@@ -380,7 +391,7 @@ fun ToolCardItem(
 
             // Action Arrow
             Icon(
-                imageVector = Icons.Default.ArrowForward,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "খুলুন",
                 tint = if (tool.isAvailable) MaterialTheme.colorScheme.primary else Color.LightGray,
                 modifier = Modifier.size(20.dp)

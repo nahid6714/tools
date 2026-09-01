@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.components.AppSplashScreen
 import com.example.ui.components.BillHistoryList
 import com.example.ui.components.GlobalSettingsScreen
@@ -76,6 +77,7 @@ import com.example.ui.components.MemoVoucherCard
 import com.example.ui.components.OnboardingDialog
 import com.example.ui.components.QuickPresetChips
 import com.example.ui.components.SettingsScreen
+import com.example.ui.components.ToolsHubScreen
 import com.example.ui.components.VoucherPreviewDialog
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.HeadingFontFamily
@@ -143,11 +145,13 @@ fun HomeScreen(
         }
     }
 
-    BackHandler(enabled = showGlobalSettings || showMemoSettings) {
+    BackHandler(enabled = showGlobalSettings || showMemoSettings || selectedTool != null) {
         if (showMemoSettings) {
             showMemoSettings = false
-        } else {
+        } else if (showGlobalSettings) {
             showGlobalSettings = false
+        } else if (selectedTool != null) {
+            selectedTool = null
         }
     }
 
@@ -203,6 +207,13 @@ fun HomeScreen(
                 selectedTool == "food_bill" && selectedTab == 0
             var showTitleTypeMenu by remember { mutableStateOf(false) }
 
+            if (selectedTool == "advance_salary") {
+                val advanceSalaryViewModel: AdvanceSalaryViewModel = viewModel()
+                AdvanceSalaryScreen(
+                    viewModel = advanceSalaryViewModel,
+                    onNavigateBack = { selectedTool = null }
+                )
+            } else {
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -338,6 +349,14 @@ fun HomeScreen(
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "ফিরে যান",
+                                        tint = Color.White
+                                    )
+                                }
+                            } else if (selectedTool != null) {
+                                IconButton(onClick = { selectedTool = null }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "টুলস হাবে ফিরে যান",
                                         tint = Color.White
                                     )
                                 }
@@ -711,8 +730,43 @@ fun HomeScreen(
                                 )
                             }
                         }
+                    } else {
+                        // Digital Tools Hub
+                        ToolsHubScreen(
+                            appLanguage = appLanguage,
+                            updateInfo = updateInfo,
+                            isCheckingUpdate = isCheckingUpdate,
+                            onCheckUpdate = {
+                                coroutineScope.launch {
+                                    isCheckingUpdate = true
+                                    try {
+                                        val info = updateManager.checkForUpdate(context, forceCheck = true)
+                                        updateInfo = info
+                                        if (info.hasUpdate) {
+                                            updateDialogInfoToShow = info
+                                        } else {
+                                            snackbarHostState.showSnackbar(if (isEn) "You are using the latest version!" else "আপনার অ্যাপটি লেটেস্ট ভার্সনে আছে!")
+                                        }
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar(if (isEn) "Update check failed" else "আপডেট চেক ব্যর্থ হয়েছে")
+                                    } finally {
+                                        isCheckingUpdate = false
+                                    }
+                                }
+                            },
+                            onOpenUpdateDialog = { info -> updateDialogInfoToShow = info },
+                            onSelectFoodBillTool = { selectedTool = "food_bill" },
+                            onSelectAdvanceSalaryTool = { selectedTool = "advance_salary" },
+                            onSelectAppSettings = { showGlobalSettings = true },
+                            onSelectUpcomingTool = { title ->
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("'$title' শীঘ্রই পরবর্তী আপডেটে আসছে!")
+                                }
+                            }
+                        )
                     }
                 }
+            }
             }
             }
         }

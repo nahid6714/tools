@@ -9,13 +9,15 @@ import androidx.room.migration.Migration
 
 @Database(
     entities = [
-        FoodBillEntity::class
+        FoodBillEntity::class,
+        AdvanceSalaryEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun foodBillDao(): FoodBillDao
+    abstract fun advanceSalaryDao(): AdvanceSalaryDao
 
     companion object {
         @Volatile
@@ -65,6 +67,40 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Adds the "advance_salaries" table for Advance Salary Application tool
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `advance_salaries` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `companyName` TEXT NOT NULL DEFAULT '',
+                        `companySubtitle` TEXT NOT NULL DEFAULT '',
+                        `applicationNo` TEXT NOT NULL DEFAULT '',
+                        `dateString` TEXT NOT NULL DEFAULT '',
+                        `applicantName` TEXT NOT NULL DEFAULT '',
+                        `employeeId` TEXT NOT NULL DEFAULT '',
+                        `designation` TEXT NOT NULL DEFAULT '',
+                        `department` TEXT NOT NULL DEFAULT '',
+                        `contactNumber` TEXT NOT NULL DEFAULT '',
+                        `monthlySalary` REAL NOT NULL DEFAULT 0.0,
+                        `advanceAmount` REAL NOT NULL DEFAULT 0.0,
+                        `advanceAmountInWords` TEXT NOT NULL DEFAULT '',
+                        `reason` TEXT NOT NULL DEFAULT '',
+                        `repaymentType` TEXT NOT NULL DEFAULT 'one_time',
+                        `installmentCount` INTEGER NOT NULL DEFAULT 1,
+                        `installmentAmountPerMonth` REAL NOT NULL DEFAULT 0.0,
+                        `deductionStartMonth` TEXT NOT NULL DEFAULT '',
+                        `previousAdvancePending` REAL NOT NULL DEFAULT 0.0,
+                        `guarantorOrRecommendedBy` TEXT NOT NULL DEFAULT '',
+                        `remarks` TEXT NOT NULL DEFAULT '',
+                        `status` TEXT NOT NULL DEFAULT 'APPROVED',
+                        `showSignatures` INTEGER NOT NULL DEFAULT 1,
+                        `createdAt` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -72,7 +108,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "albaraka_food_bill_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     // Safety net only: if some other unexpected version gap is hit,
                     // fall back to a clean database rather than crashing on launch.
                     .fallbackToDestructiveMigration()
