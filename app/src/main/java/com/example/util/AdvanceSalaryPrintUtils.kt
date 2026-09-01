@@ -182,15 +182,16 @@ object AdvanceSalaryPrintUtils {
     }
 
     /**
-     * Matches the exact page size, dimension and orientation of the Food Bill Cash Memo:
-     * - A4 half-page landscape voucher block rotated -90 deg
-     * - Spans full width of the A4 page (local Y: 18f to ~550f across 595 pt page width)
-     * - tableLeft = 12f, tableRight = 408f (width = 396 pt across 421 pt half-page height)
-     * - Top Box Header with Company Name & Subtitle
-     * - Full-width separator underline
-     * - Document Title Banner & Ref No / Date row
-     * - Structured Employee Details & Advance Repayment tables in English
-     * - Undertaking declaration and 3 signature blocks (Applicant, Accounts, Authorized)
+     * Draws the exact voucher matching the user's reference design:
+     * - Outer solid frame
+     * - "ADVANCE SALARY REQUISITION VOUCHER" bold centered title
+     * - "Date: dd/MM/yyyy" right aligned
+     * - Black badge: "APPLICANT / EMPLOYEE DETAILS"
+     * - 3-Row solid table for Name, Designation, Basic Salary
+     * - Black badge: "ADVANCE & REPAYMENT TERMS"
+     * - 5-Row dashed-divider table for Advance Amount, In Words, Reason, Repayment, Deduction Starts
+     * - Undertaking statement
+     * - Two signatures at bottom: Applicant's Signature and Authorized Signature
      */
     private fun drawSingleVoucherOnCanvas(
         canvas: android.graphics.Canvas,
@@ -201,287 +202,243 @@ object AdvanceSalaryPrintUtils {
         canvas.translate(15f, startY + 421f)
         canvas.rotate(-90f)
 
-        val localStartY = 16f
+        val localStartY = 12f
         val tableLeft = 12f
         val tableRight = 408f
         val tableWidth = tableRight - tableLeft
-        val bannerCenterX = tableLeft + (tableWidth / 2f)
+        val centerX = tableLeft + (tableWidth / 2f)
+        val voucherHeight = 556f
 
-        // 1. Header Box (Top Rectangular Frame)
-        val headerHeight = if (state.companySubtitle.isNotBlank()) 56f else 46f
-        val headerRect = RectF(tableLeft, localStartY, tableRight, localStartY + headerHeight)
-        val headerBoxBorderPaint = Paint().apply {
+        // Paints
+        val outerBorderPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
             style = Paint.Style.STROKE
             strokeWidth = 1.5f
         }
-        val headerBgPaint = Paint().apply {
-            color = Color.WHITE
+        val solidBorderPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
+        }
+        val dashedLinePaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            style = Paint.Style.STROKE
+            strokeWidth = 0.9f
+            pathEffect = DashPathEffect(floatArrayOf(4f, 3f), 0f)
+        }
+        val badgeBgPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
             style = Paint.Style.FILL
         }
-        canvas.drawRect(headerRect, headerBgPaint)
-        canvas.drawRect(headerRect, headerBoxBorderPaint)
-
-        // Header Title (Company Name)
-        val titleText = state.companyName.ifBlank { "Al-Baraka General Store" }
+        val badgeTextPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.WHITE
+            textSize = 9f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
         val titleTextPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
-            textSize = 18f
+            textSize = 14f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText(titleText, bannerCenterX, localStartY + 26f, titleTextPaint)
-
-        // Subtitle (if available)
-        if (state.companySubtitle.isNotBlank()) {
-            val subtitleTextPaint = Paint().apply {
-                isAntiAlias = true
-                color = Color.rgb(50, 50, 50)
-                textSize = 10.5f
-                textAlign = Paint.Align.CENTER
-            }
-            canvas.drawText(state.companySubtitle, bannerCenterX, localStartY + 45f, subtitleTextPaint)
-        }
-
-        // Header Separator Line
-        val headerLinePaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            strokeWidth = 1.5f
-        }
-        val lineY = localStartY + headerHeight + 6f
-        canvas.drawLine(tableLeft, lineY, tableRight, lineY, headerLinePaint)
-
-        var curY = lineY + 10f
-
-        // Document Banner Title: ADVANCE SALARY REQUISITION VOUCHER
-        val bannerH = 26f
-        val bannerRect = RectF(tableLeft + 30f, curY, tableRight - 30f, curY + bannerH)
-        val bannerPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(240, 240, 240)
-            style = Paint.Style.FILL
-        }
-        val bannerBorder = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            style = Paint.Style.STROKE
-            strokeWidth = 1f
-        }
-        canvas.drawRect(bannerRect, bannerPaint)
-        canvas.drawRect(bannerRect, bannerBorder)
-
-        val bannerTextPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 12f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText("ADVANCE SALARY REQUISITION VOUCHER", bannerCenterX, curY + 17.5f, bannerTextPaint)
-
-        curY += bannerH + 10f
-
-        // Metadata Row: Date
-        val metaPaintRight = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 11f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.RIGHT
-        }
-
-        canvas.drawText("Date: ${state.dateString}", tableRight - 2f, curY + 12f, metaPaintRight)
-
-        curY += 22f
-
-        // Paints for sections
-        val labelPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(30, 30, 30)
-            textSize = 10.5f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        }
-        val valuePaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 10.5f
-            typeface = Typeface.DEFAULT
-        }
-        val valueBoldPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            textSize = 11f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        }
-        val sectionBgPaint = Paint().apply {
-            color = Color.rgb(245, 245, 245)
-            style = Paint.Style.FILL
-        }
-        val borderThinPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.BLACK
-            style = Paint.Style.STROKE
-            strokeWidth = 1f
-        }
-        val secTitlePaint = Paint().apply {
+        val dateTextPaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
             textSize = 10f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.RIGHT
+        }
+        val cellLabelPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            textSize = 9.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        val cellColonPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            textSize = 9.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        val cellValuePaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            textSize = 9.5f
+            typeface = Typeface.DEFAULT
+        }
+        val undertakingPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            textSize = 8.5f
+            typeface = Typeface.DEFAULT
+        }
+        val sigLinePaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            strokeWidth = 1f
+        }
+        val sigTextPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            textSize = 9.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
         }
 
-        // Section 1: Employee Information Table
-        val hasMobile = state.contactNumber.isNotBlank()
-        val hasSalary = state.monthlySalary > 0
+        // 1. Outer Border Frame
+        val outerFrame = RectF(tableLeft, localStartY, tableRight, localStartY + voucherHeight)
+        canvas.drawRect(outerFrame, outerBorderPaint)
 
-        val empBoxH = 82f
-        val empRect = RectF(tableLeft, curY, tableRight, curY + empBoxH)
-        canvas.drawRect(empRect, borderThinPaint)
+        val innerLeft = tableLeft + 12f
+        val innerRight = tableRight - 12f
+        val innerWidth = innerRight - innerLeft
 
-        // Section Title Header Bar
-        val secHeaderRect = RectF(tableLeft, curY, tableRight, curY + 18f)
-        canvas.drawRect(secHeaderRect, sectionBgPaint)
-        canvas.drawLine(tableLeft, curY + 18f, tableRight, curY + 18f, borderThinPaint)
-        canvas.drawText("1. APPLICANT / EMPLOYEE DETAILS", tableLeft + 6f, curY + 13f, secTitlePaint)
+        // 2. Main Title (Centered)
+        var curY = localStartY + 26f
+        canvas.drawText("ADVANCE SALARY REQUISITION VOUCHER", centerX, curY, titleTextPaint)
 
-        var empRowY = curY + 36f
+        // 3. Date Row (Right Aligned)
+        curY += 22f
+        val dateDisplay = state.dateString.ifBlank { "01/09/2026" }
+        canvas.drawText("Date: $dateDisplay", innerRight, curY, dateTextPaint)
 
-        // Row 1: Employee Name & Designation
-        canvas.drawText("Name:", tableLeft + 6f, empRowY, labelPaint)
-        canvas.drawText(state.applicantName.ifBlank { "N/A" }, tableLeft + 50f, empRowY, valueBoldPaint)
+        // 4. Section 1 Badge: APPLICANT / EMPLOYEE DETAILS
+        curY += 10f
+        val badgeH = 17f
+        val badge1Width = 165f
+        val badge1Rect = RectF(innerLeft, curY, innerLeft + badge1Width, curY + badgeH)
+        canvas.drawRect(badge1Rect, badgeBgPaint)
+        canvas.drawText("APPLICANT / EMPLOYEE DETAILS", innerLeft + 7f, curY + 12f, badgeTextPaint)
 
-        canvas.drawText("Designation:", tableLeft + 215f, empRowY, labelPaint)
-        canvas.drawText(state.designation.ifBlank { "Staff" }, tableLeft + 290f, empRowY, valueBoldPaint)
+        // 5. Section 1 Table (3 Rows: Name, Designation, Basic Salary)
+        curY += badgeH
+        val sec1TableTop = curY
+        val sec1RowH = 22f
+        val sec1TableH = sec1RowH * 3f
+        val sec1TableRect = RectF(innerLeft, sec1TableTop, innerRight, sec1TableTop + sec1TableH)
+        canvas.drawRect(sec1TableRect, solidBorderPaint)
 
-        empRowY += 28f
+        val col1DividerX = innerLeft + 105f
+        val colColonX = innerLeft + 118f
+        val colValueX = innerLeft + 130f
 
-        // Row 2: Mobile No & Basic Salary
-        if (hasMobile) {
-            canvas.drawText("Mobile No:", tableLeft + 6f, empRowY, labelPaint)
-            canvas.drawText(state.contactNumber, tableLeft + 68f, empRowY, valuePaint)
-        } else {
-            canvas.drawText("Status:", tableLeft + 6f, empRowY, labelPaint)
-            canvas.drawText("Permanent Staff", tableLeft + 52f, empRowY, valuePaint)
+        // Vertical divider after label column
+        canvas.drawLine(col1DividerX, sec1TableTop, col1DividerX, sec1TableTop + sec1TableH, solidBorderPaint)
+
+        // Row 1: Name
+        val r1Y = sec1TableTop + 15f
+        canvas.drawText("Name", innerLeft + 8f, r1Y, cellLabelPaint)
+        canvas.drawText(":", colColonX, r1Y, cellColonPaint)
+        canvas.drawText(state.applicantName.ifBlank { "Nahid" }, colValueX, r1Y, cellValuePaint)
+        canvas.drawLine(innerLeft, sec1TableTop + sec1RowH, innerRight, sec1TableTop + sec1RowH, solidBorderPaint)
+
+        // Row 2: Designation
+        val r2Y = sec1TableTop + sec1RowH + 15f
+        canvas.drawText("Designation", innerLeft + 8f, r2Y, cellLabelPaint)
+        canvas.drawText(":", colColonX, r2Y, cellColonPaint)
+        canvas.drawText(state.designation.ifBlank { "Office Assistant" }, colValueX, r2Y, cellValuePaint)
+        canvas.drawLine(innerLeft, sec1TableTop + (sec1RowH * 2f), innerRight, sec1TableTop + (sec1RowH * 2f), solidBorderPaint)
+
+        // Row 3: Basic Salary
+        val r3Y = sec1TableTop + (sec1RowH * 2f) + 15f
+        canvas.drawText("Basic Salary", innerLeft + 8f, r3Y, cellLabelPaint)
+        canvas.drawText(":", colColonX, r3Y, cellColonPaint)
+        val salaryStr = if (state.monthlySalary > 0) "Tk. ${EnglishUtils.formatEnglishCurrency(state.monthlySalary)}/-" else "Tk. 11,000/-"
+        canvas.drawText(salaryStr, colValueX, r3Y, cellValuePaint)
+
+        // 6. Section 2 Badge: ADVANCE & REPAYMENT TERMS
+        curY = sec1TableTop + sec1TableH + 16f
+        val badge2Width = 165f
+        val badge2Rect = RectF(innerLeft, curY, innerLeft + badge2Width, curY + badgeH)
+        canvas.drawRect(badge2Rect, badgeBgPaint)
+        canvas.drawText("ADVANCE & REPAYMENT TERMS", innerLeft + 7f, curY + 12f, badgeTextPaint)
+
+        // 7. Section 2 Table (5 Rows with Dashed Inner Dividers)
+        curY += badgeH
+        val sec2TableTop = curY
+        val sec2RowH = 24f
+        val sec2TableH = sec2RowH * 5f
+        val sec2TableRect = RectF(innerLeft, sec2TableTop, innerRight, sec2TableTop + sec2TableH)
+        canvas.drawRect(sec2TableRect, solidBorderPaint)
+
+        // Vertical divider
+        canvas.drawLine(col1DividerX, sec2TableTop, col1DividerX, sec2TableTop + sec2TableH, solidBorderPaint)
+
+        // Row 1: Advance Amount
+        val s2r1Y = sec2TableTop + 16f
+        canvas.drawText("Advance Amount", innerLeft + 8f, s2r1Y, cellLabelPaint)
+        canvas.drawText(":", colColonX, s2r1Y, cellColonPaint)
+        val advAmtStr = if (state.advanceAmount > 0) "Tk. ${EnglishUtils.formatEnglishCurrency(state.advanceAmount)}/-" else "Tk. 5,000/-"
+        canvas.drawText(advAmtStr, colValueX, s2r1Y, cellValuePaint)
+        canvas.drawLine(innerLeft, sec2TableTop + sec2RowH, innerRight, sec2TableTop + sec2RowH, dashedLinePaint)
+
+        // Row 2: In Words
+        val s2r2Y = sec2TableTop + sec2RowH + 16f
+        canvas.drawText("In Words", innerLeft + 8f, s2r2Y, cellLabelPaint)
+        canvas.drawText(":", colColonX, s2r2Y, cellColonPaint)
+        val inWordsText = state.advanceAmountInWords.ifBlank {
+            if (state.advanceAmount > 0) EnglishUtils.amountToEnglishWords(state.advanceAmount) else "Five Thousand Taka Only"
         }
+        canvas.drawText(inWordsText, colValueX, s2r2Y, cellValuePaint)
+        canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 2f), innerRight, sec2TableTop + (sec2RowH * 2f), dashedLinePaint)
 
-        if (hasSalary) {
-            canvas.drawText("Basic Salary:", tableLeft + 215f, empRowY, labelPaint)
-            canvas.drawText("Tk. ${EnglishUtils.formatEnglishCurrency(state.monthlySalary)}/-", tableLeft + 290f, empRowY, valuePaint)
-        } else {
-            canvas.drawText("Branch:", tableLeft + 215f, empRowY, labelPaint)
-            canvas.drawText("Main Branch", tableLeft + 290f, empRowY, valuePaint)
-        }
+        // Row 3: Reason
+        val s2r3Y = sec2TableTop + (sec2RowH * 2f) + 16f
+        canvas.drawText("Reason", innerLeft + 8f, s2r3Y, cellLabelPaint)
+        canvas.drawText(":", colColonX, s2r3Y, cellColonPaint)
+        val reasonText = state.reason.ifBlank { "Family Emergency" }
+        canvas.drawText(reasonText, colValueX, s2r3Y, cellValuePaint)
+        canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 3f), innerRight, sec2TableTop + (sec2RowH * 3f), dashedLinePaint)
 
-        curY += empBoxH + 14f
-
-        // Section 2: Advance & Repayment Details Table
-        val advBoxH = 176f
-        val advRect = RectF(tableLeft, curY, tableRight, curY + advBoxH)
-        canvas.drawRect(advRect, borderThinPaint)
-
-        val sec2HeaderRect = RectF(tableLeft, curY, tableRight, curY + 18f)
-        canvas.drawRect(sec2HeaderRect, sectionBgPaint)
-        canvas.drawLine(tableLeft, curY + 18f, tableRight, curY + 18f, borderThinPaint)
-        canvas.drawText("2. ADVANCE & REPAYMENT TERMS", tableLeft + 6f, curY + 13f, secTitlePaint)
-
-        var advRowY = curY + 36f
-
-        // Advance Amount
-        canvas.drawText("Advance Amount:", tableLeft + 6f, advRowY, labelPaint)
-        val amountStr = "Tk. ${EnglishUtils.formatEnglishCurrency(state.advanceAmount)}/-"
-        canvas.drawText(amountStr, tableLeft + 105f, advRowY, valueBoldPaint)
-
-        advRowY += 26f
-
-        // Amount in Words
-        canvas.drawText("In Words:", tableLeft + 6f, advRowY, labelPaint)
-        val inWords = state.advanceAmountInWords.ifBlank {
-            EnglishUtils.amountToEnglishWords(state.advanceAmount)
-        }
-        val wrapWords = CanvasTextUtils.wrapText(inWords, valuePaint, tableWidth - 75f)
-        if (wrapWords.isNotEmpty()) {
-            canvas.drawText(wrapWords[0], tableLeft + 65f, advRowY, valuePaint)
-            if (wrapWords.size > 1) {
-                advRowY += 15f
-                canvas.drawText(wrapWords[1], tableLeft + 65f, advRowY, valuePaint)
-            }
-        }
-
-        advRowY += 26f
-
-        // Reason
-        canvas.drawText("Reason:", tableLeft + 6f, advRowY, labelPaint)
-        val reasonText = state.reason.ifBlank { "Personal Emergency" }
-        canvas.drawText(reasonText, tableLeft + 65f, advRowY, valuePaint)
-
-        advRowY += 26f
-
-        // Repayment
-        canvas.drawText("Repayment:", tableLeft + 6f, advRowY, labelPaint)
+        // Row 4: Repayment
+        val s2r4Y = sec2TableTop + (sec2RowH * 3f) + 16f
+        canvas.drawText("Repayment", innerLeft + 8f, s2r4Y, cellLabelPaint)
+        canvas.drawText(":", colColonX, s2r4Y, cellColonPaint)
         val repayStr = if (state.repaymentType == "installments") {
-            "Monthly Installments: ${state.installmentCount} Months (Tk. ${EnglishUtils.formatEnglishCurrency(state.installmentAmountPerMonth)}/- per month)"
+            "Monthly Installments: ${state.installmentCount} Months (Tk. ${EnglishUtils.formatEnglishCurrency(state.installmentAmountPerMonth)}/mo)"
         } else {
             "One-time full deduction from salary"
         }
-        canvas.drawText(repayStr, tableLeft + 78f, advRowY, valueBoldPaint)
+        canvas.drawText(repayStr, colValueX, s2r4Y, cellValuePaint)
+        canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 4f), innerRight, sec2TableTop + (sec2RowH * 4f), dashedLinePaint)
 
-        advRowY += 26f
-
-        // Deduction Start & Previous Pending
+        // Row 5: Deduction Starts
+        val s2r5Y = sec2TableTop + (sec2RowH * 4f) + 16f
+        canvas.drawText("Deduction Starts", innerLeft + 8f, s2r5Y, cellLabelPaint)
+        canvas.drawText(":", colColonX, s2r5Y, cellColonPaint)
         val dedStart = state.deductionStartMonth.ifBlank { "Next Month" }
-        canvas.drawText("Deduction Starts: $dedStart", tableLeft + 6f, advRowY, valuePaint)
-        if (state.previousAdvancePending > 0) {
-            canvas.drawText("Previous Due: Tk. ${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}/-", tableLeft + 215f, advRowY, valuePaint)
-        }
+        canvas.drawText(dedStart, colValueX, s2r5Y, cellValuePaint)
 
-        curY += advBoxH + 14f
+        // 8. Undertaking / Declaration
+        curY = sec2TableTop + sec2TableH + 20f
+        canvas.drawText("I/We undertake to repay the above amount from my salary and authorize", innerLeft, curY, undertakingPaint)
+        canvas.drawText("deduction from my monthly salary as stated above.", innerLeft, curY + 12f, undertakingPaint)
 
-        // Section 3: Declaration / Undertaking
-        val declBoxH = 38f
-        val declRect = RectF(tableLeft, curY, tableRight, curY + declBoxH)
-        canvas.drawRect(declRect, borderThinPaint)
-
-        val declPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(60, 60, 60)
-            textSize = 8f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
-        }
-        canvas.drawText("Undertaking: I hereby request the above advance against my salary and authorize deduction from my", tableLeft + 6f, curY + 15f, declPaint)
-        canvas.drawText("monthly salary as stated above. I agree to abide by the company rules, terms & repayment schedule.", tableLeft + 6f, curY + 29f, declPaint)
-
-        curY += declBoxH + 46f
-
-        // Section 4: Signatures Row (2 Signatures: Applicant and Authorized)
+        // 9. Signatures (Applicant's Signature on left, Authorized Signature on right)
         if (state.showSignatures) {
-            val sigLinePaint = Paint().apply {
-                isAntiAlias = true
-                color = Color.BLACK
-                strokeWidth = 1f
-            }
-            val sigTextPaint = Paint().apply {
-                isAntiAlias = true
-                color = Color.BLACK
-                textSize = 10f
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                textAlign = Paint.Align.CENTER
-            }
+            val sigLineY = localStartY + voucherHeight - 34f
+            val sigLineWidth = 110f
 
-            val sig1Center = tableLeft + 80f
-            val sig2Center = tableRight - 80f
+            // Left: Applicant's Signature
+            val sigLeftStart = innerLeft + 10f
+            val sigLeftEnd = sigLeftStart + sigLineWidth
+            val sigLeftCenter = (sigLeftStart + sigLeftEnd) / 2f
+            canvas.drawLine(sigLeftStart, sigLineY, sigLeftEnd, sigLineY, sigLinePaint)
+            canvas.drawText("Applicant's Signature", sigLeftCenter, sigLineY + 14f, sigTextPaint)
 
-            val sigLineY = curY + 10f
-
-            // 1. Applicant Signature (Left)
-            canvas.drawLine(tableLeft + 15f, sigLineY, tableLeft + 145f, sigLineY, sigLinePaint)
-            canvas.drawText("Applicant's Signature", sig1Center, sigLineY + 14f, sigTextPaint)
-
-            // 2. Authorized / Approved By (Right)
-            canvas.drawLine(tableRight - 145f, sigLineY, tableRight - 15f, sigLineY, sigLinePaint)
-            canvas.drawText("Authorized Signature", sig2Center, sigLineY + 14f, sigTextPaint)
+            // Right: Authorized Signature
+            val sigRightEnd = innerRight - 10f
+            val sigRightStart = sigRightEnd - sigLineWidth
+            val sigRightCenter = (sigRightStart + sigRightEnd) / 2f
+            canvas.drawLine(sigRightStart, sigLineY, sigRightEnd, sigLineY, sigLinePaint)
+            canvas.drawText("Authorized Signature", sigRightCenter, sigLineY + 14f, sigTextPaint)
         }
 
         canvas.restore()
