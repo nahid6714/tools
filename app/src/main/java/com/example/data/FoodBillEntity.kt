@@ -13,7 +13,8 @@ data class FoodBillEntity(
     val subtitle: String = "",
     val note: String = "",
     val totalAmount: Double,
-    val itemsJson: String // Serialized list of items
+    val itemsJson: String, // Serialized list of items
+    val billType: String = "market" // "market" (বাজার লিস্ট) or "transport" (যাতায়াত ভাড়া)
 )
 
 data class BillItem(

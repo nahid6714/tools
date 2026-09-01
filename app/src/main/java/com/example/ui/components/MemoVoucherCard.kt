@@ -152,8 +152,10 @@ fun MemoVoucherCard(
     onPurchaserLabelChange: ((String) -> Unit)? = null,
     onCenterNameChange: ((String) -> Unit)? = null,
     onSubtitleChange: ((String) -> Unit)? = null,
+    onBillTypeChange: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val isTransport = state.billType == "transport"
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -245,6 +247,27 @@ fun MemoVoucherCard(
                     .fillMaxWidth()
                     .padding(14.dp)
             ) {
+                // Bill Type Toggle: বাজার লিস্ট (market) vs যাতায়াত ভাড়া (transport)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    BillTypeChip(
+                        label = "🛒 বাজার লিস্ট",
+                        selected = !isTransport,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onBillTypeChange?.invoke("market") }
+                    )
+                    BillTypeChip(
+                        label = "🚌 যাতায়াত ভাড়া",
+                        selected = isTransport,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onBillTypeChange?.invoke("transport") }
+                    )
+                }
+
                 // Date & Action Buttons Compact Header Row
                 val canAddItem = state.items.size < 18
                 val addedItemNames = remember(state.items) {
@@ -380,7 +403,7 @@ fun MemoVoucherCard(
                         )
                     )
                     Text(
-                        text = "পরিমাণ",
+                        text = if (isTransport) "মাধ্যম" else "পরিমাণ",
                         modifier = Modifier.weight(1.4f),
                         style = TextStyle(
                             fontFamily = HeadingFontFamily,
@@ -390,20 +413,22 @@ fun MemoVoucherCard(
                             textAlign = TextAlign.Center
                         )
                     )
-                    Text(
-                        text = "দর",
-                        modifier = Modifier.weight(0.9f),
-                        style = TextStyle(
-                            fontFamily = HeadingFontFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
+                    if (!isTransport) {
+                        Text(
+                            text = "দর",
+                            modifier = Modifier.weight(0.9f),
+                            style = TextStyle(
+                                fontFamily = HeadingFontFamily,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center
+                            )
                         )
-                    )
+                    }
                     Text(
                         text = "টাকা",
-                        modifier = Modifier.weight(1.1f),
+                        modifier = Modifier.weight(if (isTransport) 2.0f else 1.1f),
                         style = TextStyle(
                             fontFamily = HeadingFontFamily,
                             fontSize = 14.sp,
@@ -501,6 +526,7 @@ fun MemoVoucherCard(
                             MemoItemRow(
                                 index = index,
                                 item = item,
+                                isTransport = isTransport,
                                 nameFocusRequester = rowRequesters?.getOrNull(0) ?: remember { FocusRequester() },
                                 qtyFocusRequester = rowRequesters?.getOrNull(1) ?: remember { FocusRequester() },
                                 rateFocusRequester = rowRequesters?.getOrNull(2) ?: remember { FocusRequester() },
@@ -633,9 +659,39 @@ fun MemoVoucherCard(
 }
 
 @Composable
+fun BillTypeChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(
+            width = if (selected) 0.dp else 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        ),
+        modifier = modifier
+            .height(38.dp)
+            .clickable { onClick() }
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 fun MemoItemRow(
     index: Int,
     item: BillItem,
+    isTransport: Boolean = false,
     nameFocusRequester: FocusRequester,
     qtyFocusRequester: FocusRequester,
     rateFocusRequester: FocusRequester,
@@ -680,7 +736,7 @@ fun MemoItemRow(
         ) {
             if (item.name.isEmpty()) {
                 Text(
-                    text = "আইটেমের নাম",
+                    text = if (isTransport) "রুট (যেমন: সাহাবাগ থেকে কুড়িল)" else "আইটেমের নাম",
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     fontSize = 14.sp
                 )
@@ -713,7 +769,11 @@ fun MemoItemRow(
 
         // Quantity
         var showUnitMenu by remember { mutableStateOf(false) }
-        val commonUnits = listOf("কেজি", "লিটার", "পোয়া", "পিস", "প্যাকেট", "গ্রাম", "ডজন", "আঁটি")
+        val commonUnits = if (isTransport) {
+            listOf("বাস", "রিকশা", "সিএনজি", "বাইক", "লেগুনা", "অন্যান্য")
+        } else {
+            listOf("কেজি", "লিটার", "পোয়া", "পিস", "প্যাকেট", "গ্রাম", "ডজন", "আঁটি")
+        }
 
         Box(
             modifier = Modifier
@@ -731,7 +791,7 @@ fun MemoItemRow(
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     if (item.quantity.isEmpty()) {
                         Text(
-                            text = "পরিমাণ",
+                            text = if (isTransport) "মাধ্যম" else "পরিমাণ",
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             fontSize = 12.sp,
                             textAlign = TextAlign.Center,
@@ -798,56 +858,58 @@ fun MemoItemRow(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        // Rate
-        Box(
-            modifier = Modifier
-                .weight(0.9f)
-                .height(40.dp)
-                .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
-                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
-                .padding(horizontal = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            val displayRate = if (item.rate == "0") "" else BengaliUtils.toBengaliDigits(item.rate)
-            BasicTextField(
-                value = displayRate,
-                onValueChange = { onRateChange(BengaliUtils.toBengaliDigits(it)) },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = { amountFocusRequester.requestFocus() }),
-                textStyle = TextStyle(
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                singleLine = true,
+        // Rate — not needed for transport fares, hidden in that mode
+        if (!isTransport) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(rateFocusRequester)
-                    .testTag("item_rate_input_$index")
-            )
-            if (item.rate == "0" || item.rate.isEmpty()) {
-                Text(
-                    text = "০",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                    .weight(0.9f)
+                    .height(40.dp)
+                    .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
+                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val displayRate = if (item.rate == "0") "" else BengaliUtils.toBengaliDigits(item.rate)
+                BasicTextField(
+                    value = displayRate,
+                    onValueChange = { onRateChange(BengaliUtils.toBengaliDigits(it)) },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(onNext = { amountFocusRequester.requestFocus() }),
+                    textStyle = TextStyle(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(rateFocusRequester)
+                        .testTag("item_rate_input_$index")
                 )
+                if (item.rate == "0" || item.rate.isEmpty()) {
+                    Text(
+                        text = "০",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+        }
 
         // Amount
         val displayAmount = if (item.amount <= 0) "" else BengaliUtils.toBengaliDigits(if (item.amount % 1.0 == 0.0) item.amount.toLong().toString() else String.format(java.util.Locale.US, "%.1f", item.amount))
         Box(
             modifier = Modifier
-                .weight(1.1f)
+                .weight(if (isTransport) 2.0f else 1.1f)
                 .height(40.dp)
                 .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))

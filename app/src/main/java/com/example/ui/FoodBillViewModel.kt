@@ -288,10 +288,15 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
             subtitle = savedSubtitle,
             purchaserName = "",
             purchaserLabel = savedPurchaserLabel,
+            billType = "market",
             items = listOf(
                 BillItem(name = "", quantity = "", rate = "0", amount = 0.0)
             )
         )
+    }
+
+    fun setBillType(type: String) {
+        _currentBillState.update { it.copy(billType = type) }
     }
 
     fun updateDate(newDate: String) {
@@ -468,7 +473,8 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
                 subtitle = currentState.subtitle,
                 note = "",
                 items = validItems,
-                totalAmount = total
+                totalAmount = total,
+                billType = currentState.billType
             )
 
             _currentBillState.update { it.copy(editingBillId = id) }
@@ -486,6 +492,7 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
             subtitle = bill.subtitle,
             purchaserName = bill.purchaserName,
             purchaserLabel = savedPurchaserLabel,
+            billType = bill.billType,
             items = bill.items.ifEmpty { listOf(BillItem(name = "", quantity = "", rate = "0", amount = 0.0)) }
         )
         viewModelScope.launch {
@@ -519,6 +526,7 @@ data class CurrentBillState(
     val purchaserName: String = "",
     val purchaserLabel: String = "",
     val approverLabel: String = "",
+    val billType: String = "market",
     val items: List<BillItem> = emptyList()
 ) {
     val totalAmount: Double

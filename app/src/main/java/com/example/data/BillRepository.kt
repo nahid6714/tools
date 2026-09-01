@@ -30,7 +30,8 @@ class BillRepository(private val dao: FoodBillDao) {
         subtitle: String = "",
         note: String,
         items: List<BillItem>,
-        totalAmount: Double
+        totalAmount: Double,
+        billType: String = "market"
     ): Long {
         val itemsJson = jsonAdapter.toJson(items)
         val entity = FoodBillEntity(
@@ -42,7 +43,8 @@ class BillRepository(private val dao: FoodBillDao) {
             subtitle = subtitle,
             note = note,
             totalAmount = totalAmount,
-            itemsJson = itemsJson
+            itemsJson = itemsJson,
+            billType = billType
         )
         return if (id == 0L) {
             dao.insertBill(entity)
@@ -76,7 +78,8 @@ class BillRepository(private val dao: FoodBillDao) {
             subtitle = subtitle,
             note = note,
             totalAmount = totalAmount,
-            items = parsedItems
+            items = parsedItems,
+            billType = billType
         )
     }
 }
@@ -90,5 +93,6 @@ data class FoodBillUiModel(
     val subtitle: String = "",
     val note: String,
     val totalAmount: Double,
-    val items: List<BillItem>
+    val items: List<BillItem>,
+    val billType: String = "market"
 )

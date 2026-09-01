@@ -36,7 +36,8 @@ data class PrintMemoData(
     val purchaserName: String = "",
     val purchaserLabel: String = "ক্রয়কারীর স্বাক্ষর",
     val items: List<BillItem> = emptyList(),
-    val totalAmount: Double = 0.0
+    val totalAmount: Double = 0.0,
+    val billType: String = "market"
 )
 
 object PrintUtils {
@@ -317,7 +318,11 @@ object PrintUtils {
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        val colTitles = arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
+        val colTitles = if (memo.billType == "transport") {
+            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "দর", "টাকা")
+        } else {
+            arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
+        }
         var currentX = tableLeft
         for (i in 0 until 5) {
             val colCenterX = currentX + colWidths[i] / 2f
@@ -566,8 +571,8 @@ object PrintUtils {
                             <thead>
                                 <tr>
                                     <th style="width: 12%;">ক্র. নং</th>
-                                    <th style="width: 43%;">খাবারের নাম / বিবরণ</th>
-                                    <th style="width: 15%;">পরিমাণ</th>
+                                    <th style="width: 43%;">${if (memo.billType == "transport") "বিবরণ / রুট" else "খাবারের নাম / বিবরণ"}</th>
+                                    <th style="width: 15%;">${if (memo.billType == "transport") "মাধ্যম" else "পরিমাণ"}</th>
                                     <th style="width: 12%;">দর</th>
                                     <th style="width: 18%;">টাকা</th>
                                 </tr>

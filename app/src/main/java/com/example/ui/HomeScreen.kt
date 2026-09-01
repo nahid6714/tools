@@ -382,7 +382,8 @@ fun HomeScreen(
                                         onRemoveItem = { id -> viewModel.removeItemRow(id) },
                                         onMoveItem = { from, to -> viewModel.moveItem(from, to) },
                                         onAddItemRow = { viewModel.addItemRow() },
-                                        onPurchaserLabelChange = { viewModel.updatePurchaserLabel(it) }
+                                        onPurchaserLabelChange = { viewModel.updatePurchaserLabel(it) },
+                                        onBillTypeChange = { viewModel.setBillType(it) }
                                     )
 
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -419,7 +420,8 @@ fun HomeScreen(
                                                         purchaserName = currentBillState.purchaserName,
                                                         purchaserLabel = currentBillState.purchaserLabel,
                                                         items = currentBillState.items.filter { it.name.isNotBlank() || it.amount > 0 },
-                                                        totalAmount = currentBillState.totalAmount
+                                                        totalAmount = currentBillState.totalAmount,
+                                                        billType = currentBillState.billType
                                                     )
                                                     previewBottomMemo = null
                                                     showPreviewDialog = true
@@ -512,7 +514,8 @@ fun HomeScreen(
                                             purchaserName = bill.purchaserName,
                                             purchaserLabel = currentBillState.purchaserLabel,
                                             items = bill.items.filter { it.name.isNotBlank() || it.amount > 0 },
-                                            totalAmount = bill.totalAmount
+                                            totalAmount = bill.totalAmount,
+                                            billType = bill.billType
                                         )
                                         previewBottomMemo = null
                                         showPreviewDialog = true
@@ -526,7 +529,8 @@ fun HomeScreen(
                                             purchaserName = bill1.purchaserName,
                                             purchaserLabel = currentBillState.purchaserLabel,
                                             items = bill1.items.filter { it.name.isNotBlank() || it.amount > 0 },
-                                            totalAmount = bill1.totalAmount
+                                            totalAmount = bill1.totalAmount,
+                                            billType = bill1.billType
                                         )
                                         previewBottomMemo = PrintMemoData(
                                             memoId = bill2.id,
@@ -536,7 +540,8 @@ fun HomeScreen(
                                             purchaserName = bill2.purchaserName,
                                             purchaserLabel = currentBillState.purchaserLabel,
                                             items = bill2.items.filter { it.name.isNotBlank() || it.amount > 0 },
-                                            totalAmount = bill2.totalAmount
+                                            totalAmount = bill2.totalAmount,
+                                            billType = bill2.billType
                                         )
                                         showPreviewDialog = true
                                     },
@@ -549,7 +554,8 @@ fun HomeScreen(
                                             purchaserName = bill.purchaserName,
                                             purchaserLabel = currentBillState.purchaserLabel,
                                             items = bill.items.filter { it.name.isNotBlank() || it.amount > 0 },
-                                            totalAmount = bill.totalAmount
+                                            totalAmount = bill.totalAmount,
+                                            billType = bill.billType
                                         )
                                         previewBottomMemo = null
                                         showPreviewDialog = true
@@ -600,7 +606,8 @@ fun HomeScreen(
             purchaserName = currentBillState.purchaserName,
             purchaserLabel = currentBillState.purchaserLabel,
             items = currentBillState.items.filter { it.name.isNotBlank() || it.amount > 0 },
-            totalAmount = currentBillState.totalAmount
+            totalAmount = currentBillState.totalAmount,
+            billType = currentBillState.billType
         )
 
         VoucherPreviewDialog(

@@ -11,7 +11,7 @@ import androidx.room.migration.Migration
     entities = [
         FoodBillEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -49,6 +49,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Adds the "ধরন" (bill type) field so a bill remembers whether it's a market
+        // list or a transport-fare memo, and re-opens with the matching form.
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE food_bills ADD COLUMN billType TEXT NOT NULL DEFAULT 'market'")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -56,7 +64,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "albaraka_food_bill_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5)
                     // Safety net only: if some other unexpected version gap is hit,
                     // fall back to a clean database rather than crashing on launch.
                     .fallbackToDestructiveMigration()

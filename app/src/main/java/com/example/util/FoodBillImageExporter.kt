@@ -205,7 +205,11 @@ object FoodBillImageExporter {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        val colTitles = arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
+        val colTitles = if (memo.billType == "transport") {
+            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "দর", "টাকা")
+        } else {
+            arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
+        }
         var curColX = leftX
         for (i in 0 until 5) {
             val colCenterX = curColX + colWidths[i] / 2f

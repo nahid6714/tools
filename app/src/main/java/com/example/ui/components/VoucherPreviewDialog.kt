@@ -173,7 +173,8 @@ fun VoucherPreviewDialog(
                                                 purchaserName = otherBill.purchaserName,
                                                 purchaserLabel = defaultPurchaserLabel.ifBlank { topMemoState.purchaserLabel },
                                                 items = otherBill.items,
-                                                totalAmount = otherBill.totalAmount
+                                                totalAmount = otherBill.totalAmount,
+                                                billType = otherBill.billType
                                             )
                                         } else {
                                             topMemoState
@@ -892,7 +893,8 @@ private fun MemoSelectionDialog(
                                             purchaserName = bill.purchaserName,
                                             purchaserLabel = defaultPurchaserLabel.ifBlank { initialMemo.purchaserLabel },
                                             items = bill.items,
-                                            totalAmount = bill.totalAmount
+                                            totalAmount = bill.totalAmount,
+                                            billType = bill.billType
                                         )
                                         onSelect(printMemo)
                                     },
