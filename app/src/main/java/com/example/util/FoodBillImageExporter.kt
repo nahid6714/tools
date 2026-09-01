@@ -48,11 +48,47 @@ object FoodBillImageExporter {
         val lineGap = 14f
         val metaHeight = 36f
         val tableHeaderHeight = 46f
-        val rowHeight = 44f
+        val baseRowHeight = 44f
         val totalRowHeight = 48f
-        val tableHeight = tableHeaderHeight + (numRows * rowHeight) + totalRowHeight
         val footerSpace = 40f
         val signatureHeight = 55f
+
+        // Column widths are needed early now, so we can pre-measure how many
+        // lines each item name will wrap onto and size each row accordingly
+        // (instead of shrinking the font / letting text overflow the row).
+        val colWidthsForMeasure = floatArrayOf(
+            contentWidth * 0.105f,
+            contentWidth * 0.425f,
+            contentWidth * 0.150f,
+            contentWidth * 0.130f,
+            contentWidth * 0.190f
+        )
+        val itemFontSize = 21f
+        val nameLineHeight = itemFontSize + 5f
+        val nameVerticalPad = 8f
+        val namePadLeft = 12f
+        val namePadRight = 8f
+        val maxNameWidth = colWidthsForMeasure[1] - namePadLeft - namePadRight
+        val measurePaint = Paint().apply {
+            isAntiAlias = true
+            textSize = itemFontSize
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+
+        val rowNameLines = ArrayList<List<String>>(numRows)
+        val rowHeights = FloatArray(numRows)
+        for (r in 0 until numRows) {
+            if (r < validItems.size) {
+                val lines = CanvasTextUtils.wrapText(validItems[r].name, measurePaint, maxNameWidth)
+                rowNameLines.add(lines)
+                val neededHeight = (lines.size * nameLineHeight) + nameVerticalPad
+                rowHeights[r] = maxOf(baseRowHeight, neededHeight)
+            } else {
+                rowNameLines.add(listOf(""))
+                rowHeights[r] = baseRowHeight
+            }
+        }
+        val tableHeight = tableHeaderHeight + rowHeights.sum() + totalRowHeight
 
         val totalHeight = (paddingTop + headerBoxHeight + headerGap + 2f + lineGap + metaHeight + 10f + tableHeight + footerSpace + signatureHeight + paddingBottom).toInt()
 
@@ -199,54 +235,54 @@ object FoodBillImageExporter {
 
         var rowY = tableTop + tableHeaderHeight
         for (r in 0 until numRows) {
+            val thisRowHeight = rowHeights[r]
             val slNo = BengaliUtils.toBengaliDigits(String.format("%02d", r + 1))
-            val textY = rowY + 30f
+            // Vertically centered baseline for the single-line columns (Sl/Qty/Rate/Amount)
+            val centerTextY = rowY + (thisRowHeight / 2f) + (itemFontSize * 0.35f)
 
             // 1. Serial Number (০১, ০২...) - Bold & Centered
             itemTextPaint.textAlign = Paint.Align.CENTER
-            canvas.drawText(slNo, leftX + colWidths[0] / 2f, textY, itemTextPaint)
+            canvas.drawText(slNo, leftX + colWidths[0] / 2f, centerTextY, itemTextPaint)
 
             if (r < validItems.size) {
                 val item = validItems[r]
 
-                // 2. Name / Description - Left aligned with padding
+                // 2. Name / Description - Left aligned, wraps onto multiple lines
+                // (pre-measured above) instead of shrinking font or overflowing the row.
                 itemTextPaint.textAlign = Paint.Align.LEFT
-                val origSize = itemTextPaint.textSize
-                if (item.name.length > 32) {
-                    itemTextPaint.textSize = origSize * 0.80f
-                } else if (item.name.length > 20) {
-                    itemTextPaint.textSize = origSize * 0.90f
+                val lines = rowNameLines[r]
+                val firstLineY = rowY + nameVerticalPad / 2f + itemFontSize
+                for ((i, line) in lines.withIndex()) {
+                    canvas.drawText(line, leftX + colWidths[0] + namePadLeft, firstLineY + (i * nameLineHeight), itemTextPaint)
                 }
-                canvas.drawText(item.name, leftX + colWidths[0] + 12f, textY, itemTextPaint)
-                itemTextPaint.textSize = origSize
 
                 // 3. Quantity - Centered (e.g. "২ কেজি", "১ পোয়া", "১৪ পিস")
                 itemRegularPaint.textAlign = Paint.Align.CENTER
                 val bnQty = BengaliUtils.toBengaliDigits(item.quantity)
                 if (bnQty.isNotBlank()) {
-                    canvas.drawText(bnQty, leftX + colWidths[0] + colWidths[1] + colWidths[2] / 2f, textY, itemRegularPaint)
+                    canvas.drawText(bnQty, leftX + colWidths[0] + colWidths[1] + colWidths[2] / 2f, centerTextY, itemRegularPaint)
                 }
 
                 // 4. Rate - Centered / Blank
                 val bnRate = if (item.rate == "0" || item.rate.isBlank()) "" else BengaliUtils.toBengaliDigits(item.rate)
                 if (bnRate.isNotBlank()) {
                     itemRegularPaint.textAlign = Paint.Align.CENTER
-                    canvas.drawText(bnRate, leftX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2f, textY, itemRegularPaint)
+                    canvas.drawText(bnRate, leftX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2f, centerTextY, itemRegularPaint)
                 }
 
                 // 5. Amount - Right aligned with "/-" or "—"
                 itemTextPaint.textAlign = Paint.Align.RIGHT
                 val bnAmount = if (item.amount <= 0) "—" else "${BengaliUtils.toBengaliDigits(DecimalFormat("#,##0").format(item.amount))}/-"
-                canvas.drawText(bnAmount, rightX - 14f, textY, itemTextPaint)
+                canvas.drawText(bnAmount, rightX - 14f, centerTextY, itemTextPaint)
             } else {
                 // Empty row amount dash
                 itemTextPaint.textAlign = Paint.Align.RIGHT
-                // canvas.drawText("—", rightX - 14f, textY, itemTextPaint)
+                // canvas.drawText("—", rightX - 14f, centerTextY, itemTextPaint)
             }
 
             // Draw dashed row bottom separator
-            canvas.drawLine(leftX, rowY + rowHeight, rightX, rowY + rowHeight, rowDashPaint)
-            rowY += rowHeight
+            canvas.drawLine(leftX, rowY + thisRowHeight, rightX, rowY + thisRowHeight, rowDashPaint)
+            rowY += thisRowHeight
         }
 
         // Total Row (At the bottom of the table)

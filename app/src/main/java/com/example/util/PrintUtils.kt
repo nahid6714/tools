@@ -329,11 +329,13 @@ object PrintUtils {
         val validItems = memo.items.filter { it.name.isNotBlank() || it.amount > 0 }
         val totalRows = maxOf(14, validItems.size.coerceAtMost(18))
         val gridTop = tableTop + headerHeight
-        val gridBottom = 480f
-        val totalGridHeight = gridBottom - gridTop
-        val rowHeight = totalGridHeight / totalRows
-        val itemFontSize = if (totalRows > 14) 11f else 12.5f
-        val textYOffset = rowHeight * 0.68f
+        val baseRowHeight = 27.1f // same density as the original fixed 14-row layout
+        val itemFontSize = 11.5f
+        val nameLineHeight = itemFontSize + 3.5f
+        val nameVerticalPad = 6f
+        val namePadLeft = 6f
+        val namePadRight = 4f
+        val maxNameWidth = colWidths[1] - namePadLeft - namePadRight
 
         val gridBorderPaint = Paint().apply {
             isAntiAlias = true
@@ -360,35 +362,52 @@ object PrintUtils {
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
 
+        // Pre-compute wrapped name lines & the resulting height for every row first,
+        // so long names grow the row instead of shrinking font size / overlapping.
+        val rowNameLines = ArrayList<List<String>>(totalRows)
+        val rowHeights = FloatArray(totalRows)
+        for (r in 0 until totalRows) {
+            if (r < validItems.size) {
+                val lines = CanvasTextUtils.wrapText(validItems[r].name, itemBoldPaint, maxNameWidth)
+                rowNameLines.add(lines)
+                val neededHeight = (lines.size * nameLineHeight) + nameVerticalPad
+                rowHeights[r] = maxOf(baseRowHeight, neededHeight)
+            } else {
+                rowNameLines.add(listOf(""))
+                rowHeights[r] = baseRowHeight
+            }
+        }
+
         var rowY = gridTop
         for (r in 0 until totalRows) {
+            val rowHeight = rowHeights[r]
             val slNo = BengaliUtils.toBengaliDigits(String.format("%02d", r + 1))
-            
+            val centerY = rowY + (rowHeight / 2f) + (itemFontSize * 0.35f)
+
             itemBoldPaint.textAlign = Paint.Align.CENTER
-            canvas.drawText(slNo, tableLeft + colWidths[0] / 2f, rowY + textYOffset, itemBoldPaint)
+            canvas.drawText(slNo, tableLeft + colWidths[0] / 2f, centerY, itemBoldPaint)
 
             if (r < validItems.size) {
                 val item = validItems[r]
+
+                // Name / Description - wraps onto multiple lines, growing the row.
                 itemBoldPaint.textAlign = Paint.Align.LEFT
-                val origTextSize = itemBoldPaint.textSize
-                if (item.name.length > 35) {
-                    itemBoldPaint.textSize = origTextSize * 0.75f
-                } else if (item.name.length > 20) {
-                    itemBoldPaint.textSize = origTextSize * 0.88f
+                val lines = rowNameLines[r]
+                val firstLineY = rowY + nameVerticalPad / 2f + itemFontSize
+                for ((i, line) in lines.withIndex()) {
+                    canvas.drawText(line, tableLeft + colWidths[0] + namePadLeft, firstLineY + (i * nameLineHeight), itemBoldPaint)
                 }
-                canvas.drawText(item.name, tableLeft + colWidths[0] + 6f, rowY + textYOffset, itemBoldPaint)
-                itemBoldPaint.textSize = origTextSize
 
                 itemTextPaint.textAlign = Paint.Align.CENTER
                 val bnQty = BengaliUtils.toBengaliDigits(item.quantity)
-                canvas.drawText(bnQty, tableLeft + colWidths[0] + colWidths[1] + colWidths[2] / 2f, rowY + textYOffset, itemTextPaint)
+                canvas.drawText(bnQty, tableLeft + colWidths[0] + colWidths[1] + colWidths[2] / 2f, centerY, itemTextPaint)
 
                 val bnRate = if (item.rate == "0" || item.rate.isBlank()) "" else BengaliUtils.toBengaliDigits(item.rate)
-                canvas.drawText(bnRate, tableLeft + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2f, rowY + textYOffset, itemTextPaint)
+                canvas.drawText(bnRate, tableLeft + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2f, centerY, itemTextPaint)
 
                 itemBoldPaint.textAlign = Paint.Align.RIGHT
                 val bnAmount = if (item.amount <= 0) "—" else "${BengaliUtils.toBengaliDigits(DecimalFormat("#,##0").format(item.amount))}/-"
-                canvas.drawText(bnAmount, tableRight - 6f, rowY + textYOffset, itemBoldPaint)
+                canvas.drawText(bnAmount, tableRight - 6f, centerY, itemBoldPaint)
             }
 
             canvas.drawLine(tableLeft, rowY + rowHeight, tableRight, rowY + rowHeight, rowDashPaint)
@@ -428,8 +447,9 @@ object PrintUtils {
             canvas.drawLine(lineX, tableTop, lineX, tableBottomY, gridBorderPaint)
         }
 
-        // Footer
-        val sigLineY = 550f
+        // Footer (positioned relative to the table's actual bottom, since the
+        // table height now varies depending on how many lines the names wrap to)
+        val sigLineY = tableBottomY + 45f
         val sigLineWidth = 150f
 
         val linePaint = Paint().apply {
