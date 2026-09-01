@@ -317,44 +317,66 @@ object AdvanceSalaryPrintUtils {
         canvas.drawRect(badge1Rect, badgeBgPaint)
         canvas.drawText("APPLICANT / EMPLOYEE DETAILS", innerLeft + 7f, curY + 12.5f, badgeTextPaint)
 
-        // 5. Section 1 Table (3 Rows: Name, Designation, Basic Salary)
+        // 5. Section 1 Table (3 Rows default or 5 Rows if Previous Advance exists)
+        val hasPrevAdvance = state.previousAdvancePending > 0.0
         curY += badgeH
         val sec1TableTop = curY
-        val sec1RowH = 26f
-        val sec1TableH = sec1RowH * 3f
+        val sec1RowH = if (hasPrevAdvance) 22f else 26f
+        val sec1RowCount = if (hasPrevAdvance) 5 else 3
+        val sec1TableH = sec1RowH * sec1RowCount.toFloat()
         val sec1TableRect = RectF(innerLeft, sec1TableTop, innerRight, sec1TableTop + sec1TableH)
         canvas.drawRect(sec1TableRect, solidBorderPaint)
 
-        val col1DividerX = innerLeft + 110f
-        val colColonX = innerLeft + 123f
-        val colValueX = innerLeft + 135f
+        val col1DividerX = innerLeft + 115f
+        val colColonX = innerLeft + 126f
+        val colValueX = innerLeft + 136f
 
         // Vertical divider after label column
         canvas.drawLine(col1DividerX, sec1TableTop, col1DividerX, sec1TableTop + sec1TableH, solidBorderPaint)
 
         // Row 1: Name
-        val r1Y = sec1TableTop + 17f
+        val r1Y = sec1TableTop + (sec1RowH * 0.68f)
         canvas.drawText("Name", innerLeft + 8f, r1Y, cellLabelPaint)
         canvas.drawText(":", colColonX, r1Y, cellColonPaint)
         canvas.drawText(state.applicantName.ifBlank { "Nahid" }, colValueX, r1Y, cellValuePaint)
         canvas.drawLine(innerLeft, sec1TableTop + sec1RowH, innerRight, sec1TableTop + sec1RowH, solidBorderPaint)
 
         // Row 2: Designation
-        val r2Y = sec1TableTop + sec1RowH + 17f
+        val r2Y = sec1TableTop + sec1RowH + (sec1RowH * 0.68f)
         canvas.drawText("Designation", innerLeft + 8f, r2Y, cellLabelPaint)
         canvas.drawText(":", colColonX, r2Y, cellColonPaint)
         canvas.drawText(state.designation.ifBlank { "Office Assistant" }, colValueX, r2Y, cellValuePaint)
         canvas.drawLine(innerLeft, sec1TableTop + (sec1RowH * 2f), innerRight, sec1TableTop + (sec1RowH * 2f), solidBorderPaint)
 
         // Row 3: Basic Salary
-        val r3Y = sec1TableTop + (sec1RowH * 2f) + 17f
+        val r3Y = sec1TableTop + (sec1RowH * 2f) + (sec1RowH * 0.68f)
         canvas.drawText("Basic Salary", innerLeft + 8f, r3Y, cellLabelPaint)
         canvas.drawText(":", colColonX, r3Y, cellColonPaint)
         val salaryStr = if (state.monthlySalary > 0) "Tk. ${EnglishUtils.formatEnglishCurrency(state.monthlySalary)}/-" else "Tk. 11,000/-"
         canvas.drawText(salaryStr, colValueX, r3Y, cellValuePaint)
 
+        if (hasPrevAdvance) {
+            canvas.drawLine(innerLeft, sec1TableTop + (sec1RowH * 3f), innerRight, sec1TableTop + (sec1RowH * 3f), solidBorderPaint)
+
+            // Row 4: Previous Advance Taken
+            val r4Y = sec1TableTop + (sec1RowH * 3f) + (sec1RowH * 0.68f)
+            canvas.drawText("Prev. Advance Taken", innerLeft + 8f, r4Y, cellLabelPaint)
+            canvas.drawText(":", colColonX, r4Y, cellColonPaint)
+            val prevStr = "Tk. ${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}/-"
+            canvas.drawText(prevStr, colValueX, r4Y, cellValuePaint)
+            canvas.drawLine(innerLeft, sec1TableTop + (sec1RowH * 4f), innerRight, sec1TableTop + (sec1RowH * 4f), solidBorderPaint)
+
+            // Row 5: Net Available Salary
+            val r5Y = sec1TableTop + (sec1RowH * 4f) + (sec1RowH * 0.68f)
+            canvas.drawText("Net Eligible Limit", innerLeft + 8f, r5Y, cellLabelPaint)
+            canvas.drawText(":", colColonX, r5Y, cellColonPaint)
+            val netEligible = (state.monthlySalary - state.previousAdvancePending).coerceAtLeast(0.0)
+            val netStr = "Tk. ${EnglishUtils.formatEnglishCurrency(netEligible)}/-"
+            canvas.drawText(netStr, colValueX, r5Y, cellValuePaint)
+        }
+
         // 6. Section 2 Badge: ADVANCE & REPAYMENT TERMS
-        curY = sec1TableTop + sec1TableH + 20f
+        curY = sec1TableTop + sec1TableH + (if (hasPrevAdvance) 14f else 20f)
         val badge2Width = 170f
         val badge2Rect = RectF(innerLeft, curY, innerLeft + badge2Width, curY + badgeH)
         canvas.drawRect(badge2Rect, badgeBgPaint)
@@ -363,7 +385,7 @@ object AdvanceSalaryPrintUtils {
         // 7. Section 2 Table (5 Rows with Dashed Inner Dividers)
         curY += badgeH
         val sec2TableTop = curY
-        val sec2RowH = 28f
+        val sec2RowH = if (hasPrevAdvance) 25f else 28f
         val sec2TableH = sec2RowH * 5f
         val sec2TableRect = RectF(innerLeft, sec2TableTop, innerRight, sec2TableTop + sec2TableH)
         canvas.drawRect(sec2TableRect, solidBorderPaint)
@@ -372,7 +394,7 @@ object AdvanceSalaryPrintUtils {
         canvas.drawLine(col1DividerX, sec2TableTop, col1DividerX, sec2TableTop + sec2TableH, solidBorderPaint)
 
         // Row 1: Advance Amount
-        val s2r1Y = sec2TableTop + 18f
+        val s2r1Y = sec2TableTop + (sec2RowH * 0.68f)
         canvas.drawText("Advance Amount", innerLeft + 8f, s2r1Y, cellLabelPaint)
         canvas.drawText(":", colColonX, s2r1Y, cellColonPaint)
         val advAmtStr = if (state.advanceAmount > 0) "Tk. ${EnglishUtils.formatEnglishCurrency(state.advanceAmount)}/-" else "Tk. 5,000/-"
@@ -380,7 +402,7 @@ object AdvanceSalaryPrintUtils {
         canvas.drawLine(innerLeft, sec2TableTop + sec2RowH, innerRight, sec2TableTop + sec2RowH, dashedLinePaint)
 
         // Row 2: In Words
-        val s2r2Y = sec2TableTop + sec2RowH + 18f
+        val s2r2Y = sec2TableTop + sec2RowH + (sec2RowH * 0.68f)
         canvas.drawText("In Words", innerLeft + 8f, s2r2Y, cellLabelPaint)
         canvas.drawText(":", colColonX, s2r2Y, cellColonPaint)
         val inWordsText = state.advanceAmountInWords.ifBlank {
@@ -390,7 +412,7 @@ object AdvanceSalaryPrintUtils {
         canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 2f), innerRight, sec2TableTop + (sec2RowH * 2f), dashedLinePaint)
 
         // Row 3: Reason
-        val s2r3Y = sec2TableTop + (sec2RowH * 2f) + 18f
+        val s2r3Y = sec2TableTop + (sec2RowH * 2f) + (sec2RowH * 0.68f)
         canvas.drawText("Reason", innerLeft + 8f, s2r3Y, cellLabelPaint)
         canvas.drawText(":", colColonX, s2r3Y, cellColonPaint)
         val reasonText = state.reason.ifBlank { "Family Emergency" }
@@ -398,7 +420,7 @@ object AdvanceSalaryPrintUtils {
         canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 3f), innerRight, sec2TableTop + (sec2RowH * 3f), dashedLinePaint)
 
         // Row 4: Repayment
-        val s2r4Y = sec2TableTop + (sec2RowH * 3f) + 18f
+        val s2r4Y = sec2TableTop + (sec2RowH * 3f) + (sec2RowH * 0.68f)
         canvas.drawText("Repayment", innerLeft + 8f, s2r4Y, cellLabelPaint)
         canvas.drawText(":", colColonX, s2r4Y, cellColonPaint)
         val repayStr = if (state.repaymentType == "installments") {
@@ -410,16 +432,16 @@ object AdvanceSalaryPrintUtils {
         canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 4f), innerRight, sec2TableTop + (sec2RowH * 4f), dashedLinePaint)
 
         // Row 5: Deduction Starts
-        val s2r5Y = sec2TableTop + (sec2RowH * 4f) + 18f
+        val s2r5Y = sec2TableTop + (sec2RowH * 4f) + (sec2RowH * 0.68f)
         canvas.drawText("Deduction Starts", innerLeft + 8f, s2r5Y, cellLabelPaint)
         canvas.drawText(":", colColonX, s2r5Y, cellColonPaint)
         val dedStart = state.deductionStartMonth.ifBlank { "Next Month" }
         canvas.drawText(dedStart, colValueX, s2r5Y, cellValuePaint)
 
         // 8. Undertaking / Declaration (Moved down with spacious margin after Deduction Starts)
-        curY = sec2TableTop + sec2TableH + 34f
+        curY = sec2TableTop + sec2TableH + (if (hasPrevAdvance) 22f else 30f)
         canvas.drawText("I undertake to repay the above amount from my salary and authorize", innerLeft, curY, undertakingPaint)
-        canvas.drawText("deduction from my monthly salary as stated above.", innerLeft, curY + 14f, undertakingPaint)
+        canvas.drawText("deduction from my monthly salary as stated above.", innerLeft, curY + 13f, undertakingPaint)
 
         // 9. Signatures (Applicant's Signature on left, Authorized Signature on right)
         if (state.showSignatures) {

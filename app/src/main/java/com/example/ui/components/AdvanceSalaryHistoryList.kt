@@ -284,6 +284,25 @@ fun AdvanceSalaryHistoryCardItem(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Reason & Repayment summary
+            if (entity.monthlySalary > 0 || entity.previousAdvancePending > 0) {
+                val salaryDetails = buildString {
+                    if (entity.monthlySalary > 0) {
+                        append("Salary: Tk. ${EnglishUtils.formatEnglishCurrency(entity.monthlySalary)}")
+                    }
+                    if (entity.previousAdvancePending > 0) {
+                        if (isNotEmpty()) append(" • ")
+                        append("Prev Advance: Tk. ${EnglishUtils.formatEnglishCurrency(entity.previousAdvancePending)}")
+                    }
+                }
+                Text(
+                    text = salaryDetails,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+            }
+
             if (entity.reason.isNotBlank()) {
                 Text(
                     text = "Reason: ${entity.reason}",

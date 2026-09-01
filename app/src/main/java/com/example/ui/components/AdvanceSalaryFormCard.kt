@@ -296,12 +296,73 @@ fun AdvanceSalaryFormCard(
                 OutlinedTextField(
                     value = state.monthlySalaryInput,
                     onValueChange = onMonthlySalaryChange,
-                    label = { Text("Monthly Salary (৳)") },
+                    label = { Text("Monthly Salary (৳) *") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).testTag("input_monthly_salary"),
                     singleLine = true,
                     shape = RoundedCornerShape(10.dp)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Previous Advance Taken Input
+            OutlinedTextField(
+                value = state.previousAdvancePendingInput,
+                onValueChange = onPreviousAdvancePendingChange,
+                label = { Text("Previous Advance Taken (৳) / পূর্বে নেওয়া অগ্রিম") },
+                placeholder = { Text("0 if no previous advance taken") },
+                leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("input_previous_advance"),
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp)
+            )
+
+            val maxEligibleAdvance = if (state.monthlySalary > 0.0) {
+                (state.monthlySalary - state.previousAdvancePending).coerceAtLeast(0.0)
+            } else 0.0
+            val isOverLimit = state.monthlySalary > 0.0 && state.advanceAmount > maxEligibleAdvance
+
+            // Salary & Advance Limit Calculation Box
+            if (state.monthlySalary > 0.0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isOverLimit) Color(0xFFFFEBEE) else Color(0xFFF1F8E9)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isOverLimit) Color(0xFFEF9A9A) else Color(0xFFC8E6C9)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "বেতন: ৳ ${EnglishUtils.formatEnglishCurrency(state.monthlySalary)}" +
+                                        if (state.previousAdvancePending > 0.0) " • পূর্বের অগ্রিম: ৳ ${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}" else "",
+                                fontSize = 11.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "সর্বোচ্চ সীমা: ৳ ${EnglishUtils.formatEnglishCurrency(maxEligibleAdvance)}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isOverLimit) Color(0xFFC62828) else Color(0xFF2E7D32)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -343,7 +404,8 @@ fun AdvanceSalaryFormCard(
                 value = state.advanceAmountInput,
                 onValueChange = onAdvanceAmountChange,
                 label = { Text("Requested Advance Amount (৳) *") },
-                leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = Color(0xFFC62828)) },
+                leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = if (isOverLimit) Color(0xFFC62828) else Color(0xFFC62828)) },
+                isError = isOverLimit,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -351,10 +413,55 @@ fun AdvanceSalaryFormCard(
                 singleLine = true,
                 shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFC62828),
-                    unfocusedBorderColor = Color(0xFFE57373)
+                    focusedBorderColor = if (isOverLimit) Color(0xFFC62828) else Color(0xFFC62828),
+                    unfocusedBorderColor = if (isOverLimit) Color(0xFFEF5350) else Color(0xFFE57373),
+                    errorBorderColor = Color(0xFFC62828)
                 )
             )
+
+            // Over-limit Warning Card
+            if (isOverLimit) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFFFEBEE))
+                        .border(1.dp, Color(0xFFEF5350), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "⚠️ সর্বোচ্চ সীমা অতিক্রম করেছে! আপনি সর্বোচ্চ ৳ ${EnglishUtils.formatEnglishCurrency(maxEligibleAdvance)}/- অ্যাডভান্স নিতে পারবেন।",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFC62828)
+                    )
+                    Text(
+                        text = "হিসাব: মাসিক বেতন (৳ ${EnglishUtils.formatEnglishCurrency(state.monthlySalary)}) - পূর্বে নেওয়া অগ্রিম (৳ ${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}) = অবশিষ্ট ৳ ${EnglishUtils.formatEnglishCurrency(maxEligibleAdvance)}",
+                        fontSize = 11.sp,
+                        color = Color(0xFFB71C1C)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedButton(
+                        onClick = {
+                            val maxStr = if (maxEligibleAdvance > 0) maxEligibleAdvance.toLong().toString() else "0"
+                            onAdvanceAmountChange(maxStr)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(34.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC62828)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC62828))
+                    ) {
+                        Text(
+                            text = "সর্বোচ্চ অনুমোদিত সীমা বসান (৳ ${EnglishUtils.formatEnglishCurrency(maxEligibleAdvance)})",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
 
             // Live in-words display
             val inWords = if (state.advanceAmountInWords.isNotBlank()) {
@@ -363,7 +470,7 @@ fun AdvanceSalaryFormCard(
                 EnglishUtils.amountToEnglishWords(state.advanceAmount)
             }
 
-            if (inWords.isNotBlank()) {
+            if (inWords.isNotBlank() && !isOverLimit) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Box(
                     modifier = Modifier
@@ -435,30 +542,15 @@ fun AdvanceSalaryFormCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
+            OutlinedTextField(
+                value = state.deductionStartMonth,
+                onValueChange = onDeductionStartMonthChange,
+                label = { Text("Deduction Starts") },
+                placeholder = { Text("e.g. Next Month") },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = state.deductionStartMonth,
-                    onValueChange = onDeductionStartMonthChange,
-                    label = { Text("Deduction Starts") },
-                    placeholder = { Text("e.g. Next Month") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp)
-                )
-
-                OutlinedTextField(
-                    value = state.previousAdvancePendingInput,
-                    onValueChange = onPreviousAdvancePendingChange,
-                    label = { Text("Previous Due (৳)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp)
-                )
-            }
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp)
+            )
 
             Spacer(modifier = Modifier.height(18.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

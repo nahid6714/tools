@@ -265,6 +265,20 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         _formState.update { it.copy(monthlySalaryInput = input, monthlySalary = parsed) }
     }
 
+    fun updatePreviousAdvancePending(input: String) {
+        val parsed = BengaliUtils.parseBengaliNumber(input)
+        _formState.update { it.copy(previousAdvancePendingInput = input, previousAdvancePending = parsed) }
+    }
+
+    fun fillMaxEligibleAdvance() {
+        val current = _formState.value
+        if (current.monthlySalary > 0.0) {
+            val maxEligible = (current.monthlySalary - current.previousAdvancePending).coerceAtLeast(0.0)
+            val inputStr = if (maxEligible > 0) maxEligible.toLong().toString() else "0"
+            updateAdvanceAmount(inputStr)
+        }
+    }
+
     fun updateAdvanceAmount(input: String) {
         val parsed = BengaliUtils.parseBengaliNumber(input)
         val inWords = if (parsed > 0) EnglishUtils.amountToEnglishWords(parsed) else ""
@@ -320,11 +334,6 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         _formState.update { it.copy(deductionStartMonth = month) }
     }
 
-    fun updatePreviousAdvancePending(input: String) {
-        val parsed = BengaliUtils.parseBengaliNumber(input)
-        _formState.update { it.copy(previousAdvancePendingInput = input, previousAdvancePending = parsed) }
-    }
-
     fun updateRemarks(remarks: String) {
         _formState.update { it.copy(remarks = remarks) }
     }
@@ -346,6 +355,16 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         if (current.advanceAmount <= 0.0) {
             viewModelScope.launch { _uiEvent.emit("Please enter advance amount") }
             return
+        }
+        if (current.monthlySalary > 0.0) {
+            val maxEligible = (current.monthlySalary - current.previousAdvancePending).coerceAtLeast(0.0)
+            if (current.advanceAmount > maxEligible) {
+                viewModelScope.launch {
+                    val maxFormatted = EnglishUtils.formatEnglishCurrency(maxEligible)
+                    _uiEvent.emit("Advance cannot exceed eligible limit of Tk. $maxFormatted (Salary Tk. ${EnglishUtils.formatEnglishCurrency(current.monthlySalary)} - Prev Advance Tk. ${EnglishUtils.formatEnglishCurrency(current.previousAdvancePending)})")
+                }
+                return
+            }
         }
 
         viewModelScope.launch {
