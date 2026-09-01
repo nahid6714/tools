@@ -49,17 +49,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Version 5 adds a "billType" flag ("market" | "transport") so a saved bill
-        // remembers whether it's a grocery/বাজার বিল or a যাতায়াত ভাড়া বিল, and
-        // reopening it for editing shows the correct form.
+        // Adds the "ধরন" (bill type) field so a bill remembers whether it's a market
+        // list or a transport-fare memo, and re-opens with the matching form.
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE food_bills ADD COLUMN billType TEXT NOT NULL DEFAULT 'market'")
             }
         }
 
-        // Version 6 adds a "showSignature" flag so a bill remembers whether the
-        // signature box/line should be printed or hidden.
+        // Adds a "showSignature" flag so a bill remembers whether the signature
+        // box/line should be printed, or hidden for quick informal memos.
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE food_bills ADD COLUMN showSignature INTEGER NOT NULL DEFAULT 1")

@@ -75,14 +75,15 @@ import com.example.util.QuickPreset
 @Composable
 fun SettingsScreen(
     state: CurrentBillState,
+    editingBillType: String = state.billType,
+    getSavedSettingsForType: (type: String) -> Triple<String, String, String> = { _ ->
+        Triple(state.centerName, state.subtitle, state.purchaserLabel)
+    },
     quickPresets: List<QuickPreset> = emptyList(),
     onAddCustomPreset: (name: String, qty: String, rate: String, amount: String) -> Unit = { _, _, _, _ -> },
     onRemovePreset: (preset: QuickPreset) -> Unit = {},
     onResetPresetsDefault: () -> Unit = {},
-    onCenterNameChange: (String) -> Unit,
-    onSubtitleChange: (String) -> Unit,
-    onPurchaserLabelChange: (String) -> Unit = {},
-    onSaveSettings: (centerName: String, subtitle: String, purchaserLabel: String) -> Unit,
+    onSaveSettings: (billType: String, centerName: String, subtitle: String, purchaserLabel: String) -> Unit,
     onResetTemplate: () -> Unit,
     onResetAllData: () -> Unit,
     modifier: Modifier = Modifier
@@ -97,14 +98,24 @@ fun SettingsScreen(
     val signatureOptions = listOf("স্বাক্ষর", "ক্রয়কারীর স্বাক্ষর", "অনুমোদনকারীর স্বাক্ষর")
     val customOption = "কাস্টম..."
 
-    val initialIsPreset = state.purchaserLabel in signatureOptions
-    var selectedSignatureOption by remember(state.purchaserLabel) {
-        mutableStateOf(if (initialIsPreset) state.purchaserLabel else if (state.purchaserLabel.isBlank()) "স্বাক্ষর" else customOption)
+    // Loads the saved title/subtitle/signature for whichever bill type is currently
+    // selected in the app bar dropdown, so "যাতায়াত ভাড়া" and "খাবার বিল" can each keep
+    // their own separate header settings. Re-loaded whenever editingBillType changes.
+    val savedForType = remember(editingBillType) { getSavedSettingsForType(editingBillType) }
+    var centerNameField by remember(editingBillType) { mutableStateOf(savedForType.first) }
+    var subtitleField by remember(editingBillType) { mutableStateOf(savedForType.second) }
+    val purchaserLabelInitial = savedForType.third
+
+    val initialIsPreset = purchaserLabelInitial in signatureOptions
+    var selectedSignatureOption by remember(editingBillType) {
+        mutableStateOf(if (initialIsPreset) purchaserLabelInitial else if (purchaserLabelInitial.isBlank()) "স্বাক্ষর" else customOption)
     }
-    var customSignatureText by remember(state.purchaserLabel) {
-        mutableStateOf(if (initialIsPreset) "" else state.purchaserLabel)
+    var customSignatureText by remember(editingBillType) {
+        mutableStateOf(if (initialIsPreset) "" else purchaserLabelInitial)
     }
     var expandedSignatureDropdown by remember { mutableStateOf(false) }
+
+    val editingTypeLabel = if (editingBillType == "transport") "যাতায়াত ভাড়া" else "খাবার বিল"
 
     Column(
         modifier = modifier
@@ -113,10 +124,15 @@ fun SettingsScreen(
             .padding(16.dp)
     ) {
         Text(
-            text = "ক্যাশ মেমো হেডার সেটিংস",
+            text = "ক্যাশ মেমো হেডার সেটিংস — $editingTypeLabel",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = "উপরের ড্রপডাউন থেকে বিলের ধরন পরিবর্তন করে আলাদাভাবে সেটিংস সংরক্ষণ করতে পারবেন",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -141,8 +157,8 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = state.centerName,
-                    onValueChange = onCenterNameChange,
+                    value = centerNameField,
+                    onValueChange = { centerNameField = it },
                     label = { Text("মেডিকেল বা প্রতিষ্ঠানের নাম") },
                     singleLine = true,
                     textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp),
@@ -162,8 +178,8 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = state.subtitle,
-                    onValueChange = onSubtitleChange,
+                    value = subtitleField,
+                    onValueChange = { subtitleField = it },
                     label = { Text("মেমোর সাবটাইটেল / শিরোনাম") },
                     singleLine = true,
                     textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp),
@@ -244,7 +260,6 @@ fun SettingsScreen(
                                 onClick = {
                                     selectedSignatureOption = option
                                     expandedSignatureDropdown = false
-                                    onPurchaserLabelChange(option)
                                 }
                             )
                         }
@@ -263,9 +278,6 @@ fun SettingsScreen(
                             onClick = {
                                 selectedSignatureOption = customOption
                                 expandedSignatureDropdown = false
-                                if (customSignatureText.isNotBlank()) {
-                                    onPurchaserLabelChange(customSignatureText)
-                                }
                             }
                         )
                     }
@@ -276,10 +288,7 @@ fun SettingsScreen(
 
                     OutlinedTextField(
                         value = customSignatureText,
-                        onValueChange = { newText ->
-                            customSignatureText = newText
-                            onPurchaserLabelChange(newText)
-                        },
+                        onValueChange = { newText -> customSignatureText = newText },
                         label = { Text("কাস্টম স্বাক্ষরের শিরোনাম লিখুন") },
                         singleLine = true,
                         textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp),
@@ -307,7 +316,7 @@ fun SettingsScreen(
                         focusManager.clearFocus()
                         keyboardController?.hide()
                         val finalLabel = if (selectedSignatureOption == customOption) customSignatureText.trim() else selectedSignatureOption
-                        onSaveSettings(state.centerName, state.subtitle, finalLabel)
+                        onSaveSettings(editingBillType, centerNameField, subtitleField, finalLabel)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White),
                     shape = RoundedCornerShape(8.dp),

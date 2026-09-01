@@ -118,9 +118,7 @@ object FoodBillImageExporter {
         canvas.drawRect(headerRect, headerBoxBorderPaint)
 
         // Header Title
-        val titleText = memo.centerName.ifBlank {
-            if (memo.billType == "transport") "যাতায়াত ভাড়া" else "খাবার বিল ক্যাশ মেমো"
-        }
+        val titleText = memo.centerName.ifBlank { "খাবার বিল ক্যাশ মেমো" }
         val titlePaint = Paint().apply {
             isAntiAlias = true
             color = Color.BLACK
@@ -207,14 +205,11 @@ object FoodBillImageExporter {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        val isTransport = memo.billType == "transport"
-        val colTitles = arrayOf(
-            "ক্র. নং",
-            if (isTransport) "বিবরণ / রুট" else "খাবারের নাম / বিবরণ",
-            if (isTransport) "মাধ্যম" else "পরিমাণ",
-            "দর",
-            "টাকা"
-        )
+        val colTitles = if (memo.billType == "transport") {
+            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "যাত্রী", "টাকা")
+        } else {
+            arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
+        }
         var curColX = leftX
         for (i in 0 until 5) {
             val colCenterX = curColX + colWidths[i] / 2f

@@ -319,10 +319,11 @@ object PrintUtils {
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        val isTransport = memo.billType == "transport"
-        val nameColLabel = if (isTransport) "বিবরণ / রুট" else "খাবারের নাম / বিবরণ"
-        val qtyColLabel = if (isTransport) "মাধ্যম" else "পরিমাণ"
-        val colTitles = arrayOf("ক্র. নং", nameColLabel, qtyColLabel, "দর", "টাকা")
+        val colTitles = if (memo.billType == "transport") {
+            arrayOf("ক্র. নং", "বিবরণ / রুট", "মাধ্যম", "যাত্রী", "টাকা")
+        } else {
+            arrayOf("ক্র. নং", "খাবারের নাম / বিবরণ", "পরিমাণ", "দর", "টাকা")
+        }
         var currentX = tableLeft
         for (i in 0 until 5) {
             val colCenterX = currentX + colWidths[i] / 2f
@@ -334,13 +335,64 @@ object PrintUtils {
         val validItems = memo.items.filter { it.name.isNotBlank() || it.amount > 0 }
         val totalRows = maxOf(14, validItems.size.coerceAtMost(18))
         val gridTop = tableTop + headerHeight
-        val baseRowHeight = 27.1f // same density as the original fixed 14-row layout
-        val itemFontSize = 11.5f
-        val nameLineHeight = itemFontSize + 3.5f
-        val nameVerticalPad = 6f
         val namePadLeft = 6f
         val namePadRight = 4f
         val maxNameWidth = colWidths[1] - namePadLeft - namePadRight
+
+        // This rotated print layout has a fixed vertical budget (the printable page
+        // width once margins/translation are accounted for). Long descriptions — very
+        // common for transport routes like "বিবরণ / রুট" ("সাহাবাগ থেকে কুড়িল থেকে...")
+        // — wrap onto multiple lines far more often than short market item names. If
+        // the table grows past this budget, whatever is drawn last (the total row and
+        // the signature line) simply falls off the page and never appears at all.
+        // To guarantee the signature always prints, we shrink the row font/height
+        // (down to a still-readable floor) until table + total row + signature all
+        // fit inside the available space, instead of letting rows grow unbounded.
+        val footerReserve = 45f + 14f + 12f // gap to sig line + label text + bottom margin
+        val safeContentBudget = 572f
+        val availableForRows = safeContentBudget - tableTop - headerHeight - 22f /* total row */ - footerReserve
+
+        var fontScale = 1f
+        var itemFontSize = 11.5f
+        var nameLineHeight = itemFontSize + 3.5f
+        var nameVerticalPad = 6f
+        var baseRowHeight = 27.1f // same density as the original fixed 14-row layout
+        var rowNameLines: List<List<String>> = emptyList()
+        var rowHeights = FloatArray(totalRows)
+
+        while (true) {
+            itemFontSize = 11.5f * fontScale
+            nameLineHeight = itemFontSize + 3.5f * fontScale
+            nameVerticalPad = 6f * fontScale
+            baseRowHeight = 27.1f * fontScale
+
+            val measurePaint = Paint().apply {
+                isAntiAlias = true
+                textSize = itemFontSize
+                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            }
+
+            val lines = ArrayList<List<String>>(totalRows)
+            val heights = FloatArray(totalRows)
+            for (r in 0 until totalRows) {
+                if (r < validItems.size) {
+                    val wrapped = CanvasTextUtils.wrapText(validItems[r].name, measurePaint, maxNameWidth)
+                    lines.add(wrapped)
+                    val neededHeight = (wrapped.size * nameLineHeight) + nameVerticalPad
+                    heights[r] = maxOf(baseRowHeight, neededHeight)
+                } else {
+                    lines.add(listOf(""))
+                    heights[r] = baseRowHeight
+                }
+            }
+
+            rowNameLines = lines
+            rowHeights = heights
+
+            val fits = heights.sum() <= availableForRows
+            if (fits || fontScale <= 0.6f) break
+            fontScale = (fontScale - 0.05f).coerceAtLeast(0.6f)
+        }
 
         val gridBorderPaint = Paint().apply {
             isAntiAlias = true
@@ -365,22 +417,6 @@ object PrintUtils {
             color = Color.BLACK
             textSize = itemFontSize
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-        }
-
-        // Pre-compute wrapped name lines & the resulting height for every row first,
-        // so long names grow the row instead of shrinking font size / overlapping.
-        val rowNameLines = ArrayList<List<String>>(totalRows)
-        val rowHeights = FloatArray(totalRows)
-        for (r in 0 until totalRows) {
-            if (r < validItems.size) {
-                val lines = CanvasTextUtils.wrapText(validItems[r].name, itemBoldPaint, maxNameWidth)
-                rowNameLines.add(lines)
-                val neededHeight = (lines.size * nameLineHeight) + nameVerticalPad
-                rowHeights[r] = maxOf(baseRowHeight, neededHeight)
-            } else {
-                rowNameLines.add(listOf(""))
-                rowHeights[r] = baseRowHeight
-            }
         }
 
         var rowY = gridTop
@@ -575,7 +611,7 @@ object PrintUtils {
                                     <th style="width: 12%;">ক্র. নং</th>
                                     <th style="width: 43%;">${if (memo.billType == "transport") "বিবরণ / রুট" else "খাবারের নাম / বিবরণ"}</th>
                                     <th style="width: 15%;">${if (memo.billType == "transport") "মাধ্যম" else "পরিমাণ"}</th>
-                                    <th style="width: 12%;">দর</th>
+                                    <th style="width: 12%;">${if (memo.billType == "transport") "যাত্রী" else "দর"}</th>
                                     <th style="width: 18%;">টাকা</th>
                                 </tr>
                             </thead>

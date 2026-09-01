@@ -147,6 +147,7 @@ fun MemoVoucherCard(
     onUpdateItemName: (id: String, name: String) -> Unit,
     onUpdateItemQty: (id: String, qty: String) -> Unit,
     onUpdateItemRate: (id: String, rate: String) -> Unit,
+    onUpdateItemTraveler: (id: String, name: String) -> Unit = { _, _ -> },
     onUpdateItemAmount: (id: String, amount: String) -> Unit,
     onRemoveItem: (id: String) -> Unit,
     onMoveItem: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
@@ -250,31 +251,25 @@ fun MemoVoucherCard(
                     .fillMaxWidth()
                     .padding(14.dp)
             ) {
-                // Bill Type Selector: বাজার লিস্ট / যাতায়াত ভাড়া
-                if (onBillTypeChange != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        BillTypeChip(
-                            label = "🛒 বাজার লিস্ট",
-                            selected = !isTransport,
-                            onClick = { onBillTypeChange("market") },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("bill_type_market")
-                        )
-                        BillTypeChip(
-                            label = "🚌 যাতায়াত ভাড়া",
-                            selected = isTransport,
-                            onClick = { onBillTypeChange("transport") },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("bill_type_transport")
-                        )
-                    }
+                // Bill Type Toggle: বাজার লিস্ট (market) vs যাতায়াত ভাড়া (transport)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    BillTypeChip(
+                        label = "🛒 বাজার লিস্ট",
+                        selected = !isTransport,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onBillTypeChange?.invoke("market") }
+                    )
+                    BillTypeChip(
+                        label = "🚌 যাতায়াত ভাড়া",
+                        selected = isTransport,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onBillTypeChange?.invoke("transport") }
+                    )
                 }
 
                 // Signature On/Off Toggle
@@ -449,22 +444,20 @@ fun MemoVoucherCard(
                             textAlign = TextAlign.Center
                         )
                     )
-                    if (!isTransport) {
-                        Text(
-                            text = "দর",
-                            modifier = Modifier.weight(0.9f),
-                            style = TextStyle(
-                                fontFamily = HeadingFontFamily,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                textAlign = TextAlign.Center
-                            )
+                    Text(
+                        text = if (isTransport) "যাত্রী" else "দর",
+                        modifier = Modifier.weight(0.9f),
+                        style = TextStyle(
+                            fontFamily = HeadingFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
                         )
-                    }
+                    )
                     Text(
                         text = "টাকা",
-                        modifier = Modifier.weight(if (isTransport) 2.0f else 1.1f),
+                        modifier = Modifier.weight(1.1f),
                         style = TextStyle(
                             fontFamily = HeadingFontFamily,
                             fontSize = 14.sp,
@@ -571,6 +564,7 @@ fun MemoVoucherCard(
                                 onNameChange = { onUpdateItemName(item.id, it) },
                                 onQtyChange = { onUpdateItemQty(item.id, it) },
                                 onRateChange = { onUpdateItemRate(item.id, it) },
+                                onTravelerChange = { onUpdateItemTraveler(item.id, it) },
                                 onAmountChange = { onUpdateItemAmount(item.id, it) },
                                 onRemove = { onRemoveItem(item.id) },
                                 dragHandleModifier = Modifier.pointerInput(Unit) {
@@ -694,9 +688,8 @@ fun MemoVoucherCard(
     }
 }
 
-/** One of the two "বাজার লিস্ট" / "যাতায়াত ভাড়া" selector chips shown at the top of the memo card. */
 @Composable
-private fun BillTypeChip(
+fun BillTypeChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -704,18 +697,21 @@ private fun BillTypeChip(
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(
+            width = if (selected) 0.dp else 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        ),
         modifier = modifier
             .height(38.dp)
-            .clickable(onClick = onClick)
+            .clickable { onClick() }
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Text(
                 text = label,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -734,6 +730,7 @@ fun MemoItemRow(
     onNameChange: (String) -> Unit,
     onQtyChange: (String) -> Unit,
     onRateChange: (String) -> Unit,
+    onTravelerChange: (String) -> Unit = {},
     onAmountChange: (String) -> Unit,
     onRemove: () -> Unit,
     dragHandleModifier: Modifier = Modifier
@@ -801,7 +798,7 @@ fun MemoItemRow(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        // Quantity (or, for যাতায়াত ভাড়া bills, মাধ্যম — bus/rickshaw/etc.)
+        // Quantity
         var showUnitMenu by remember { mutableStateOf(false) }
         val commonUnits = if (isTransport) {
             listOf("বাস", "রিকশা", "সিএনজি", "বাইক", "লেগুনা", "অন্যান্য")
@@ -834,7 +831,12 @@ fun MemoItemRow(
                     }
                     BasicTextField(
                         value = item.quantity,
-                        onValueChange = { onQtyChange(BengaliUtils.toBengaliDigits(it)) },
+                        onValueChange = { newValue ->
+                            // Transport mode's "মাধ্যম" field holds free text (a custom medium
+                            // name like "লেগুনা" or "উবার"), not a quantity, so typed letters
+                            // must pass through as-is instead of being digit-converted.
+                            onQtyChange(if (isTransport) newValue else BengaliUtils.toBengaliDigits(newValue))
+                        },
                         textStyle = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -843,10 +845,14 @@ fun MemoItemRow(
                         ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(onNext = {
-                            if (isTransport) amountFocusRequester.requestFocus() else rateFocusRequester.requestFocus()
-                        }),
+                        keyboardOptions = KeyboardOptions(
+                            // Market mode counts units (numeric), transport mode names a
+                            // medium (text) — forcing the numeric keyboard here was blocking
+                            // users from typing a custom medium name at all.
+                            keyboardType = if (isTransport) KeyboardType.Text else KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(onNext = { rateFocusRequester.requestFocus() }),
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(qtyFocusRequester)
@@ -880,15 +886,17 @@ fun MemoItemRow(
                                 text = { Text(unit, fontSize = 12.sp) },
                                 onClick = {
                                     showUnitMenu = false
-                                    if (isTransport) {
-                                        // For যাতায়াত ভাড়া, this field is just the travel mode itself.
-                                        onQtyChange(unit)
+                                    // Transport mode ("মাধ্যম"): just record the medium itself
+                                    // (বাস / রিকশা / ...) — no forced quantity number, since a
+                                    // fare row isn't counted in units the way a market item is.
+                                    val newQty = if (isTransport) {
+                                        unit
                                     } else {
                                         val digits = item.quantity.filter { it.isDigit() || it == '.' || it in '০'..'৯' }
                                         val bnDigits = BengaliUtils.toBengaliDigits(digits)
-                                        val newQty = if (bnDigits.isNotBlank()) "$bnDigits $unit" else "১ $unit"
-                                        onQtyChange(newQty)
+                                        if (bnDigits.isNotBlank()) "$bnDigits $unit" else "১ $unit"
                                     }
+                                    onQtyChange(newQty)
                                 }
                             )
                         }
@@ -899,17 +907,46 @@ fun MemoItemRow(
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        // Rate (যাতায়াত ভাড়া বিলে দরকার নেই, তাই হাইড থাকে)
-        if (!isTransport) {
-            Box(
-                modifier = Modifier
-                    .weight(0.9f)
-                    .height(40.dp)
-                    .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
-                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
-                    .padding(horizontal = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
+        // Rate (market bills) / Traveler name (transport bills — "কে যাতায়াত করছে")
+        Box(
+            modifier = Modifier
+                .weight(0.9f)
+                .height(40.dp)
+                .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
+                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isTransport) {
+                val displayTraveler = if (item.rate == "0") "" else item.rate
+                BasicTextField(
+                    value = displayTraveler,
+                    onValueChange = { onTravelerChange(it) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { amountFocusRequester.requestFocus() }),
+                    textStyle = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(rateFocusRequester)
+                        .testTag("item_traveler_input_$index")
+                )
+                if (displayTraveler.isBlank()) {
+                    Text(
+                        text = "কে যাচ্ছেন",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        fontSize = 10.5.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            } else {
                 val displayRate = if (item.rate == "0") "" else BengaliUtils.toBengaliDigits(item.rate)
                 BasicTextField(
                     value = displayRate,
@@ -942,15 +979,15 @@ fun MemoItemRow(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.width(4.dp))
         }
+
+        Spacer(modifier = Modifier.width(4.dp))
 
         // Amount
         val displayAmount = if (item.amount <= 0) "" else BengaliUtils.toBengaliDigits(if (item.amount % 1.0 == 0.0) item.amount.toLong().toString() else String.format(java.util.Locale.US, "%.1f", item.amount))
         Box(
             modifier = Modifier
-                .weight(if (isTransport) 2.0f else 1.1f)
+                .weight(1.1f)
                 .height(40.dp)
                 .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(4.dp))
                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))

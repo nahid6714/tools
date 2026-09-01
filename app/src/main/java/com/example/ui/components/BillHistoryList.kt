@@ -301,7 +301,9 @@ fun BillHistoryList(
                                     dateString = bill.dateString,
                                     purchaserName = bill.purchaserName,
                                     items = bill.items.filter { it.name.isNotBlank() || it.amount > 0 },
-                                    totalAmount = bill.totalAmount
+                                    totalAmount = bill.totalAmount,
+                                    billType = bill.billType,
+                                    showSignature = bill.showSignature
                                 )
                                 FoodBillImageExporter.shareMemoImage(context, printMemo)
                             }
@@ -317,7 +319,9 @@ fun BillHistoryList(
                                     dateString = bill.dateString,
                                     purchaserName = bill.purchaserName,
                                     items = bill.items.filter { it.name.isNotBlank() || it.amount > 0 },
-                                    totalAmount = bill.totalAmount
+                                    totalAmount = bill.totalAmount,
+                                    billType = bill.billType,
+                                    showSignature = bill.showSignature
                                 )
                                 FoodBillImageExporter.saveMemoImageToGallery(context, printMemo)
                             }
