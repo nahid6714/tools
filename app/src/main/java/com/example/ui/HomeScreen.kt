@@ -233,10 +233,7 @@ fun HomeScreen(
                                 showMemoSettings -> if (isEn) "Memo Settings – $memoSettingsTypeLabel" else "মেমো হেডার সেটিংস – $memoSettingsTypeLabel"
                                 selectedTool == "food_bill" -> when (selectedTab) {
                                     1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
-                                    else -> if (currentBillState.centerName.isNotBlank())
-                                        "$billTypeLabel - ${currentBillState.centerName}"
-                                    else
-                                        (if (isEn) "$billTypeLabel Memo" else "$billTypeLabel মেমো")
+                                    else -> billTypeLabel
                                 }
                                 else -> if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব"
                             }

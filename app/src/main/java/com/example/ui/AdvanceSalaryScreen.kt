@@ -118,9 +118,9 @@ fun AdvanceSalaryScreen(
                             fontSize = 18.sp,
                             color = Color.White
                         )
-                        if (formState.companyName.isNotBlank() && selectedTab == 0) {
+                        if (selectedTab == 0) {
                             Text(
-                                text = formState.companyName,
+                                text = "Staff Requisition Voucher",
                                 fontSize = 12.sp,
                                 color = Color(0xFFC8E6C9)
                             )
