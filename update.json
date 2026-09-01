@@ -1,7 +1,7 @@
 {
-  "versionCode": 189,
-  "versionName": "1.0.189",
-  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.189/app-release.apk",
-  "releaseNotes": "• Restore project files and keep latest update.json\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
+  "versionCode": 190,
+  "versionName": "1.0.190",
+  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.190/app-release.apk",
+  "releaseNotes": "• Update project from fixed ZIP\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
   "minSupportedVersion": 1
 }
