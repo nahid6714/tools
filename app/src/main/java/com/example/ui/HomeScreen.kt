@@ -504,13 +504,13 @@ fun HomeScreen(
                                         onShowSignatureChange = { viewModel.setShowSignature(it) }
                                     )
 
-                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Spacer(modifier = Modifier.height(10.dp))
 
                                     // Action Buttons Bar
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(bottom = 20.dp),
+                                            .padding(bottom = 12.dp),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -518,7 +518,7 @@ fun HomeScreen(
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .height(48.dp)
+                                                .height(42.dp)
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(
                                                     brush = Brush.horizontalGradient(
@@ -553,11 +553,11 @@ fun HomeScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.Center
                                             ) {
-                                                Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
                                                 Text(
                                                     text = "শেয়ার / প্রিভিউ",
-                                                    fontSize = 13.5.sp,
+                                                    fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = Color.White,
                                                     maxLines = 1,
@@ -570,7 +570,7 @@ fun HomeScreen(
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .height(48.dp)
+                                                .height(42.dp)
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(
                                                     brush = Brush.horizontalGradient(
@@ -586,11 +586,11 @@ fun HomeScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.Center
                                             ) {
-                                                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
                                                 Text(
                                                     text = "সংরক্ষণ",
-                                                    fontSize = 13.5.sp,
+                                                    fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = Color.White,
                                                     maxLines = 1,
@@ -603,12 +603,12 @@ fun HomeScreen(
                                         OutlinedButton(
                                             onClick = { viewModel.resetToInitialTemplate() },
                                             modifier = Modifier
-                                                .height(48.dp)
+                                                .height(42.dp)
                                                 .testTag("clear_bill_button"),
-                                            contentPadding = PaddingValues(horizontal = 10.dp),
+                                            contentPadding = PaddingValues(horizontal = 8.dp),
                                             shape = RoundedCornerShape(8.dp)
                                         ) {
-                                            Icon(Icons.Default.Clear, contentDescription = "নতুন মেমো", tint = Color.DarkGray, modifier = Modifier.size(20.dp))
+                                            Icon(Icons.Default.Clear, contentDescription = "নতুন মেমো", tint = Color.DarkGray, modifier = Modifier.size(17.dp))
                                         }
                                     }
                                 }

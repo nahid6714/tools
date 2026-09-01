@@ -75,6 +75,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
@@ -255,8 +256,8 @@ fun MemoVoucherCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     BillTypeChip(
                         label = "🛒 বাজার লিস্ট",
@@ -277,13 +278,13 @@ fun MemoVoucherCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp),
+                            .padding(bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
                             text = "✍️ স্বাক্ষরের ঘর দেখাও",
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -294,7 +295,9 @@ fun MemoVoucherCard(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                             ),
-                            modifier = Modifier.testTag("show_signature_switch")
+                            modifier = Modifier
+                                .scale(0.8f)
+                                .testTag("show_signature_switch")
                         )
                     }
                 }
@@ -305,57 +308,60 @@ fun MemoVoucherCard(
                     state.items.map { it.name.trim() }.filter { it.isNotBlank() }.toSet()
                 }
 
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(bottom = 8.dp)
                 ) {
-                    // Left: Date Selector with Calendar icon
+                    // Date Selector with Calendar icon (own line so it never fights the
+                    // action buttons for space, even at larger font-scale settings)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clickable { onUpdateDateClick() }
-                            .padding(vertical = 4.dp)
+                            .padding(vertical = 2.dp)
                     ) {
                         Text(
                             text = "তারিখ:",
                             style = TextStyle(
                                 fontFamily = HeadingFontFamily,
-                                fontSize = 14.sp,
+                                fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = BengaliUtils.toBengaliDigits(state.dateString),
                             style = TextStyle(
-                                fontSize = 14.sp,
+                                fontSize = 12.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(5.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(21.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarToday,
                                     contentDescription = "তারিখ পরিবর্তন",
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(15.dp)
+                                    modifier = Modifier.size(11.dp)
                                 )
                             }
                         }
                     }
 
-                    // Right: Compact Action Buttons (Add Item & Quick Preset)
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Compact Action Buttons (Add Item & Quick Preset), full width so
+                    // each button gets equal, predictable space and nothing clips off-screen
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -365,26 +371,30 @@ fun MemoVoucherCard(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                             color = MaterialTheme.colorScheme.surface,
                             modifier = Modifier
-                                .height(32.dp)
+                                .weight(1f)
+                                .height(30.dp)
                                 .clickable(enabled = canAddItem) { onAddItemRow() }
                                 .testTag("add_item_button")
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp)
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Add,
                                     contentDescription = "নতুন আইটেম",
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(15.dp)
+                                    modifier = Modifier.size(13.dp)
                                 )
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Text(
                                     text = "আইটেম",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -394,7 +404,8 @@ fun MemoVoucherCard(
                             presets = quickPresets,
                             addedItemNames = addedItemNames,
                             onPresetClick = onPresetClick,
-                            onManagePresetsClick = { showManagePresetsDialog = true }
+                            onManagePresetsClick = { showManagePresetsDialog = true },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -703,15 +714,17 @@ fun BillTypeChip(
             color = MaterialTheme.colorScheme.outlineVariant
         ),
         modifier = modifier
-            .height(38.dp)
+            .height(34.dp)
             .clickable { onClick() }
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Text(
                 text = label,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }
@@ -1119,24 +1132,26 @@ fun QuickItemSelectorButton(
             shape = RoundedCornerShape(6.dp),
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
-                .height(32.dp)
+                .fillMaxWidth()
+                .height(30.dp)
                 .clickable { expandedDropdown = !expandedDropdown }
                 .testTag("quick_item_select_button")
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize()
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier.size(13.dp)
                 )
                 Spacer(modifier = Modifier.width(2.dp))
                 Text(
                     text = if (expandedDropdown) "দ্রুত ▴" else "দ্রুত ▾",
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 1,
