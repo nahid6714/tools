@@ -1,7 +1,7 @@
 {
-  "versionCode": 205,
-  "versionName": "1.0.205",
-  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.205/app-release.apk",
-  "releaseNotes": "• refactor(ui): rename Remaining Salary to Net Payable Salary\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
+  "versionCode": 206,
+  "versionName": "1.0.206",
+  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.206/app-release.apk",
+  "releaseNotes": "• refactor: update salary advance declaration text\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
   "minSupportedVersion": 1
 }
