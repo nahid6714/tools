@@ -488,6 +488,48 @@ fun AdvanceSalaryFormCard(
                 }
             }
 
+            // Remaining Salary Display Box
+            if (state.monthlySalary > 0.0 && !isOverLimit) {
+                val remainingSalary = (state.monthlySalary - state.previousAdvancePending - state.advanceAmount).coerceAtLeast(0.0)
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFE8F5E9))
+                        .border(1.dp, Color(0xFFA5D6A7), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "অগ্রিম নেওয়ার পর অবশিষ্ট বেতন থাকবে:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF2E7D32)
+                            )
+                            if (state.advanceAmount > 0.0) {
+                                Text(
+                                    text = "বেতন (৳${EnglishUtils.formatEnglishCurrency(state.monthlySalary)}) - পূর্বের অগ্রিম (৳${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}) - বর্তমান অগ্রিম (৳${EnglishUtils.formatEnglishCurrency(state.advanceAmount)})",
+                                    fontSize = 10.5.sp,
+                                    color = Color(0xFF388E3C)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "৳ ${EnglishUtils.formatEnglishCurrency(remainingSalary)}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1B5E20)
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             // Reason for Advance (Editable + Dropdown)

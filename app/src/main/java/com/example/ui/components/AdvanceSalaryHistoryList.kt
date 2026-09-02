@@ -285,13 +285,21 @@ fun AdvanceSalaryHistoryCardItem(
 
             // Reason & Repayment summary
             if (entity.monthlySalary > 0 || entity.previousAdvancePending > 0) {
+                val remaining = if (entity.monthlySalary > 0) {
+                    (entity.monthlySalary - entity.previousAdvancePending - entity.advanceAmount).coerceAtLeast(0.0)
+                } else 0.0
+
                 val salaryDetails = buildString {
                     if (entity.monthlySalary > 0) {
                         append("Salary: Tk. ${EnglishUtils.formatEnglishCurrency(entity.monthlySalary)}")
                     }
                     if (entity.previousAdvancePending > 0) {
                         if (isNotEmpty()) append(" • ")
-                        append("Prev Advance: Tk. ${EnglishUtils.formatEnglishCurrency(entity.previousAdvancePending)}")
+                        append("Prev Adv: Tk. ${EnglishUtils.formatEnglishCurrency(entity.previousAdvancePending)}")
+                    }
+                    if (entity.monthlySalary > 0) {
+                        if (isNotEmpty()) append(" • ")
+                        append("Remaining: Tk. ${EnglishUtils.formatEnglishCurrency(remaining)}")
                     }
                 }
                 Text(
