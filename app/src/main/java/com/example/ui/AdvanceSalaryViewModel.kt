@@ -346,22 +346,28 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         _formState.update { it.copy(showSignatures = show) }
     }
 
-    fun saveApplication() {
+    fun saveApplication(notifyUser: Boolean = true, onSaved: ((Long) -> Unit)? = null) {
         val current = _formState.value
         if (current.applicantName.isBlank()) {
-            viewModelScope.launch { _uiEvent.emit("Please enter employee name") }
+            if (notifyUser) {
+                viewModelScope.launch { _uiEvent.emit("Please enter employee name") }
+            }
             return
         }
         if (current.advanceAmount <= 0.0) {
-            viewModelScope.launch { _uiEvent.emit("Please enter advance amount") }
+            if (notifyUser) {
+                viewModelScope.launch { _uiEvent.emit("Please enter advance amount") }
+            }
             return
         }
         if (current.monthlySalary > 0.0) {
             val maxEligible = (current.monthlySalary - current.previousAdvancePending).coerceAtLeast(0.0)
             if (current.advanceAmount > maxEligible) {
-                viewModelScope.launch {
-                    val maxFormatted = EnglishUtils.formatEnglishCurrency(maxEligible)
-                    _uiEvent.emit("Advance cannot exceed eligible limit of Tk. $maxFormatted (Salary Tk. ${EnglishUtils.formatEnglishCurrency(current.monthlySalary)} - Prev Advance Tk. ${EnglishUtils.formatEnglishCurrency(current.previousAdvancePending)})")
+                if (notifyUser) {
+                    viewModelScope.launch {
+                        val maxFormatted = EnglishUtils.formatEnglishCurrency(maxEligible)
+                        _uiEvent.emit("Advance cannot exceed eligible limit of Tk. $maxFormatted (Salary Tk. ${EnglishUtils.formatEnglishCurrency(current.monthlySalary)} - Prev Advance Tk. ${EnglishUtils.formatEnglishCurrency(current.previousAdvancePending)})")
+                    }
                 }
                 return
             }
@@ -400,14 +406,22 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
 
                 if (current.editingId != null && current.editingId > 0L) {
                     repository.updateApplication(entity)
-                    _uiEvent.emit("Advance salary application updated successfully")
+                    onSaved?.invoke(current.editingId)
+                    if (notifyUser) {
+                        _uiEvent.emit("Advance salary application updated successfully")
+                    }
                 } else {
                     val id = repository.insertApplication(entity)
                     _formState.update { it.copy(editingId = id) }
-                    _uiEvent.emit("Advance salary application saved successfully")
+                    onSaved?.invoke(id)
+                    if (notifyUser) {
+                        _uiEvent.emit("Advance salary application saved successfully")
+                    }
                 }
             } catch (e: Exception) {
-                _uiEvent.emit("Save failed: ${e.message}")
+                if (notifyUser) {
+                    _uiEvent.emit("Save failed: ${e.message}")
+                }
             }
         }
     }

@@ -265,7 +265,10 @@ fun AdvanceSalaryScreen(
 
                             // Print / Preview Button
                             Button(
-                                onClick = { showPreviewDialog = true },
+                                onClick = {
+                                    viewModel.saveApplication(notifyUser = false)
+                                    showPreviewDialog = true
+                                },
                                 modifier = Modifier
                                     .weight(1.2f)
                                     .height(48.dp)
@@ -287,7 +290,10 @@ fun AdvanceSalaryScreen(
                         ) {
                             // Share Image
                             OutlinedButton(
-                                onClick = { AdvanceSalaryImageExporter.shareAdvanceSalaryImage(context, formState) },
+                                onClick = {
+                                    viewModel.saveApplication(notifyUser = false)
+                                    AdvanceSalaryImageExporter.shareAdvanceSalaryImage(context, formState)
+                                },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(44.dp),
@@ -300,7 +306,10 @@ fun AdvanceSalaryScreen(
 
                             // Share PDF
                             OutlinedButton(
-                                onClick = { AdvanceSalaryPrintUtils.shareAdvanceSalaryPdf(context, formState, null, PrintPosition.TOP) },
+                                onClick = {
+                                    viewModel.saveApplication(notifyUser = false)
+                                    AdvanceSalaryPrintUtils.shareAdvanceSalaryPdf(context, formState, null, PrintPosition.TOP)
+                                },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(44.dp),
@@ -346,15 +355,19 @@ fun AdvanceSalaryScreen(
             formState = formState,
             onDismiss = { showPreviewDialog = false },
             onPrint = { topState, bottomState, pos ->
+                viewModel.saveApplication(notifyUser = false)
                 AdvanceSalaryPrintUtils.printAdvanceSalary(context, topState, bottomState, pos)
             },
             onSharePdf = { topState, bottomState, pos ->
+                viewModel.saveApplication(notifyUser = false)
                 AdvanceSalaryPrintUtils.shareAdvanceSalaryPdf(context, topState, bottomState, pos)
             },
             onSaveImage = { state ->
+                viewModel.saveApplication(notifyUser = false)
                 AdvanceSalaryImageExporter.saveAdvanceSalaryImageToGallery(context, state)
             },
             onShareImage = { state ->
+                viewModel.saveApplication(notifyUser = false)
                 AdvanceSalaryImageExporter.shareAdvanceSalaryImage(context, state)
             }
         )
