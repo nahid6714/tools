@@ -299,7 +299,7 @@ fun AdvanceSalaryHistoryCardItem(
                     }
                     if (entity.monthlySalary > 0) {
                         if (isNotEmpty()) append(" • ")
-                        append("Remaining: Tk. ${EnglishUtils.formatEnglishCurrency(remaining)}")
+                        append("Net Payable: Tk. ${EnglishUtils.formatEnglishCurrency(remaining)}")
                     }
                 }
                 Text(

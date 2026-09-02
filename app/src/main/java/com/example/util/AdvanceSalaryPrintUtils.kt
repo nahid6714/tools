@@ -412,9 +412,9 @@ object AdvanceSalaryPrintUtils {
         canvas.drawText(inWordsText, colValueX, s2r2Y, cellValuePaint)
         canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 2f), innerRight, sec2TableTop + (sec2RowH * 2f), dashedLinePaint)
 
-        // Row 3: Remaining Salary
+        // Row 3: Net Payable Salary
         val s2r3Y = sec2TableTop + (sec2RowH * 2f) + (sec2RowH * 0.68f)
-        canvas.drawText("Remaining Salary", innerLeft + 8f, s2r3Y, cellLabelPaint)
+        canvas.drawText("Net Payable Salary", innerLeft + 8f, s2r3Y, cellLabelPaint)
         canvas.drawText(":", colColonX, s2r3Y, cellColonPaint)
         val remainingSalary = if (state.monthlySalary > 0) {
             (state.monthlySalary - state.previousAdvancePending - state.advanceAmount).coerceAtLeast(0.0)

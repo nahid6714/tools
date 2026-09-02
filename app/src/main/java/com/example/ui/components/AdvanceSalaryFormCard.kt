@@ -488,7 +488,7 @@ fun AdvanceSalaryFormCard(
                 }
             }
 
-            // Remaining Salary Display Box
+            // Net Payable Salary Display Box
             if (state.monthlySalary > 0.0 && !isOverLimit) {
                 val remainingSalary = (state.monthlySalary - state.previousAdvancePending - state.advanceAmount).coerceAtLeast(0.0)
                 Spacer(modifier = Modifier.height(6.dp))
@@ -507,7 +507,7 @@ fun AdvanceSalaryFormCard(
                     ) {
                         Column {
                             Text(
-                                text = "অগ্রিম নেওয়ার পর অবশিষ্ট বেতন থাকবে:",
+                                text = "Net Payable Salary / অবশিষ্ট প্রদেয় বেতন:",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF2E7D32)
