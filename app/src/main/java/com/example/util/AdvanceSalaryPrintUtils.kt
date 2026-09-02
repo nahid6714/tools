@@ -452,8 +452,8 @@ object AdvanceSalaryPrintUtils {
 
         // 8. Undertaking / Declaration (Moved down with spacious margin after Deduction Starts)
         curY = sec2TableTop + sec2TableH + (if (hasPrevAdvance) 16f else 22f)
-        canvas.drawText("I undertake to repay the above amount from my salary and authorize", innerLeft, curY, undertakingPaint)
-        canvas.drawText("deduction from my monthly salary as stated above.", innerLeft, curY + 13f, undertakingPaint)
+        canvas.drawText("Declaration: I hereby authorize the management to deduct the stated advance", innerLeft, curY, undertakingPaint)
+        canvas.drawText("amount from my monthly salary in accordance with the terms mentioned above.", innerLeft, curY + 13f, undertakingPaint)
 
         // 9. Signatures (Applicant's Signature on left, Authorized Signature on right)
         if (state.showSignatures) {
