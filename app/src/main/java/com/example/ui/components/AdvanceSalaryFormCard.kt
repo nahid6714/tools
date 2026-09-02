@@ -507,7 +507,7 @@ fun AdvanceSalaryFormCard(
                     ) {
                         Column {
                             Text(
-                                text = "Net Payable Salary / অবশিষ্ট প্রদেয় বেতন:",
+                                text = "Remaining Salary / অবশিষ্ট বেতন:",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF2E7D32)

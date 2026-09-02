@@ -412,9 +412,9 @@ object AdvanceSalaryPrintUtils {
         canvas.drawText(inWordsText, colValueX, s2r2Y, cellValuePaint)
         canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 2f), innerRight, sec2TableTop + (sec2RowH * 2f), dashedLinePaint)
 
-        // Row 3: Net Payable Salary
+        // Row 3: Remaining Salary
         val s2r3Y = sec2TableTop + (sec2RowH * 2f) + (sec2RowH * 0.68f)
-        canvas.drawText("Net Payable Salary", innerLeft + 8f, s2r3Y, cellLabelPaint)
+        canvas.drawText("Remaining Salary", innerLeft + 8f, s2r3Y, cellLabelPaint)
         canvas.drawText(":", colColonX, s2r3Y, cellColonPaint)
         val remainingSalary = if (state.monthlySalary > 0) {
             (state.monthlySalary - state.previousAdvancePending - state.advanceAmount).coerceAtLeast(0.0)
@@ -427,7 +427,7 @@ object AdvanceSalaryPrintUtils {
         val s2r4Y = sec2TableTop + (sec2RowH * 3f) + (sec2RowH * 0.68f)
         canvas.drawText("Reason", innerLeft + 8f, s2r4Y, cellLabelPaint)
         canvas.drawText(":", colColonX, s2r4Y, cellColonPaint)
-        val reasonText = state.reason.ifBlank { "Family Emergency" }
+        val reasonText = state.reason.ifBlank { "Personal Emergency" }
         canvas.drawText(reasonText, colValueX, s2r4Y, cellValuePaint)
         canvas.drawLine(innerLeft, sec2TableTop + (sec2RowH * 4f), innerRight, sec2TableTop + (sec2RowH * 4f), dashedLinePaint)
 
@@ -450,10 +450,69 @@ object AdvanceSalaryPrintUtils {
         val dedStart = state.deductionStartMonth.ifBlank { "Next Month" }
         canvas.drawText(dedStart, colValueX, s2r6Y, cellValuePaint)
 
-        // 8. Undertaking / Declaration (Moved down with spacious margin after Deduction Starts)
-        curY = sec2TableTop + sec2TableH + (if (hasPrevAdvance) 16f else 22f)
-        canvas.drawText("Declaration: I hereby authorize the management to deduct the stated advance", innerLeft, curY, undertakingPaint)
-        canvas.drawText("amount from my monthly salary in accordance with the terms mentioned above.", innerLeft, curY + 13f, undertakingPaint)
+        // 8. Declaration Card Box with pill badge & connector lines
+        curY = sec2TableTop + sec2TableH + (if (hasPrevAdvance) 14f else 18f)
+        val declBoxTop = curY
+        val declBoxH = if (hasPrevAdvance) 44f else 48f
+        val declBoxRect = RectF(innerLeft, declBoxTop, innerRight, declBoxTop + declBoxH)
+        canvas.drawRoundRect(declBoxRect, 8f, 8f, solidBorderPaint)
+
+        // Badge centered on top line of declaration box
+        val badgeDeclW = 86f
+        val badgeDeclH = 15f
+        val badgeDeclRect = RectF(centerX - (badgeDeclW / 2f), declBoxTop - (badgeDeclH / 2f), centerX + (badgeDeclW / 2f), declBoxTop + (badgeDeclH / 2f))
+
+        // White mask behind badge and side lines
+        val maskRect = RectF(centerX - 80f, declBoxTop - (badgeDeclH / 2f) - 1f, centerX + 80f, declBoxTop + (badgeDeclH / 2f) + 1f)
+        val whiteBgPaint = Paint().apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        }
+        canvas.drawRect(maskRect, whiteBgPaint)
+
+        // Side connector lines and bullets: ●—— DECLARATION ——●
+        val connectorPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            strokeWidth = 1f
+            style = Paint.Style.STROKE
+        }
+        val dotPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            style = Paint.Style.FILL
+        }
+        // Left line & dot
+        canvas.drawLine(centerX - 76f, declBoxTop, centerX - (badgeDeclW / 2f) - 4f, declBoxTop, connectorPaint)
+        canvas.drawCircle(centerX - 76f, declBoxTop, 2.2f, dotPaint)
+
+        // Right line & dot
+        canvas.drawLine(centerX + (badgeDeclW / 2f) + 4f, declBoxTop, centerX + 76f, declBoxTop, connectorPaint)
+        canvas.drawCircle(centerX + 76f, declBoxTop, 2.2f, dotPaint)
+
+        // Draw black pill badge
+        canvas.drawRoundRect(badgeDeclRect, 4f, 4f, badgeBgPaint)
+        val badgeCenterTextPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.WHITE
+            textSize = 8.5f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("DECLARATION", centerX, declBoxTop + 3.2f, badgeCenterTextPaint)
+
+        // Inside declaration text (italic, centered)
+        val declTextPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.BLACK
+            textSize = 8.2f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            textAlign = Paint.Align.CENTER
+        }
+        val line1Y = declBoxTop + 20f
+        val line2Y = declBoxTop + 33f
+        canvas.drawText("I hereby authorize the management to deduct the stated advance amount", centerX, line1Y, declTextPaint)
+        canvas.drawText("from my monthly salary in accordance with the terms mentioned above.", centerX, line2Y, declTextPaint)
 
         // 9. Signatures (Applicant's Signature on left, Authorized Signature on right)
         if (state.showSignatures) {
