@@ -48,7 +48,7 @@ import com.example.ui.theme.DarkForestGreen
 @Composable
 fun AppSplashScreen(
     appName: String = "Digital Tool",
-    subtitle: String = "Smart Digital Tools Hub"
+    subtitle: String = "Smart Digital Utility Tools"
 ) {
     val context = LocalContext.current
     val logoBitmap = remember(context) {

@@ -964,7 +964,7 @@ fun GlobalSettingsScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "ডিজিটাল টুলস হাব (Digital Tools Hub)",
+                    text = "ডিজিটাল টুল (Digital Tool)",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary

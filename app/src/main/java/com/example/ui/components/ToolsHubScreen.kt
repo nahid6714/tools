@@ -100,15 +100,6 @@ fun ToolsHubScreen(
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
             accentColor = MaterialTheme.colorScheme.secondary
-        ),
-        AppToolItem(
-            id = "app_settings",
-            title = if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস",
-            subtitle = if (isEn) "Data download & backup, input/restore, theme, language & updates" else "ডাটা ডাউনলোড ও ব্যাকআপ, ইনপুট/রিস্টোর, থিম, ভাষা ও অ্যাপ আপডেট",
-            icon = Icons.Default.Settings,
-            isAvailable = true,
-            badgeText = if (isEn) "Management" else "ব্যবস্থাপনা",
-            accentColor = MaterialTheme.colorScheme.tertiary
         )
     )
 
@@ -155,7 +146,7 @@ fun ToolsHubScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব",
+                            text = if (isEn) "Digital Tool" else "ডিজিটাল টুল",
                             fontFamily = HeadingFontFamily,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,

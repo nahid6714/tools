@@ -286,7 +286,7 @@ fun HomeScreen(
                                     1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
                                     else -> billTypeLabel
                                 }
-                                else -> if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব"
+                                else -> if (isEn) "Digital Tool" else "ডিজিটাল টুল"
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -404,7 +404,7 @@ fun HomeScreen(
                                 IconButton(onClick = { selectedTool = null }) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "টুলস হাবে ফিরে যান",
+                                        contentDescription = "ফিরে যান",
                                         tint = Color.White
                                     )
                                 }
