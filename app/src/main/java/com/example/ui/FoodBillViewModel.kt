@@ -60,6 +60,9 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
     private val _themeMode = MutableStateFlow(prefs.getString("app_theme_mode", "system") ?: "system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
+    private val _themeColor = MutableStateFlow(prefs.getString("app_theme_color", "emerald") ?: "emerald")
+    val themeColor: StateFlow<String> = _themeColor.asStateFlow()
+
     private val _appLanguage = MutableStateFlow(prefs.getString("app_language", "bn") ?: "bn")
     val appLanguage: StateFlow<String> = _appLanguage.asStateFlow()
 
@@ -80,6 +83,15 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
     fun dismissOnboarding() {
         _showOnboarding.value = false
         prefs.edit().putBoolean("onboarding_shown", true).apply()
+    }
+
+    fun setThemeColor(colorKey: String) {
+        _themeColor.value = colorKey
+        prefs.edit().putString("app_theme_color", colorKey).apply()
+        viewModelScope.launch {
+            val msg = if (_appLanguage.value == "en") "Theme color updated" else "থিমের কালার পরিবর্তন করা হয়েছে"
+            _uiEvent.emit(msg)
+        }
     }
 
     fun setThemeMode(mode: String) {

@@ -103,6 +103,7 @@ fun HomeScreen(
     val quickPresets by viewModel.quickPresets.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val themeColor by viewModel.themeColor.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val showOnboarding by viewModel.showOnboarding.collectAsStateWithLifecycle()
@@ -430,9 +431,11 @@ fun HomeScreen(
                     if (showGlobalSettings) {
                         GlobalSettingsScreen(
                             themeMode = themeMode,
+                            themeColor = themeColor,
                             appLanguage = appLanguage,
                             fontScale = fontScale,
                             onThemeModeChange = { mode -> viewModel.setThemeMode(mode) },
+                            onThemeColorChange = { color -> viewModel.setThemeColor(color) },
                             onLanguageChange = { lang -> viewModel.setAppLanguage(lang) },
                             onFontScaleChange = { scale -> viewModel.setFontScale(scale) },
                             onOpenMemoSettings = {
@@ -530,7 +533,7 @@ fun HomeScreen(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        // Print / Preview Button (Forest Green Gradient)
+                                        // Print / Preview Button
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
@@ -538,7 +541,10 @@ fun HomeScreen(
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(
                                                     brush = Brush.horizontalGradient(
-                                                        colors = listOf(Color(0xFF0D47A1), Color(0xFF1565C0))
+                                                        colors = listOf(
+                                                            MaterialTheme.colorScheme.secondary,
+                                                            MaterialTheme.colorScheme.primary
+                                                        )
                                                     )
                                                 )
                                                 .clickable {
@@ -584,7 +590,7 @@ fun HomeScreen(
                                             }
                                         }
 
-                                        // Save Button (Deep Emerald/Forest Green Gradient)
+                                        // Save Button
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
@@ -592,7 +598,10 @@ fun HomeScreen(
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(
                                                     brush = Brush.horizontalGradient(
-                                                        colors = listOf(Color(0xFF1565C0), Color(0xFF03A9F4))
+                                                        colors = listOf(
+                                                            MaterialTheme.colorScheme.primary,
+                                                            MaterialTheme.colorScheme.tertiary
+                                                        )
                                                     )
                                                 )
                                                 .clickable { viewModel.saveCurrentBill() }

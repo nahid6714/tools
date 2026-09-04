@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -92,8 +93,9 @@ fun AppSplashScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        DarkForestGreen,
-                        Color(0xFF0A1F17)
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.primary,
+                        Color(0xFF090D16)
                     )
                 )
             )

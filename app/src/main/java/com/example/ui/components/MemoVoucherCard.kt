@@ -192,16 +192,20 @@ fun MemoVoucherCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Header Banner with Forest Green Gradient - Editable Center Name & Subtitle
+            // Header Banner with Theme Palette Gradient - Editable Center Name & Subtitle
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(DarkForestGreen, LightForestGreen)
+                            colors = listOf(
+                                MaterialTheme.colorScheme.secondary,
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
+                            )
                         )
                     )
-                    .padding(vertical = 16.dp, horizontal = 12.dp),
+                    .padding(vertical = 18.dp, horizontal = 14.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -211,7 +215,7 @@ fun MemoVoucherCard(
                         onValueChange = { onCenterNameChange?.invoke(it) },
                         textStyle = TextStyle(
                             fontFamily = HeadingFontFamily,
-                            fontSize = 20.sp,
+                            fontSize = 21.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             textAlign = TextAlign.Center
@@ -227,7 +231,7 @@ fun MemoVoucherCard(
                                         text = "প্রতিষ্ঠানের নাম / টাইটেল লিখুন...",
                                         style = TextStyle(
                                             fontFamily = HeadingFontFamily,
-                                            fontSize = 18.sp,
+                                            fontSize = 19.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White.copy(alpha = 0.65f),
                                             textAlign = TextAlign.Center
@@ -240,6 +244,42 @@ fun MemoVoucherCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("memo_center_name_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Subtitle / Address Field
+                    BasicTextField(
+                        value = state.subtitle,
+                        onValueChange = { onSubtitleChange?.invoke(it) },
+                        textStyle = TextStyle(
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.90f),
+                            textAlign = TextAlign.Center
+                        ),
+                        cursorBrush = SolidColor(Color.White),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        decorationBox = { innerTextField ->
+                            Box(contentAlignment = Alignment.Center) {
+                                if (state.subtitle.isBlank()) {
+                                    Text(
+                                        text = "ঠিকানা / বিবরণ লিখুন...",
+                                        style = TextStyle(
+                                            fontSize = 12.5.sp,
+                                            color = Color.White.copy(alpha = 0.55f),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("memo_subtitle_input")
                     )
                 }
             }
@@ -1062,6 +1102,8 @@ fun MemoItemRow(
 
 @Composable
 fun SawtoothDivider() {
+    val toothColor = MaterialTheme.colorScheme.primary
+    val ruleGold = MaterialTheme.colorScheme.secondary
     Column(modifier = Modifier.fillMaxWidth()) {
         Canvas(
             modifier = Modifier
@@ -1087,15 +1129,15 @@ fun SawtoothDivider() {
             path.lineTo(width, 0f)
             path.close()
 
-            drawPath(path = path, color = DarkForestGreen)
+            drawPath(path = path, color = toothColor)
         }
 
-        // Double rule line (Brass Accent + Ledger Red)
+        // Double rule line (Classic Gold / Accent + Ledger Red)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(1.5.dp)
-                .background(BrassAccent)
+                .height(2.dp)
+                .background(ruleGold)
         )
         Spacer(modifier = Modifier.height(1.dp))
         Box(

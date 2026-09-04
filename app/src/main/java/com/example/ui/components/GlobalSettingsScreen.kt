@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.BuildConfig
 import com.example.ui.theme.HeadingFontFamily
+import com.example.ui.theme.ThemePalettes
 import com.example.update.AppUpdateManager
 import com.example.update.UpdateDialog
 import com.example.update.UpdateInfo
@@ -85,9 +86,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun GlobalSettingsScreen(
     themeMode: String = "system",
+    themeColor: String = "emerald",
     appLanguage: String = "bn",
     fontScale: Float = 1.0f,
     onThemeModeChange: (String) -> Unit = {},
+    onThemeColorChange: (String) -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onFontScaleChange: (Float) -> Unit = {},
     onOpenMemoSettings: () -> Unit = {},
@@ -334,40 +337,119 @@ fun GlobalSettingsScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 2. Theme Settings Section
+        // 2. Theme & Color Palette Section
         SettingsCard(
-            title = if (isEn) "App Theme (Theme Mode)" else "অ্যাপ থিম (Theme Mode)",
+            title = if (isEn) "App Theme & Color" else "অ্যাপ থিম ও কালার (Theme & Color)",
             icon = Icons.Default.ColorLens
         ) {
+            Text(
+                text = if (isEn) "Display Mode:" else "ডিসপ্লে মোড:",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(6.dp))
             val themes = listOf(
-                "system" to if (isEn) "System Default" else "সিস্টেম ডিফল্ট (System Default)",
-                "light" to if (isEn) "Light Mode" else "লাইট মোড (Light Mode)",
-                "dark" to if (isEn) "Dark Mode" else "ডার্ক মোড (Dark Mode)"
+                "system" to if (isEn) "System" else "সিস্টেম",
+                "light" to if (isEn) "Light" else "লাইট",
+                "dark" to if (isEn) "Dark" else "ডার্ক"
             )
 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 themes.forEach { (key, label) ->
                     val isSelected = (themeMode == key)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
                             .clickable { onThemeModeChange(key) }
-                            .padding(vertical = 4.dp, horizontal = 6.dp)
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        RadioButton(
-                            selected = isSelected,
-                            onClick = { onThemeModeChange(key) },
-                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = label,
-                            fontSize = 13.5.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            fontSize = 12.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
                         )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            Divider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = if (isEn) "Select Theme Color:" else "থিমের কালার প্যালেট নির্বাচন করুন:",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ThemePalettes.chunked(2).forEach { rowPalettes ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowPalettes.forEach { palette ->
+                            val isSelected = (themeColor == palette.id)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) palette.primary else MaterialTheme.colorScheme.outline,
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    .background(
+                                        if (isSelected) palette.container.copy(alpha = 0.35f)
+                                        else MaterialTheme.colorScheme.surface
+                                    )
+                                    .clickable { onThemeColorChange(palette.id) }
+                                    .padding(horizontal = 10.dp, vertical = 10.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(26.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                androidx.compose.ui.graphics.Brush.linearGradient(palette.previewGradient)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSelected) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isEn) palette.nameEn else palette.nameBn,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) palette.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

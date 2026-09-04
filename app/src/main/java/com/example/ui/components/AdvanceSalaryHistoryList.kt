@@ -106,29 +106,36 @@ fun AdvanceSalaryHistoryList(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Count Summary
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // Count & Total Summary Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
-            Text(
-                text = "Total Records: ${historyList.size}",
-                fontFamily = HeadingFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Total Records: ${historyList.size}",
+                    fontFamily = HeadingFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
-            val totalAdvanceSum = historyList.sumOf { it.advanceAmount }
-            Text(
-                text = "Total Advance: Tk. ${EnglishUtils.formatEnglishCurrency(totalAdvanceSum)}/-",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFC62828)
-            )
+                val totalAdvanceSum = historyList.sumOf { it.advanceAmount }
+                Text(
+                    text = "Total Advance: Tk. ${EnglishUtils.formatEnglishCurrency(totalAdvanceSum)}/-",
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -220,7 +227,8 @@ fun AdvanceSalaryHistoryCardItem(
             .testTag("advance_salary_item_${entity.id}"),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.5.dp)
     ) {
         Column(
             modifier = Modifier

@@ -20,7 +20,8 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       val themeMode by foodBillViewModel.themeMode.collectAsStateWithLifecycle()
-      MyApplicationTheme(themeMode = themeMode) {
+      val themeColor by foodBillViewModel.themeColor.collectAsStateWithLifecycle()
+      MyApplicationTheme(themeMode = themeMode, themeColor = themeColor) {
         HomeScreen(viewModel = foodBillViewModel)
       }
     }

@@ -120,28 +120,37 @@ fun AdvanceSalaryFormCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header Banner: Official Paper Title
+            // Header Banner: Official Executive Requisition Voucher Title
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFE8F5E9))
-                    .border(1.dp, Color(0xFF81C784), RoundedCornerShape(12.dp))
-                    .padding(14.dp),
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.secondary,
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
+                            )
+                        )
+                    )
+                    .padding(vertical = 16.dp, horizontal = 14.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "ADVANCE SALARY APPLICATION",
                         fontFamily = HeadingFontFamily,
-                        fontSize = 18.sp,
+                        fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1B5E20)
+                        color = Color.White
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Staff & Employee Advance Requisition Voucher",
-                        fontSize = 12.sp,
-                        color = Color(0xFF388E3C)
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White.copy(alpha = 0.85f)
                     )
                 }
             }

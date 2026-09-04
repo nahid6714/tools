@@ -90,7 +90,7 @@ fun ToolsHubScreen(
             icon = Icons.Default.Restaurant,
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
-            accentColor = Color(0xFF1565C0)
+            accentColor = MaterialTheme.colorScheme.primary
         ),
         AppToolItem(
             id = "advance_salary",
@@ -99,7 +99,7 @@ fun ToolsHubScreen(
             icon = Icons.AutoMirrored.Filled.ReceiptLong,
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
-            accentColor = Color(0xFF1B5E20)
+            accentColor = MaterialTheme.colorScheme.secondary
         )
     )
 
@@ -118,9 +118,9 @@ fun ToolsHubScreen(
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
-                            Color(0xFF0D47A1),
-                            Color(0xFF1565C0),
-                            Color(0xFF03A9F4)
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.tertiary
                         )
                     )
                 )
@@ -303,13 +303,18 @@ fun ToolCardItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
+            .border(
+                width = if (tool.isAvailable) 1.dp else 0.5.dp,
+                color = if (tool.isAvailable) tool.accentColor.copy(alpha = 0.25f) else MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(14.dp)
+            )
             .clickable { onClick() }
             .testTag("tool_card_${tool.id}"),
         colors = CardDefaults.cardColors(
             containerColor = if (tool.isAvailable) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (tool.isAvailable) 3.dp else 1.dp
+            defaultElevation = if (tool.isAvailable) 3.5.dp else 1.dp
         ),
         shape = RoundedCornerShape(14.dp)
     ) {

@@ -122,7 +122,7 @@ fun AdvanceSalaryScreen(
                             Text(
                                 text = "Staff Requisition Voucher",
                                 fontSize = 12.sp,
-                                color = Color(0xFFC8E6C9)
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                             )
                         }
                     }
@@ -151,7 +151,7 @@ fun AdvanceSalaryScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1B5E20), // Rich Dark Green
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White
                 )
             )
@@ -167,9 +167,9 @@ fun AdvanceSalaryScreen(
                     icon = { Icon(Icons.Default.Edit, contentDescription = "Application Form") },
                     label = { Text("Application", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.White,
-                        selectedTextColor = Color(0xFF1B5E20),
-                        indicatorColor = Color(0xFF1B5E20)
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer
                     ),
                     modifier = Modifier.testTag("tab_advance_form")
                 )
@@ -180,9 +180,9 @@ fun AdvanceSalaryScreen(
                     icon = { Icon(Icons.Default.History, contentDescription = "Saved List") },
                     label = { Text("History", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.White,
-                        selectedTextColor = Color(0xFF1B5E20),
-                        indicatorColor = Color(0xFF1B5E20)
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer
                     ),
                     modifier = Modifier.testTag("tab_advance_history")
                 )
@@ -251,7 +251,7 @@ fun AdvanceSalaryScreen(
                                     .weight(1.2f)
                                     .height(48.dp)
                                     .testTag("save_advance_button"),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B5E20)),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
                                 Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -273,7 +273,7 @@ fun AdvanceSalaryScreen(
                                     .weight(1.2f)
                                     .height(48.dp)
                                     .testTag("preview_advance_button"),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0277BD)),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
                                 Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(20.dp))
