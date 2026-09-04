@@ -208,11 +208,61 @@ fun HomeScreen(
                 selectedTool == "food_bill" && selectedTab == 0
             var showTitleTypeMenu by remember { mutableStateOf(false) }
 
-            if (selectedTool == "advance_salary") {
+            if (showGlobalSettings) {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস",
+                                    fontFamily = HeadingFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 19.sp
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { showGlobalSettings = false }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "ফিরে যান",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                titleContentColor = Color.White
+                            )
+                        )
+                    },
+                    snackbarHost = { SnackbarHost(snackbarHostState) }
+                ) { innerPadding ->
+                    GlobalSettingsScreen(
+                        themeMode = themeMode,
+                        themeColor = themeColor,
+                        appLanguage = appLanguage,
+                        fontScale = fontScale,
+                        onThemeModeChange = { mode -> viewModel.setThemeMode(mode) },
+                        onThemeColorChange = { color -> viewModel.setThemeColor(color) },
+                        onLanguageChange = { lang -> viewModel.setAppLanguage(lang) },
+                        onFontScaleChange = { scale -> viewModel.setFontScale(scale) },
+                        onOpenMemoSettings = {
+                            showGlobalSettings = false
+                            selectedTool = "food_bill"
+                            showMemoSettings = true
+                        },
+                        onDataImported = {
+                            viewModel.onDataImported()
+                        },
+                        modifier = Modifier.padding(innerPadding)
+                    )
+                }
+            } else if (selectedTool == "advance_salary") {
                 val advanceSalaryViewModel: AdvanceSalaryViewModel = viewModel()
                 AdvanceSalaryScreen(
                     viewModel = advanceSalaryViewModel,
-                    onNavigateBack = { selectedTool = null }
+                    onNavigateBack = { selectedTool = null },
+                    onOpenGlobalSettings = { showGlobalSettings = true }
                 )
             } else {
             Scaffold(
@@ -361,17 +411,15 @@ fun HomeScreen(
                             }
                         },
                         actions = {
-                            if (!showGlobalSettings && !showMemoSettings) {
-                                IconButton(
-                                    onClick = { showGlobalSettings = true },
-                                    modifier = Modifier.testTag("global_settings_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Settings,
-                                        contentDescription = "অ্যাপ সেটিংস",
-                                        tint = Color.White
-                                    )
-                                }
+                            IconButton(
+                                onClick = { showGlobalSettings = true },
+                                modifier = Modifier.testTag("global_settings_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "মেইন অ্যাপ সেটিংস",
+                                    tint = Color.White
+                                )
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -428,22 +476,7 @@ fun HomeScreen(
                         .padding(innerPadding)
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    if (showGlobalSettings) {
-                        GlobalSettingsScreen(
-                            themeMode = themeMode,
-                            themeColor = themeColor,
-                            appLanguage = appLanguage,
-                            fontScale = fontScale,
-                            onThemeModeChange = { mode -> viewModel.setThemeMode(mode) },
-                            onThemeColorChange = { color -> viewModel.setThemeColor(color) },
-                            onLanguageChange = { lang -> viewModel.setAppLanguage(lang) },
-                            onFontScaleChange = { scale -> viewModel.setFontScale(scale) },
-                            onOpenMemoSettings = {
-                                showGlobalSettings = false
-                                showMemoSettings = true
-                            }
-                        )
-                    } else if (showMemoSettings) {
+                    if (showMemoSettings) {
                         SettingsScreen(
                             state = currentBillState,
                             editingBillType = memoSettingsBillType,
@@ -458,11 +491,21 @@ fun HomeScreen(
                             onResetPresetsDefault = {
                                 viewModel.resetQuickPresetsToDefault()
                             },
-                            onSaveSettings = { billType, centerName, subtitle, purchaserLabel ->
-                                viewModel.saveSettings(billType, centerName, subtitle, purchaserLabel)
+                            onSaveSettings = { type, center, sub, purchaser ->
+                                viewModel.saveSettings(type, center, sub, purchaser)
+                                showMemoSettings = false
                             },
-                            onResetTemplate = { viewModel.resetToInitialTemplate() },
-                            onResetAllData = { viewModel.resetAllUserData() }
+                            onResetTemplate = {
+                                viewModel.resetToInitialTemplate()
+                                showMemoSettings = false
+                            },
+                            onResetAllData = {
+                                viewModel.resetAllUserData()
+                                showMemoSettings = false
+                            },
+                            onOpenGlobalSettings = {
+                                showGlobalSettings = true
+                            }
                         )
                     } else if (selectedTool == "food_bill") {
                         when (selectedTab) {
@@ -734,7 +777,8 @@ fun HomeScreen(
                                         viewModel.saveSettings(billType, centerName, subtitle, purchaserLabel)
                                     },
                                     onResetTemplate = { viewModel.resetToInitialTemplate() },
-                                    onResetAllData = { viewModel.resetAllUserData() }
+                                    onResetAllData = { viewModel.resetAllUserData() },
+                                    onOpenGlobalSettings = { showGlobalSettings = true }
                                 )
                             }
                         }

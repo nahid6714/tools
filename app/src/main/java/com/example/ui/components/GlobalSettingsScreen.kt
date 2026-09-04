@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,7 +33,10 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DeveloperMode
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -42,12 +47,20 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import com.example.util.AppBackupManager
+import com.example.util.ImportResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -94,10 +107,78 @@ fun GlobalSettingsScreen(
     onLanguageChange: (String) -> Unit = {},
     onFontScaleChange: (Float) -> Unit = {},
     onOpenMemoSettings: () -> Unit = {},
+    onDataImported: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    // Backup & Restore states
+    var isExporting by remember { mutableStateOf(false) }
+    var isImporting by remember { mutableStateOf(false) }
+    var cachedJsonToExport by remember { mutableStateOf<String?>(null) }
+    var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
+    var exportErrorMessage by remember { mutableStateOf<String?>(null) }
+    var importResultToShow by remember { mutableStateOf<ImportResult?>(null) }
+
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null && cachedJsonToExport != null) {
+            coroutineScope.launch(Dispatchers.IO) {
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { os ->
+                        os.write(cachedJsonToExport!!.toByteArray(Charsets.UTF_8))
+                    }
+                    withContext(Dispatchers.Main) {
+                        exportSuccessMessage = if (appLanguage == "en") {
+                            "Backup file downloaded and saved successfully!"
+                        } else {
+                            "ব্যাকআপ ফাইলটি সফলভাবে ডাউনলোড ও সেভ করা হয়েছে!"
+                        }
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        exportErrorMessage = if (appLanguage == "en") "Download failed: ${e.localizedMessage}" else "ডাউনলোড ব্যর্থ হয়েছে: ${e.localizedMessage}"
+                    }
+                }
+            }
+        }
+    }
+
+    val openDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            coroutineScope.launch {
+                isImporting = true
+                try {
+                    val jsonString = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    }
+                    if (jsonString.isNullOrBlank()) {
+                        importResultToShow = ImportResult(
+                            success = false,
+                            message = if (appLanguage == "en") "The selected backup file is empty." else "নির্বাচিত ব্যাকআপ ফাইলটিতে কোনো ডাটা পাওয়া যায়নি।"
+                        )
+                    } else {
+                        val result = AppBackupManager.importAllData(context, jsonString)
+                        importResultToShow = result
+                        if (result.success) {
+                            onDataImported()
+                        }
+                    }
+                } catch (e: Exception) {
+                    importResultToShow = ImportResult(
+                        success = false,
+                        message = if (appLanguage == "en") "Failed to read backup file: ${e.localizedMessage}" else "ব্যাকআপ ফাইল পড়তে সমস্যা হয়েছে: ${e.localizedMessage}"
+                    )
+                } finally {
+                    isImporting = false
+                }
+            }
+        }
+    }
 
     // App Update States
     val updateManager = remember { AppUpdateManager() }
@@ -622,33 +703,255 @@ fun GlobalSettingsScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 5. Backup & Restore (Future Ready)
+        // 5. Unified Data Download & Input (Backup & Restore)
         SettingsCard(
-            title = "ব্যাকআপ ও রিস্টোর (Cloud Ready)",
+            title = if (isEn) "Data Download & Input (Backup & Restore)" else "ডাটা ডাউনলোড ও ইনপুট (ব্যাকআপ ও রিস্টোর)",
             icon = Icons.Default.CloudDownload
         ) {
             Text(
-                text = "আপনার সংরক্ষিত সকল মেমো হিসাব ও স্ক্যানকৃত ফাইল নিরাপদ রাখতে অটোমেটিক ক্লাউড সিঙ্ক ও লোকাল ব্যাকআপ ফিচারটি পরবর্তীতে যোগ করা হবে।",
+                text = if (isEn) {
+                    "Download all app records in a single file and restore them anytime. No need for separate options—all food bills, advance salary records, presets, and preferences are placed into their respective places automatically."
+                } else {
+                    "অ্যাপের সমস্ত তৈরি করা ডাটা এক ক্লিকে ডাউনলোড ও পরবর্তীতে ইনপুট করুন। আলাদা আলাদা অপশনের প্রয়োজন নেই—মেমো, স্যালারি আবেদন, প্রিসেট ও সেটিংস স্বয়ংক্রিয়ভাবে নিজের জায়গায় প্লেসমেন্ট হয়ে যাবে।"
+                },
                 fontSize = 12.5.sp,
-                color = Color.Gray,
-                lineHeight = 17.sp
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 17.5.sp
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            OutlinedButton(
-                onClick = { },
-                enabled = false,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Option 1: Data Download / Export
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Icon(
-                    imageVector = Icons.Default.FolderZip,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("লোকাল ডাটা এক্সপোর্ট (শীঘ্রই আসছে)", fontSize = 12.sp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = if (isEn) "1. Download All App Data" else "১. ডাটা ব্যাকআপ ডাউনলোড (Export)",
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isEn) "Save all bills, salary applications, and presets in JSON format" else "সকল মেমো হিসাব, স্যালারি রিকুইজিশন ও প্রিসেট ফাইল ডাউনলোড করুন",
+                                fontSize = 11.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isExporting = true
+                                    try {
+                                        val json = AppBackupManager.exportAllData(context)
+                                        cachedJsonToExport = json
+                                        val saveMsg = AppBackupManager.saveBackupToDownloads(context, json)
+                                        exportSuccessMessage = if (isEn) "Data downloaded successfully! ($saveMsg)" else "ডাটা ব্যাকআপ ডাউনলোড সম্পন্ন! ($saveMsg)"
+                                        val timeStamp = java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.US).format(java.util.Date())
+                                        createDocumentLauncher.launch("digital_tools_backup_$timeStamp.json")
+                                    } catch (e: Exception) {
+                                        exportErrorMessage = e.localizedMessage
+                                    } finally {
+                                        isExporting = false
+                                    }
+                                }
+                            },
+                            enabled = !isExporting,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1.5f)
+                                .testTag("download_all_data_button")
+                        ) {
+                            if (isExporting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(if (isEn) "Downloading..." else "ডাউনলোড হচ্ছে...", fontSize = 12.sp)
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.FileDownload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (isEn) "Download Data" else "ডাটা ডাউনলোড করুন",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    try {
+                                        val json = cachedJsonToExport ?: AppBackupManager.exportAllData(context)
+                                        AppBackupManager.shareBackupFile(context, json)
+                                    } catch (e: Exception) {
+                                        exportErrorMessage = e.localizedMessage
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("share_backup_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(if (isEn) "Share" else "শেয়ার", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    if (exportSuccessMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "✓ $exportSuccessMessage",
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF2E7D32),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    if (exportErrorMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "✕ $exportErrorMessage",
+                            fontSize = 11.5.sp,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Option 2: Data Input / Restore
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Upload,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = if (isEn) "2. Input / Restore Data" else "২. ডাটা ইনপুট / রিস্টোর (Import)",
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isEn) "Restore JSON file — placed automatically into appropriate sections" else "ডাউনলোডকৃত ব্যাকআপ ফাইল নির্বাচন করুন — অটোমেটিক প্লেসমেন্ট হবে",
+                                fontSize = 11.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = {
+                            openDocumentLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                        },
+                        enabled = !isImporting,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("import_all_data_button")
+                    ) {
+                        if (isImporting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isEn) "Importing & Placing data..." else "ডাটা ইনপুট ও প্লেসমেন্ট হচ্ছে...", fontSize = 12.5.sp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.UploadFile,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isEn) "Select Backup File to Input" else "ব্যাকআপ ফাইল নির্বাচন করে ইনপুট দিন",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -763,6 +1066,53 @@ fun GlobalSettingsScreen(
             updateInfo = updateInfoToShow!!,
             updateManager = updateManager,
             onDismiss = { updateInfoToShow = null }
+        )
+    }
+
+    // Import Result Dialog
+    if (importResultToShow != null) {
+        val res = importResultToShow!!
+        AlertDialog(
+            onDismissRequest = { importResultToShow = null },
+            icon = {
+                Icon(
+                    imageVector = if (res.success) Icons.Default.CheckCircle else Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = if (res.success) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = if (res.success) (if (isEn) "Data Imported Successfully!" else "ডাটা ইনপুট সফল হয়েছে!") else (if (isEn) "Import Failed" else "ইনপুট ব্যর্থ হয়েছে"),
+                    fontFamily = HeadingFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = res.message,
+                        fontSize = 13.5.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (res.success) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (isEn) "✓ All records placed in their respective sections accurately." else "✓ সকল রেকর্ডস ও প্রিসেট নিজ নিজ জায়গায় সঠিকভাবে প্লেসমেন্ট হয়েছে।",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF2E7D32)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { importResultToShow = null }) {
+                    Text(if (isEn) "OK" else "ঠিক আছে")
+                }
+            }
         )
     }
 }

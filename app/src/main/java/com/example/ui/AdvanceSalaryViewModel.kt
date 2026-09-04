@@ -189,6 +189,18 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         saveReasonsToPrefs(updated)
     }
 
+    fun onDataImported() {
+        loadPresets()
+        val savedCompanyName = prefs.getString("default_company_name", "Al-Baraka General Store") ?: "Al-Baraka General Store"
+        val savedSubtitle = prefs.getString("default_company_subtitle", "Head Office, Dhaka") ?: "Head Office, Dhaka"
+        _formState.update {
+            it.copy(
+                companyName = savedCompanyName,
+                companySubtitle = savedSubtitle
+            )
+        }
+    }
+
     fun addDesignationPreset(desig: String) {
         val trimmed = desig.trim()
         if (trimmed.isNotBlank() && !_presetDesignations.value.contains(trimmed)) {

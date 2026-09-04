@@ -304,6 +304,27 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { _uiEvent.emit("সেটিংস সফলভাবে সংরক্ষণ করা হয়েছে!") }
     }
 
+    fun onDataImported() {
+        loadQuickPresets()
+        val currentType = _currentBillState.value.billType
+        val (savedCenterName, savedSubtitle, savedPurchaserLabel) = getSavedSettingsForType(currentType)
+        _currentBillState.update {
+            it.copy(
+                centerName = savedCenterName,
+                subtitle = savedSubtitle,
+                purchaserLabel = savedPurchaserLabel
+            )
+        }
+        _themeMode.value = prefs.getString("app_theme_mode", "system") ?: "system"
+        _themeColor.value = prefs.getString("app_theme_color", "emerald") ?: "emerald"
+        _appLanguage.value = prefs.getString("app_language", "bn") ?: "bn"
+        _fontScale.value = prefs.getFloat("app_font_scale", 1.0f)
+        viewModelScope.launch {
+            val msg = if (_appLanguage.value == "en") "Data imported successfully!" else "ডাটা সফলভাবে অ্যাপে ইমপোর্ট হয়েছে!"
+            _uiEvent.emit(msg)
+        }
+    }
+
     fun resetAllUserData() {
         prefs.edit().clear().apply()
         _quickPresets.value = emptyList()

@@ -38,4 +38,10 @@ interface AdvanceSalaryDao {
 
     @Query("DELETE FROM advance_salaries")
     suspend fun deleteAllApplications()
+
+    @Query("SELECT * FROM advance_salaries")
+    suspend fun getAllApplicationsList(): List<AdvanceSalaryEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertApplications(entities: List<AdvanceSalaryEntity>): List<Long>
 }

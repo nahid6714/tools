@@ -100,6 +100,15 @@ fun ToolsHubScreen(
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
             accentColor = MaterialTheme.colorScheme.secondary
+        ),
+        AppToolItem(
+            id = "app_settings",
+            title = if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস",
+            subtitle = if (isEn) "Data download & backup, input/restore, theme, language & updates" else "ডাটা ডাউনলোড ও ব্যাকআপ, ইনপুট/রিস্টোর, থিম, ভাষা ও অ্যাপ আপডেট",
+            icon = Icons.Default.Settings,
+            isAvailable = true,
+            badgeText = if (isEn) "Management" else "ব্যবস্থাপনা",
+            accentColor = MaterialTheme.colorScheme.tertiary
         )
     )
 

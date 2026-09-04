@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -72,6 +73,7 @@ import java.util.Calendar
 fun AdvanceSalaryScreen(
     viewModel: AdvanceSalaryViewModel,
     onNavigateBack: () -> Unit,
+    onOpenGlobalSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -148,6 +150,16 @@ fun AdvanceSalaryScreen(
                                 tint = Color.White
                             )
                         }
+                    }
+                    IconButton(
+                        onClick = onOpenGlobalSettings,
+                        modifier = Modifier.testTag("advance_salary_global_settings_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "মেইন অ্যাপ সেটিংস",
+                            tint = Color.White
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

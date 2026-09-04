@@ -33,4 +33,10 @@ interface FoodBillDao {
 
     @Query("SELECT SUM(totalAmount) FROM food_bills")
     fun getTotalSpentAllTime(): Flow<Double?>
+
+    @Query("SELECT * FROM food_bills")
+    suspend fun getAllBillsList(): List<FoodBillEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBills(bills: List<FoodBillEntity>): List<Long>
 }
