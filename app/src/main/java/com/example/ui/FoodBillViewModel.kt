@@ -60,6 +60,9 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
     private val _themeMode = MutableStateFlow(prefs.getString("app_theme_mode", "system") ?: "system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
+    private val _themeColor = MutableStateFlow(prefs.getString("app_theme_color", "emerald") ?: "emerald")
+    val themeColor: StateFlow<String> = _themeColor.asStateFlow()
+
     private val _appLanguage = MutableStateFlow(prefs.getString("app_language", "bn") ?: "bn")
     val appLanguage: StateFlow<String> = _appLanguage.asStateFlow()
 
@@ -80,6 +83,15 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
     fun dismissOnboarding() {
         _showOnboarding.value = false
         prefs.edit().putBoolean("onboarding_shown", true).apply()
+    }
+
+    fun setThemeColor(colorKey: String) {
+        _themeColor.value = colorKey
+        prefs.edit().putString("app_theme_color", colorKey).apply()
+        viewModelScope.launch {
+            val msg = if (_appLanguage.value == "en") "Theme color updated" else "থিমের কালার পরিবর্তন করা হয়েছে"
+            _uiEvent.emit(msg)
+        }
     }
 
     fun setThemeMode(mode: String) {
@@ -290,6 +302,27 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
             }
         }
         viewModelScope.launch { _uiEvent.emit("সেটিংস সফলভাবে সংরক্ষণ করা হয়েছে!") }
+    }
+
+    fun onDataImported() {
+        loadQuickPresets()
+        val currentType = _currentBillState.value.billType
+        val (savedCenterName, savedSubtitle, savedPurchaserLabel) = getSavedSettingsForType(currentType)
+        _currentBillState.update {
+            it.copy(
+                centerName = savedCenterName,
+                subtitle = savedSubtitle,
+                purchaserLabel = savedPurchaserLabel
+            )
+        }
+        _themeMode.value = prefs.getString("app_theme_mode", "system") ?: "system"
+        _themeColor.value = prefs.getString("app_theme_color", "emerald") ?: "emerald"
+        _appLanguage.value = prefs.getString("app_language", "bn") ?: "bn"
+        _fontScale.value = prefs.getFloat("app_font_scale", 1.0f)
+        viewModelScope.launch {
+            val msg = if (_appLanguage.value == "en") "Data imported successfully!" else "ডাটা সফলভাবে অ্যাপে ইমপোর্ট হয়েছে!"
+            _uiEvent.emit(msg)
+        }
     }
 
     fun resetAllUserData() {
@@ -508,19 +541,20 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
         _searchQuery.value = query
     }
 
-    fun saveCurrentBill() {
+    fun saveCurrentBill(notifyUser: Boolean = true, onSaved: ((Long) -> Unit)? = null) {
         val currentState = _currentBillState.value
         val validItems = currentState.items.filter { it.name.isNotBlank() || it.amount > 0 }
         
         if (validItems.isEmpty()) {
-            viewModelScope.launch { _uiEvent.emit("কমপক্ষে একটি আইটেমের বিবরণ বা টাকা লিখুন") }
+            if (notifyUser) {
+                viewModelScope.launch { _uiEvent.emit("কমপক্ষে একটি আইটেমের বিবরণ বা টাকা লিখুন") }
+            }
             return
         }
 
         viewModelScope.launch {
             val total = validItems.sumOf { it.amount }
-            val dateObj = try { dateFormat.parse(currentState.dateString) } catch (e: Exception) { null }
-            val timestamp = dateObj?.time ?: System.currentTimeMillis()
+            val timestamp = System.currentTimeMillis()
 
             val id = repository.saveBill(
                 id = currentState.editingBillId,
@@ -537,7 +571,10 @@ class FoodBillViewModel(application: Application) : AndroidViewModel(application
             )
 
             _currentBillState.update { it.copy(editingBillId = id) }
-            _uiEvent.emit("বিল সফলভাবে সংরক্ষণ করা হয়েছে!")
+            if (notifyUser) {
+                _uiEvent.emit("বিল সফলভাবে সংরক্ষণ করা হয়েছে!")
+            }
+            onSaved?.invoke(id)
         }
     }
 

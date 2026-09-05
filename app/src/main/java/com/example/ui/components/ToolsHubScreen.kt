@@ -22,12 +22,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Store
@@ -75,6 +74,7 @@ fun ToolsHubScreen(
     onCheckUpdate: () -> Unit = {},
     onOpenUpdateDialog: (UpdateInfo) -> Unit = {},
     onSelectFoodBillTool: () -> Unit,
+    onSelectAdvanceSalaryTool: () -> Unit = {},
     onSelectAppSettings: () -> Unit = {},
     onSelectUpcomingTool: (title: String) -> Unit,
     modifier: Modifier = Modifier
@@ -89,7 +89,16 @@ fun ToolsHubScreen(
             icon = Icons.Default.Restaurant,
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
-            accentColor = Color(0xFF1565C0)
+            accentColor = MaterialTheme.colorScheme.primary
+        ),
+        AppToolItem(
+            id = "advance_salary",
+            title = if (isEn) "Advance Salary Application" else "অগ্রিম বেতন আবেদন",
+            subtitle = if (isEn) "Create, save and print advance salary applications with installments" else "কর্মকর্তা-কর্মচারীদের অগ্রিম বেতন আবেদনপত্র তৈরি, কিস্তি হিসাব, প্রিন্ট ও সংরক্ষণ করুন",
+            icon = Icons.AutoMirrored.Filled.ReceiptLong,
+            isAvailable = true,
+            badgeText = if (isEn) "Active" else "চালু আছে",
+            accentColor = MaterialTheme.colorScheme.secondary
         )
     )
 
@@ -108,9 +117,9 @@ fun ToolsHubScreen(
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
-                            Color(0xFF0D47A1),
-                            Color(0xFF1565C0),
-                            Color(0xFF03A9F4)
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.tertiary
                         )
                     )
                 )
@@ -136,7 +145,7 @@ fun ToolsHubScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব",
+                            text = if (isEn) "Digital Tool" else "ডিজিটাল টুল",
                             fontFamily = HeadingFontFamily,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
@@ -254,6 +263,7 @@ fun ToolsHubScreen(
                 onClick = {
                     when (tool.id) {
                         "food_bill" -> onSelectFoodBillTool()
+                        "advance_salary" -> onSelectAdvanceSalaryTool()
                         "app_settings" -> onSelectAppSettings()
                         else -> onSelectUpcomingTool(tool.title)
                     }
@@ -292,13 +302,18 @@ fun ToolCardItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
+            .border(
+                width = if (tool.isAvailable) 1.dp else 0.5.dp,
+                color = if (tool.isAvailable) tool.accentColor.copy(alpha = 0.25f) else MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(14.dp)
+            )
             .clickable { onClick() }
             .testTag("tool_card_${tool.id}"),
         colors = CardDefaults.cardColors(
             containerColor = if (tool.isAvailable) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (tool.isAvailable) 3.dp else 1.dp
+            defaultElevation = if (tool.isAvailable) 3.5.dp else 1.dp
         ),
         shape = RoundedCornerShape(14.dp)
     ) {
@@ -380,7 +395,7 @@ fun ToolCardItem(
 
             // Action Arrow
             Icon(
-                imageVector = Icons.Default.ArrowForward,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "খুলুন",
                 tint = if (tool.isAvailable) MaterialTheme.colorScheme.primary else Color.LightGray,
                 modifier = Modifier.size(20.dp)

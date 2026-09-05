@@ -36,6 +36,19 @@ object BengaliUtils {
         return toBengaliDigits(formattedNumber)
     }
 
+    fun formatBengaliTime(timestamp: Long): String {
+        if (timestamp <= 0L) return ""
+        val sdf = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US)
+        val formatted = sdf.format(java.util.Date(timestamp))
+        return toBengaliDigits(formatted)
+    }
+
+    fun formatEnglishTime(timestamp: Long): String {
+        if (timestamp <= 0L) return ""
+        val sdf = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US)
+        return sdf.format(java.util.Date(timestamp))
+    }
+
     fun parseBengaliNumber(input: String): Double {
         val engString = toEnglishDigits(input).replace(",", "").trim()
         val direct = engString.toDoubleOrNull()
@@ -48,6 +61,73 @@ object BengaliUtils {
 
     fun parseBengaliInt(input: String): Int {
         return parseBengaliNumber(input).toInt()
+    }
+
+    private val bengaliNumbers0to99 = arrayOf(
+        "শূন্য", "এক", "দুই", "তিন", "চার", "পাঁচ", "ছয়", "সাত", "আট", "নয়", "দশ",
+        "এগারো", "বারো", "তেরো", "চৌদ্দ", "পনেরো", "ষোলো", "সতেরো", "আঠারো", "উনিশ", "বিশ",
+        "একুশ", "বাইশ", "তেইশ", "চব্বিশ", "পঁচিশ", "ছাব্বিশ", "সাতাশ", "আঠাশ", "ঊনত্রিশ", "ত্রিশ",
+        "একত্রিশ", "বত্রিশ", "তেত্রিশ", "চৌত্রিশ", "পঁয়ত্রিশ", "ছত্রিশ", "সাঁইত্রিশ", "আটত্রিশ", "ঊনচল্লিশ", "চল্লিশ",
+        "একচল্লিশ", "বিয়াল্লিশ", "তেতাল্লিশ", "চুয়াল্লিশ", "পঁয়তাল্লিশ", "ছেচল্লিশ", "সাতচল্লিশ", "আটচল্লিশ", "ঊনপঞ্চাশ", "পঞ্চাশ",
+        "একান্ন", "বায়ান্ন", "তিপ্পান্ন", "চুয়ান্ন", "পঞ্চান্ন", "ছাপ্পান্ন", "সাতান্ন", "আটান্ন", "ঊনষাট", "ষাট",
+        "একষট্টি", "বাষট্টি", "তেষট্টি", "চৌষট্টি", "পঁয়ষট্টি", "ছেষট্টি", "সাতষট্টি", "আটষট্টি", "ঊনসত্তর", "সত্তর",
+        "একাত্তর", "বাহাত্তর", "তিয়াত্তর", "চুয়াত্তর", "পঁচাত্তর", "ছিয়াত্তর", "সাতাত্তর", "আটাত্তর", "ঊনআশি", "আশি",
+        "একাশি", "বিরাশি", "তিরাশি", "চুরাশি", "পঁচাশি", "ছিয়াশি", "সাতাশি", "আটাশি", "ঊননব্বই", "নব্বই",
+        "একানব্বই", "বিরানব্বই", "তিরানব্বই", "চুরানব্বই", "পঁচানব্বই", "ছিয়ানব্বই", "সাতানব্বই", "আটানব্বই", "নিরানব্বই"
+    )
+
+    fun numberToBengaliWords(number: Long): String {
+        if (number == 0L) return "শূন্য"
+        if (number < 0) return "মাইনাস " + numberToBengaliWords(-number)
+
+        var n = number
+        val sb = StringBuilder()
+
+        val crore = n / 10000000L
+        n %= 10000000L
+        if (crore > 0) {
+            sb.append(numberToBengaliWords(crore)).append(" কোটি ")
+        }
+
+        val lakh = n / 100000L
+        n %= 100000L
+        if (lakh > 0) {
+            sb.append(bengaliNumbers0to99[lakh.toInt()]).append(" লাখ ")
+        }
+
+        val thousand = n / 1000L
+        n %= 1000L
+        if (thousand > 0) {
+            sb.append(bengaliNumbers0to99[thousand.toInt()]).append(" হাজার ")
+        }
+
+        val hundred = n / 100L
+        n %= 100L
+        if (hundred > 0) {
+            sb.append(bengaliNumbers0to99[hundred.toInt()]).append(" শত ")
+        }
+
+        if (n > 0) {
+            sb.append(bengaliNumbers0to99[n.toInt()])
+        }
+
+        return sb.toString().trim().replace(Regex("\\s+"), " ")
+    }
+
+    fun amountToBengaliWords(amount: Double): String {
+        if (amount <= 0.0) return ""
+        val taka = amount.toLong()
+        val paisa = Math.round((amount - taka) * 100).toInt()
+
+        val takaWords = if (taka > 0) "${numberToBengaliWords(taka)} টাকা" else ""
+        val paisaWords = if (paisa > 0) "${bengaliNumbers0to99[paisa]} পয়সা" else ""
+
+        return when {
+            takaWords.isNotBlank() && paisaWords.isNotBlank() -> "$takaWords $paisaWords মাত্র"
+            takaWords.isNotBlank() -> "$takaWords মাত্র"
+            paisaWords.isNotBlank() -> "$paisaWords মাত্র"
+            else -> ""
+        }
     }
 
     fun formatPresetDisplayText(preset: QuickPreset): String {

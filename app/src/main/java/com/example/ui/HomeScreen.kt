@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.components.AppSplashScreen
 import com.example.ui.components.BillHistoryList
 import com.example.ui.components.GlobalSettingsScreen
@@ -76,6 +77,7 @@ import com.example.ui.components.MemoVoucherCard
 import com.example.ui.components.OnboardingDialog
 import com.example.ui.components.QuickPresetChips
 import com.example.ui.components.SettingsScreen
+import com.example.ui.components.ToolsHubScreen
 import com.example.ui.components.VoucherPreviewDialog
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.HeadingFontFamily
@@ -101,6 +103,7 @@ fun HomeScreen(
     val quickPresets by viewModel.quickPresets.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val themeColor by viewModel.themeColor.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val showOnboarding by viewModel.showOnboarding.collectAsStateWithLifecycle()
@@ -143,11 +146,13 @@ fun HomeScreen(
         }
     }
 
-    BackHandler(enabled = showGlobalSettings || showMemoSettings) {
+    BackHandler(enabled = showGlobalSettings || showMemoSettings || selectedTool != null) {
         if (showMemoSettings) {
             showMemoSettings = false
-        } else {
+        } else if (showGlobalSettings) {
             showGlobalSettings = false
+        } else if (selectedTool != null) {
+            selectedTool = null
         }
     }
 
@@ -203,6 +208,63 @@ fun HomeScreen(
                 selectedTool == "food_bill" && selectedTab == 0
             var showTitleTypeMenu by remember { mutableStateOf(false) }
 
+            if (showGlobalSettings) {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = if (isEn) "Main App Settings" else "মেইন অ্যাপ সেটিংস",
+                                    fontFamily = HeadingFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 19.sp
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { showGlobalSettings = false }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "ফিরে যান",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                titleContentColor = Color.White
+                            )
+                        )
+                    },
+                    snackbarHost = { SnackbarHost(snackbarHostState) }
+                ) { innerPadding ->
+                    GlobalSettingsScreen(
+                        themeMode = themeMode,
+                        themeColor = themeColor,
+                        appLanguage = appLanguage,
+                        fontScale = fontScale,
+                        onThemeModeChange = { mode -> viewModel.setThemeMode(mode) },
+                        onThemeColorChange = { color -> viewModel.setThemeColor(color) },
+                        onLanguageChange = { lang -> viewModel.setAppLanguage(lang) },
+                        onFontScaleChange = { scale -> viewModel.setFontScale(scale) },
+                        onOpenMemoSettings = {
+                            showGlobalSettings = false
+                            selectedTool = "food_bill"
+                            showMemoSettings = true
+                        },
+                        onDataImported = {
+                            viewModel.onDataImported()
+                        },
+                        modifier = Modifier.padding(innerPadding)
+                    )
+                }
+            } else if (selectedTool == "advance_salary") {
+                val advanceSalaryViewModel: AdvanceSalaryViewModel = viewModel()
+                AdvanceSalaryScreen(
+                    viewModel = advanceSalaryViewModel,
+                    onNavigateBack = { selectedTool = null },
+                    onOpenGlobalSettings = { showGlobalSettings = true }
+                )
+            } else {
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -222,12 +284,9 @@ fun HomeScreen(
                                 showMemoSettings -> if (isEn) "Memo Settings – $memoSettingsTypeLabel" else "মেমো হেডার সেটিংস – $memoSettingsTypeLabel"
                                 selectedTool == "food_bill" -> when (selectedTab) {
                                     1 -> if (isEn) "Saved Records" else "সংরক্ষিত হিসাব"
-                                    else -> if (currentBillState.centerName.isNotBlank())
-                                        "$billTypeLabel - ${currentBillState.centerName}"
-                                    else
-                                        (if (isEn) "$billTypeLabel Memo" else "$billTypeLabel মেমো")
+                                    else -> billTypeLabel
                                 }
-                                else -> if (isEn) "Digital Tools Hub" else "ডিজিটাল টুলস হাব"
+                                else -> if (isEn) "Digital Tool" else "ডিজিটাল টুল"
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -341,20 +400,26 @@ fun HomeScreen(
                                         tint = Color.White
                                     )
                                 }
-                            }
-                        },
-                        actions = {
-                            if (!showGlobalSettings && !showMemoSettings) {
-                                IconButton(
-                                    onClick = { showGlobalSettings = true },
-                                    modifier = Modifier.testTag("global_settings_button")
-                                ) {
+                            } else if (selectedTool != null) {
+                                IconButton(onClick = { selectedTool = null }) {
                                     Icon(
-                                        imageVector = Icons.Default.Settings,
-                                        contentDescription = "অ্যাপ সেটিংস",
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "ফিরে যান",
                                         tint = Color.White
                                     )
                                 }
+                            }
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = { showGlobalSettings = true },
+                                modifier = Modifier.testTag("global_settings_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "মেইন অ্যাপ সেটিংস",
+                                    tint = Color.White
+                                )
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -411,20 +476,7 @@ fun HomeScreen(
                         .padding(innerPadding)
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    if (showGlobalSettings) {
-                        GlobalSettingsScreen(
-                            themeMode = themeMode,
-                            appLanguage = appLanguage,
-                            fontScale = fontScale,
-                            onThemeModeChange = { mode -> viewModel.setThemeMode(mode) },
-                            onLanguageChange = { lang -> viewModel.setAppLanguage(lang) },
-                            onFontScaleChange = { scale -> viewModel.setFontScale(scale) },
-                            onOpenMemoSettings = {
-                                showGlobalSettings = false
-                                showMemoSettings = true
-                            }
-                        )
-                    } else if (showMemoSettings) {
+                    if (showMemoSettings) {
                         SettingsScreen(
                             state = currentBillState,
                             editingBillType = memoSettingsBillType,
@@ -439,11 +491,21 @@ fun HomeScreen(
                             onResetPresetsDefault = {
                                 viewModel.resetQuickPresetsToDefault()
                             },
-                            onSaveSettings = { billType, centerName, subtitle, purchaserLabel ->
-                                viewModel.saveSettings(billType, centerName, subtitle, purchaserLabel)
+                            onSaveSettings = { type, center, sub, purchaser ->
+                                viewModel.saveSettings(type, center, sub, purchaser)
+                                showMemoSettings = false
                             },
-                            onResetTemplate = { viewModel.resetToInitialTemplate() },
-                            onResetAllData = { viewModel.resetAllUserData() }
+                            onResetTemplate = {
+                                viewModel.resetToInitialTemplate()
+                                showMemoSettings = false
+                            },
+                            onResetAllData = {
+                                viewModel.resetAllUserData()
+                                showMemoSettings = false
+                            },
+                            onOpenGlobalSettings = {
+                                showGlobalSettings = true
+                            }
                         )
                     } else if (selectedTool == "food_bill") {
                         when (selectedTab) {
@@ -514,7 +576,7 @@ fun HomeScreen(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        // Print / Preview Button (Forest Green Gradient)
+                                        // Print / Preview Button
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
@@ -522,14 +584,19 @@ fun HomeScreen(
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(
                                                     brush = Brush.horizontalGradient(
-                                                        colors = listOf(Color(0xFF0D47A1), Color(0xFF1565C0))
+                                                        colors = listOf(
+                                                            MaterialTheme.colorScheme.secondary,
+                                                            MaterialTheme.colorScheme.primary
+                                                        )
                                                     )
                                                 )
                                                 .clickable {
                                                     // Auto-save so sharing/printing never requires a separate
                                                     // "সংরক্ষণ" tap first — the bill is safely persisted (or
                                                     // updated, if already saved) the moment share/preview opens.
-                                                    viewModel.saveCurrentBill()
+                                                    viewModel.saveCurrentBill(notifyUser = false) { savedId ->
+                                                        previewTopMemo = previewTopMemo?.copy(memoId = savedId)
+                                                    }
                                                     previewTopMemo = PrintMemoData(
                                                         memoId = currentBillState.editingBillId,
                                                         centerName = currentBillState.centerName,
@@ -566,7 +633,7 @@ fun HomeScreen(
                                             }
                                         }
 
-                                        // Save Button (Deep Emerald/Forest Green Gradient)
+                                        // Save Button
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
@@ -574,7 +641,10 @@ fun HomeScreen(
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(
                                                     brush = Brush.horizontalGradient(
-                                                        colors = listOf(Color(0xFF1565C0), Color(0xFF03A9F4))
+                                                        colors = listOf(
+                                                            MaterialTheme.colorScheme.primary,
+                                                            MaterialTheme.colorScheme.tertiary
+                                                        )
                                                     )
                                                 )
                                                 .clickable { viewModel.saveCurrentBill() }
@@ -707,12 +777,48 @@ fun HomeScreen(
                                         viewModel.saveSettings(billType, centerName, subtitle, purchaserLabel)
                                     },
                                     onResetTemplate = { viewModel.resetToInitialTemplate() },
-                                    onResetAllData = { viewModel.resetAllUserData() }
+                                    onResetAllData = { viewModel.resetAllUserData() },
+                                    onOpenGlobalSettings = { showGlobalSettings = true }
                                 )
                             }
                         }
+                    } else {
+                        // Digital Tools Hub
+                        ToolsHubScreen(
+                            appLanguage = appLanguage,
+                            updateInfo = updateInfo,
+                            isCheckingUpdate = isCheckingUpdate,
+                            onCheckUpdate = {
+                                coroutineScope.launch {
+                                    isCheckingUpdate = true
+                                    try {
+                                        val info = updateManager.checkForUpdate(context, forceCheck = true)
+                                        updateInfo = info
+                                        if (info.hasUpdate) {
+                                            updateDialogInfoToShow = info
+                                        } else {
+                                            snackbarHostState.showSnackbar(if (isEn) "You are using the latest version!" else "আপনার অ্যাপটি লেটেস্ট ভার্সনে আছে!")
+                                        }
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar(if (isEn) "Update check failed" else "আপডেট চেক ব্যর্থ হয়েছে")
+                                    } finally {
+                                        isCheckingUpdate = false
+                                    }
+                                }
+                            },
+                            onOpenUpdateDialog = { info -> updateDialogInfoToShow = info },
+                            onSelectFoodBillTool = { selectedTool = "food_bill" },
+                            onSelectAdvanceSalaryTool = { selectedTool = "advance_salary" },
+                            onSelectAppSettings = { showGlobalSettings = true },
+                            onSelectUpcomingTool = { title ->
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("'$title' শীঘ্রই পরবর্তী আপডেটে আসছে!")
+                                }
+                            }
+                        )
                     }
                 }
+            }
             }
             }
         }

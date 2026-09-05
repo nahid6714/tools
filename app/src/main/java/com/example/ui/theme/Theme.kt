@@ -7,14 +7,15 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = DarkModePrimaryBlue,
+private fun createDarkColorScheme(palette: AppThemePalette) = darkColorScheme(
+    primary = palette.darkPrimaryAccent,
     onPrimary = Color.Black,
     primaryContainer = DarkElevatedSurface,
     onPrimaryContainer = DarkTextPrimary,
-    secondary = DarkAccentBlue,
+    secondary = palette.accent,
     onSecondary = Color.Black,
-    tertiary = DarkAccentBlue,
+    tertiary = palette.accent,
+    onTertiary = Color.Black,
     background = DarkMainBackground,
     onBackground = DarkTextPrimary,
     surface = DarkSurfaceCard,
@@ -27,19 +28,20 @@ private val DarkColorScheme = darkColorScheme(
     onError = Color.White
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = PrimaryBlue,
+private fun createLightColorScheme(palette: AppThemePalette) = lightColorScheme(
+    primary = palette.primary,
     onPrimary = Color.White,
-    primaryContainer = LightBlueBg,
-    onPrimaryContainer = DarkPrimaryBlue,
-    secondary = DarkPrimaryBlue,
+    primaryContainer = palette.container,
+    onPrimaryContainer = palette.onContainer,
+    secondary = palette.darkPrimary,
     onSecondary = Color.White,
-    tertiary = SkyBlueAccent,
+    tertiary = palette.accent,
+    onTertiary = Color.White,
     background = MainBackground,
     onBackground = TextPrimary,
     surface = SurfaceCard,
     onSurface = TextPrimary,
-    surfaceVariant = LightBlueBg,
+    surfaceVariant = palette.container.copy(alpha = 0.45f),
     onSurfaceVariant = TextSecondary,
     outline = BorderColor,
     outlineVariant = DividerColor,
@@ -50,7 +52,8 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun MyApplicationTheme(
     themeMode: String = "system",
-    dynamicColor: Boolean = false, // Keep consistent Digital Tool branding colors
+    themeColor: String = "emerald",
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
@@ -58,7 +61,8 @@ fun MyApplicationTheme(
         "dark" -> true
         else -> isSystemInDarkTheme()
     }
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val palette = getThemePalette(themeColor)
+    val colorScheme = if (darkTheme) createDarkColorScheme(palette) else createLightColorScheme(palette)
 
     MaterialTheme(
         colorScheme = colorScheme,
@@ -66,3 +70,4 @@ fun MyApplicationTheme(
         content = content
     )
 }
+

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +48,7 @@ import com.example.ui.theme.DarkForestGreen
 @Composable
 fun AppSplashScreen(
     appName: String = "Digital Tool",
-    subtitle: String = "Smart Digital Tools Hub"
+    subtitle: String = "Smart Digital Utility Tools"
 ) {
     val context = LocalContext.current
     val logoBitmap = remember(context) {
@@ -92,8 +93,9 @@ fun AppSplashScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        DarkForestGreen,
-                        Color(0xFF0A1F17)
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.primary,
+                        Color(0xFF090D16)
                     )
                 )
             )
