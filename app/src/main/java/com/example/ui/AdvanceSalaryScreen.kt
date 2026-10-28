@@ -115,7 +115,7 @@ fun AdvanceSalaryScreen(
                 title = {
                     Column {
                         Text(
-                            text = if (selectedTab == 0) "Advance Salary Application" else "Saved Applications",
+                            text = if (selectedTab == 0) com.example.util.AdvanceSalaryVoucherContent.screenTitle(formState) else "Saved Applications",
                             fontFamily = HeadingFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
@@ -224,7 +224,10 @@ fun AdvanceSalaryScreen(
                             onPreviousAdvancePendingChange = { viewModel.updatePreviousAdvancePending(it) },
                             onRemarksChange = { viewModel.updateRemarks(it) },
                             onStatusChange = { viewModel.updateStatus(it) },
-                            onShowSignaturesChange = { viewModel.updateShowSignatures(it) }
+                            onShowSignaturesChange = { viewModel.updateShowSignatures(it) },
+                            onApplicationTypeChange = { viewModel.updateApplicationType(it) },
+                            onSalaryMonthChange = { viewModel.updateSalaryMonth(it) },
+                            onShowReasonChange = { viewModel.updateShowReason(it) }
                         )
 
                         Spacer(modifier = Modifier.height(14.dp))

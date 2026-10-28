@@ -128,7 +128,7 @@ fun AdvanceSalaryHistoryList(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                val totalAdvanceSum = historyList.sumOf { it.advanceAmount }
+                val totalAdvanceSum = historyList.filter { it.applicationType != "CURRENT_SALARY" }.sumOf { it.advanceAmount }
                 Text(
                     text = "Total Advance: Tk. ${EnglishUtils.formatEnglishCurrency(totalAdvanceSum)}/-",
                     fontSize = 13.5.sp,
@@ -265,7 +265,8 @@ fun AdvanceSalaryHistoryCardItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = entity.designation.ifBlank { "Staff" },
+                            text = entity.designation.ifBlank { "Staff" } +
+                                if (entity.applicationType == "CURRENT_SALARY") " • Current Salary" else " • Advance",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -292,7 +293,7 @@ fun AdvanceSalaryHistoryCardItem(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Reason & Repayment summary
-            if (entity.monthlySalary > 0 || entity.previousAdvancePending > 0) {
+            if (entity.applicationType != "CURRENT_SALARY" && (entity.monthlySalary > 0 || entity.previousAdvancePending > 0)) {
                 val remaining = if (entity.monthlySalary > 0) {
                     (entity.monthlySalary - entity.previousAdvancePending - entity.advanceAmount).coerceAtLeast(0.0)
                 } else 0.0
@@ -319,7 +320,7 @@ fun AdvanceSalaryHistoryCardItem(
                 Spacer(modifier = Modifier.height(3.dp))
             }
 
-            if (entity.reason.isNotBlank()) {
+            if (entity.showReason && entity.reason.isNotBlank()) {
                 Text(
                     text = "Reason: ${entity.reason}",
                     fontSize = 12.sp,
@@ -333,13 +334,19 @@ fun AdvanceSalaryHistoryCardItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                val repaySummary = if (entity.repaymentType == "one_time") {
+                val repayLabel: String
+                val repaySummary = if (entity.applicationType == "CURRENT_SALARY") {
+                    repayLabel = "Salary Month"
+                    entity.salaryMonth.ifBlank { "Current Month" }
+                } else if (entity.repaymentType == "one_time") {
+                    repayLabel = "Repayment"
                     "One-time Full Deduction"
                 } else {
+                    repayLabel = "Repayment"
                     "${entity.installmentCount} Installments • Tk. ${EnglishUtils.formatEnglishCurrency(entity.installmentAmountPerMonth)}/mo"
                 }
                 Text(
-                    text = "Repayment: $repaySummary",
+                    text = "$repayLabel: $repaySummary",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF2E7D32)

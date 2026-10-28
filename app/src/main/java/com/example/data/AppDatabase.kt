@@ -16,7 +16,7 @@ import androidx.room.migration.Migration
         CodeGroupItemEntity::class,
         PresetMedicalCodeEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -194,6 +194,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Adds "applicationType" (ADVANCE / CURRENT_SALARY), "salaryMonth" and the
+        // "showReason" flag to advance_salaries. Existing rows stay ADVANCE and keep
+        // showing their reason exactly as before.
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE advance_salaries ADD COLUMN applicationType TEXT NOT NULL DEFAULT 'ADVANCE'")
+                db.execSQL("ALTER TABLE advance_salaries ADD COLUMN salaryMonth TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE advance_salaries ADD COLUMN showReason INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -201,7 +212,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "albaraka_food_bill_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     // Safety net only: if some other unexpected version gap is hit,
                     // fall back to a clean database rather than crashing on launch.
                     .fallbackToDestructiveMigration()

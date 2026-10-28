@@ -29,5 +29,8 @@ data class AdvanceSalaryEntity(
     val remarks: String = "",
     val status: String = "APPROVED", // "PENDING", "APPROVED", "PAID"
     val showSignatures: Boolean = true,
+    val applicationType: String = "ADVANCE", // "ADVANCE" | "CURRENT_SALARY"
+    val salaryMonth: String = "",
+    val showReason: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 )

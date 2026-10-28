@@ -98,6 +98,9 @@ object AppBackupManager {
             salObj.put("remarks", sal.remarks)
             salObj.put("status", sal.status)
             salObj.put("showSignatures", sal.showSignatures)
+            salObj.put("applicationType", sal.applicationType)
+            salObj.put("salaryMonth", sal.salaryMonth)
+            salObj.put("showReason", sal.showReason)
             salObj.put("createdAt", sal.createdAt)
             salariesArray.put(salObj)
         }
@@ -271,6 +274,9 @@ object AppBackupManager {
                                 remarks = obj.optString("remarks", ""),
                                 status = obj.optString("status", "APPROVED"),
                                 showSignatures = obj.optBoolean("showSignatures", true),
+                                applicationType = obj.optString("applicationType", "ADVANCE"),
+                                salaryMonth = obj.optString("salaryMonth", ""),
+                                showReason = obj.optBoolean("showReason", true),
                                 createdAt = createdAt
                             )
                         )

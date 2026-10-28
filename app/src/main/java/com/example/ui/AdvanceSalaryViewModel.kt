@@ -46,7 +46,10 @@ data class AdvanceSalaryFormState(
     val previousAdvancePending: Double = 0.0,
     val remarks: String = "",
     val status: String = "APPROVED",
-    val showSignatures: Boolean = true
+    val showSignatures: Boolean = true,
+    val applicationType: String = "ADVANCE", // "ADVANCE" or "CURRENT_SALARY"
+    val salaryMonth: String = "",
+    val showReason: Boolean = true
 )
 
 class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(application) {
@@ -54,6 +57,9 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
     private val repository: AdvanceSalaryRepository
     private val prefs = application.getSharedPreferences("advance_salary_prefs", android.content.Context.MODE_PRIVATE)
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.US)
+    private val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.US)
+
+    private fun appNoPrefix(type: String) = if (type == "CURRENT_SALARY") "SAL" else "ADV"
 
     private val _formState = MutableStateFlow(AdvanceSalaryFormState())
     val formState: StateFlow<AdvanceSalaryFormState> = _formState.asStateFlow()
@@ -113,7 +119,8 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
             companySubtitle = savedSubtitle,
             applicationNo = defaultAppNo,
             dateString = today,
-            deductionStartMonth = "Next Month"
+            deductionStartMonth = "Next Month",
+            salaryMonth = monthFormat.format(Date())
         )
 
         loadHistory()
@@ -284,7 +291,7 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
 
     fun fillMaxEligibleAdvance() {
         val current = _formState.value
-        if (current.monthlySalary > 0.0) {
+        if (current.applicationType == "ADVANCE" && current.monthlySalary > 0.0) {
             val maxEligible = (current.monthlySalary - current.previousAdvancePending).coerceAtLeast(0.0)
             val inputStr = if (maxEligible > 0) maxEligible.toLong().toString() else "0"
             updateAdvanceAmount(inputStr)
@@ -358,6 +365,30 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         _formState.update { it.copy(showSignatures = show) }
     }
 
+    fun updateShowReason(show: Boolean) {
+        _formState.update { it.copy(showReason = show) }
+    }
+
+    fun updateSalaryMonth(month: String) {
+        _formState.update { it.copy(salaryMonth = month) }
+    }
+
+    /** Switches between "ADVANCE" and "CURRENT_SALARY". Everything else in the form is kept. */
+    fun updateApplicationType(type: String) {
+        _formState.update { current ->
+            if (current.applicationType == type) return@update current
+            val oldPrefix = appNoPrefix(current.applicationType) + "-"
+            val newNo = if (current.applicationNo.startsWith(oldPrefix)) {
+                appNoPrefix(type) + "-" + current.applicationNo.removePrefix(oldPrefix)
+            } else current.applicationNo
+            current.copy(
+                applicationType = type,
+                applicationNo = newNo,
+                salaryMonth = current.salaryMonth.ifBlank { monthFormat.format(Date()) }
+            )
+        }
+    }
+
     fun saveApplication(notifyUser: Boolean = true, onSaved: ((Long) -> Unit)? = null) {
         val current = _formState.value
         if (current.applicantName.isBlank()) {
@@ -368,7 +399,12 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         }
         if (current.advanceAmount <= 0.0) {
             if (notifyUser) {
-                viewModelScope.launch { _uiEvent.emit("Please enter advance amount") }
+                viewModelScope.launch {
+                    _uiEvent.emit(
+                        if (current.applicationType == "CURRENT_SALARY") "Please enter salary amount"
+                        else "Please enter advance amount"
+                    )
+                }
             }
             return
         }
@@ -391,7 +427,7 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
                     id = current.editingId ?: 0L,
                     companyName = current.companyName.trim(),
                     companySubtitle = current.companySubtitle.trim(),
-                    applicationNo = current.applicationNo.trim().ifBlank { "ADV-${System.currentTimeMillis() % 100000}" },
+                    applicationNo = current.applicationNo.trim().ifBlank { "${appNoPrefix(current.applicationType)}-${System.currentTimeMillis() % 100000}" },
                     dateString = current.dateString.trim().ifBlank { dateFormat.format(Date()) },
                     applicantName = current.applicantName.trim(),
                     employeeId = "",
@@ -408,11 +444,14 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
                     installmentCount = current.installmentCount,
                     installmentAmountPerMonth = current.installmentAmountPerMonth,
                     deductionStartMonth = current.deductionStartMonth.trim(),
-                    previousAdvancePending = current.previousAdvancePending,
+                    previousAdvancePending = if (current.applicationType == "CURRENT_SALARY") 0.0 else current.previousAdvancePending,
                     guarantorOrRecommendedBy = "",
                     remarks = current.remarks.trim(),
                     status = current.status,
                     showSignatures = current.showSignatures,
+                    applicationType = current.applicationType,
+                    salaryMonth = current.salaryMonth.trim(),
+                    showReason = current.showReason,
                     createdAt = System.currentTimeMillis()
                 )
 
@@ -420,14 +459,14 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
                     repository.updateApplication(entity)
                     onSaved?.invoke(current.editingId)
                     if (notifyUser) {
-                        _uiEvent.emit("Advance salary application updated successfully")
+                        _uiEvent.emit(if (current.applicationType == "CURRENT_SALARY") "Current salary application updated successfully" else "Advance salary application updated successfully")
                     }
                 } else {
                     val id = repository.insertApplication(entity)
                     _formState.update { it.copy(editingId = id) }
                     onSaved?.invoke(id)
                     if (notifyUser) {
-                        _uiEvent.emit("Advance salary application saved successfully")
+                        _uiEvent.emit(if (current.applicationType == "CURRENT_SALARY") "Current salary application saved successfully" else "Advance salary application saved successfully")
                     }
                 }
             } catch (e: Exception) {
@@ -462,7 +501,10 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
             previousAdvancePendingInput = if (entity.previousAdvancePending > 0) entity.previousAdvancePending.toLong().toString() else "",
             remarks = entity.remarks,
             status = entity.status,
-            showSignatures = entity.showSignatures
+            showSignatures = entity.showSignatures,
+            applicationType = entity.applicationType,
+            salaryMonth = entity.salaryMonth,
+            showReason = entity.showReason
         )
     }
 
@@ -484,14 +526,17 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         val savedCompanyName = prefs.getString("default_company_name", "Al-Baraka General Store") ?: "Al-Baraka General Store"
         val savedSubtitle = prefs.getString("default_company_subtitle", "Head Office, Dhaka") ?: "Head Office, Dhaka"
         val today = dateFormat.format(Date())
-        val defaultAppNo = "ADV-${System.currentTimeMillis() % 100000}"
+        val keepType = _formState.value.applicationType
+        val defaultAppNo = "${appNoPrefix(keepType)}-${System.currentTimeMillis() % 100000}"
 
         _formState.value = AdvanceSalaryFormState(
             companyName = savedCompanyName,
             companySubtitle = savedSubtitle,
             applicationNo = defaultAppNo,
             dateString = today,
-            deductionStartMonth = "Next Month"
+            deductionStartMonth = "Next Month",
+            applicationType = keepType,
+            salaryMonth = monthFormat.format(Date())
         )
     }
 

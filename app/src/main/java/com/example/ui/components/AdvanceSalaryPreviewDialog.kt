@@ -104,7 +104,7 @@ fun AdvanceSalaryPreviewDialog(
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
-                            text = "Advance Salary Requisition Voucher",
+                            text = com.example.util.AdvanceSalaryVoucherContent.voucherName(formState),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

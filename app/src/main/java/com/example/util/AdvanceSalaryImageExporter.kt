@@ -129,7 +129,7 @@ object AdvanceSalaryImageExporter {
 
         // 2. Centered Main Title
         var curY = margin + 55f
-        canvas.drawText("ADVANCE SALARY REQUISITION VOUCHER", centerX, curY, titleTextPaint)
+        canvas.drawText(AdvanceSalaryVoucherContent.title(state), centerX, curY, titleTextPaint)
 
         // 3. Date Row (Right Aligned)
         curY += 46f
@@ -145,7 +145,7 @@ object AdvanceSalaryImageExporter {
         canvas.drawText("APPLICANT / EMPLOYEE DETAILS", tableLeft + 14f, curY + 25f, badgeTextPaint)
 
         // 5. Section 1 Table (3 Rows default or 5 Rows if Previous Advance exists)
-        val hasPrevAdvance = state.previousAdvancePending > 0.0
+        val hasPrevAdvance = !AdvanceSalaryVoucherContent.isCurrent(state) && state.previousAdvancePending > 0.0
         curY += badgeH
         val sec1TableTop = curY
         val sec1RowH = if (hasPrevAdvance) 45f else 52f
@@ -207,13 +207,14 @@ object AdvanceSalaryImageExporter {
         val badge2Width = 330f
         val badge2Rect = RectF(tableLeft, curY, tableLeft + badge2Width, curY + badgeH)
         canvas.drawRect(badge2Rect, badgeBgPaint)
-        canvas.drawText("ADVANCE & REPAYMENT TERMS", tableLeft + 14f, curY + 25f, badgeTextPaint)
+        canvas.drawText(AdvanceSalaryVoucherContent.sectionBadge(state), tableLeft + 14f, curY + 25f, badgeTextPaint)
 
-        // 7. Section 2 Table (6 Rows with Dashed Inner Dividers)
+        // 7. Section 2 Table (dynamic rows with dashed inner dividers; Reason row is optional)
         curY += badgeH
         val sec2TableTop = curY
+        val sec2Rows = AdvanceSalaryVoucherContent.section2Rows(state)
         val sec2RowH = if (hasPrevAdvance) 45f else 50f
-        val sec2RowCount = 6
+        val sec2RowCount = sec2Rows.size
         val sec2TableH = sec2RowH * sec2RowCount.toFloat()
         val sec2TableRect = RectF(tableLeft, sec2TableTop, tableRight, sec2TableTop + sec2TableH)
         canvas.drawRect(sec2TableRect, solidBorderPaint)
@@ -221,61 +222,16 @@ object AdvanceSalaryImageExporter {
         // Vertical divider
         canvas.drawLine(col1DividerX, sec2TableTop, col1DividerX, sec2TableTop + sec2TableH, solidBorderPaint)
 
-        // Row 1: Advance Amount
-        val s2r1Y = sec2TableTop + (sec2RowH * 0.68f)
-        canvas.drawText("Advance Amount", tableLeft + 14f, s2r1Y, cellLabelPaint)
-        canvas.drawText(":", colColonX, s2r1Y, cellColonPaint)
-        val advAmtStr = if (state.advanceAmount > 0) "Tk. ${EnglishUtils.formatEnglishCurrency(state.advanceAmount)}/-" else "Tk. 5,000/-"
-        canvas.drawText(advAmtStr, colValueX, s2r1Y, cellValuePaint)
-        canvas.drawLine(tableLeft, sec2TableTop + sec2RowH, tableRight, sec2TableTop + sec2RowH, dashedLinePaint)
-
-        // Row 2: In Words
-        val s2r2Y = sec2TableTop + sec2RowH + (sec2RowH * 0.68f)
-        canvas.drawText("In Words", tableLeft + 14f, s2r2Y, cellLabelPaint)
-        canvas.drawText(":", colColonX, s2r2Y, cellColonPaint)
-        val inWordsText = state.advanceAmountInWords.ifBlank {
-            if (state.advanceAmount > 0) EnglishUtils.amountToEnglishWords(state.advanceAmount) else "Five Thousand Taka Only"
+        sec2Rows.forEachIndexed { index, row ->
+            val rowTop = sec2TableTop + (sec2RowH * index.toFloat())
+            val textY = rowTop + (sec2RowH * 0.68f)
+            canvas.drawText(row.first, tableLeft + 14f, textY, cellLabelPaint)
+            canvas.drawText(":", colColonX, textY, cellColonPaint)
+            canvas.drawText(row.second, colValueX, textY, cellValuePaint)
+            if (index < sec2RowCount - 1) {
+                canvas.drawLine(tableLeft, rowTop + sec2RowH, tableRight, rowTop + sec2RowH, dashedLinePaint)
+            }
         }
-        canvas.drawText(inWordsText, colValueX, s2r2Y, cellValuePaint)
-        canvas.drawLine(tableLeft, sec2TableTop + (sec2RowH * 2f), tableRight, sec2TableTop + (sec2RowH * 2f), dashedLinePaint)
-
-        // Row 3: Remaining Salary
-        val s2r3Y = sec2TableTop + (sec2RowH * 2f) + (sec2RowH * 0.68f)
-        canvas.drawText("Remaining Salary", tableLeft + 14f, s2r3Y, cellLabelPaint)
-        canvas.drawText(":", colColonX, s2r3Y, cellColonPaint)
-        val remainingSalary = if (state.monthlySalary > 0) {
-            (state.monthlySalary - state.previousAdvancePending - state.advanceAmount).coerceAtLeast(0.0)
-        } else 0.0
-        val remainingStr = if (state.monthlySalary > 0) "Tk. ${EnglishUtils.formatEnglishCurrency(remainingSalary)}/-" else "Tk. 0/-"
-        canvas.drawText(remainingStr, colValueX, s2r3Y, cellValuePaint)
-        canvas.drawLine(tableLeft, sec2TableTop + (sec2RowH * 3f), tableRight, sec2TableTop + (sec2RowH * 3f), dashedLinePaint)
-
-        // Row 4: Reason
-        val s2r4Y = sec2TableTop + (sec2RowH * 3f) + (sec2RowH * 0.68f)
-        canvas.drawText("Reason", tableLeft + 14f, s2r4Y, cellLabelPaint)
-        canvas.drawText(":", colColonX, s2r4Y, cellColonPaint)
-        val reasonText = state.reason.ifBlank { "Personal Emergency" }
-        canvas.drawText(reasonText, colValueX, s2r4Y, cellValuePaint)
-        canvas.drawLine(tableLeft, sec2TableTop + (sec2RowH * 4f), tableRight, sec2TableTop + (sec2RowH * 4f), dashedLinePaint)
-
-        // Row 5: Repayment
-        val s2r5Y = sec2TableTop + (sec2RowH * 4f) + (sec2RowH * 0.68f)
-        canvas.drawText("Repayment", tableLeft + 14f, s2r5Y, cellLabelPaint)
-        canvas.drawText(":", colColonX, s2r5Y, cellColonPaint)
-        val repayStr = if (state.repaymentType == "installments") {
-            "Monthly Installments: ${state.installmentCount} Months (Tk. ${EnglishUtils.formatEnglishCurrency(state.installmentAmountPerMonth)}/mo)"
-        } else {
-            "One-time full deduction from salary"
-        }
-        canvas.drawText(repayStr, colValueX, s2r5Y, cellValuePaint)
-        canvas.drawLine(tableLeft, sec2TableTop + (sec2RowH * 5f), tableRight, sec2TableTop + (sec2RowH * 5f), dashedLinePaint)
-
-        // Row 6: Deduction Starts
-        val s2r6Y = sec2TableTop + (sec2RowH * 5f) + (sec2RowH * 0.68f)
-        canvas.drawText("Deduction Starts", tableLeft + 14f, s2r6Y, cellLabelPaint)
-        canvas.drawText(":", colColonX, s2r6Y, cellColonPaint)
-        val dedStart = state.deductionStartMonth.ifBlank { "Next Month" }
-        canvas.drawText(dedStart, colValueX, s2r6Y, cellValuePaint)
 
         // 8. Declaration Card Box with pill badge & connector lines
         curY = sec2TableTop + sec2TableH + (if (hasPrevAdvance) 28f else 36f)
@@ -338,8 +294,9 @@ object AdvanceSalaryImageExporter {
         }
         val line1Y = declBoxTop + 43f
         val line2Y = declBoxTop + 71f
-        canvas.drawText("I hereby authorize the management to deduct the stated advance amount", centerX, line1Y, declTextPaint)
-        canvas.drawText("from my monthly salary in accordance with the terms mentioned above.", centerX, line2Y, declTextPaint)
+        val declLines = AdvanceSalaryVoucherContent.declarationLines(state)
+        canvas.drawText(declLines.first, centerX, line1Y, declTextPaint)
+        canvas.drawText(declLines.second, centerX, line2Y, declTextPaint)
 
         // 9. Signatures Row
         if (state.showSignatures) {
@@ -369,7 +326,7 @@ object AdvanceSalaryImageExporter {
             val bitmap = generateAdvanceSalaryBitmap(state)
             val empLabel = state.applicantName.replace(" ", "_").ifBlank { "Employee" }
             val dateLabel = state.dateString.replace("/", "-").ifBlank { "Advance" }
-            val filename = "Advance_Salary_${empLabel}_$dateLabel.png"
+            val filename = "${AdvanceSalaryVoucherContent.filePrefix(state)}_${empLabel}_$dateLabel.png"
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
@@ -414,7 +371,7 @@ object AdvanceSalaryImageExporter {
             val empLabel = state.applicantName.replace(" ", "_").ifBlank { "Employee" }
             val dateLabel = state.dateString.replace("/", "-").ifBlank { "Advance" }
             val cacheDir = File(context.cacheDir, "advance_salaries").apply { mkdirs() }
-            val file = File(cacheDir, "Advance_Salary_${empLabel}_$dateLabel.png")
+            val file = File(cacheDir, "${AdvanceSalaryVoucherContent.filePrefix(state)}_${empLabel}_$dateLabel.png")
             if (file.exists()) file.delete()
 
             FileOutputStream(file).use { out ->
@@ -427,12 +384,12 @@ object AdvanceSalaryImageExporter {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "Advance Salary Application - ${state.applicantName}")
-                putExtra(Intent.EXTRA_TEXT, "Advance Salary Application for ${state.applicantName} (${state.dateString})")
+                putExtra(Intent.EXTRA_SUBJECT, "${AdvanceSalaryVoucherContent.shareLabel(state)} - ${state.applicantName}")
+                putExtra(Intent.EXTRA_TEXT, "${AdvanceSalaryVoucherContent.shareLabel(state)} for ${state.applicantName} (${state.dateString})")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
-            context.startActivity(Intent.createChooser(intent, "Share Advance Salary Image"))
+            context.startActivity(Intent.createChooser(intent, "Share ${AdvanceSalaryVoucherContent.shareLabel(state)} Image"))
         } catch (e: Exception) {
             Toast.makeText(context, "Failed to share image: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
         }

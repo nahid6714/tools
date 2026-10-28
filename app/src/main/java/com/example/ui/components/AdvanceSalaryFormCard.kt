@@ -33,6 +33,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -97,8 +98,12 @@ fun AdvanceSalaryFormCard(
     onRemarksChange: (String) -> Unit,
     onStatusChange: (String) -> Unit,
     onShowSignaturesChange: (Boolean) -> Unit,
+    onApplicationTypeChange: (String) -> Unit,
+    onSalaryMonthChange: (String) -> Unit,
+    onShowReasonChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isCurrent = state.applicationType == "CURRENT_SALARY"
     var showDesignationDropdown by remember { mutableStateOf(false) }
     var showReasonDropdown by remember { mutableStateOf(false) }
 
@@ -137,7 +142,7 @@ fun AdvanceSalaryFormCard(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "ADVANCE SALARY APPLICATION",
+                        text = if (isCurrent) "CURRENT SALARY APPLICATION" else "ADVANCE SALARY APPLICATION",
                         fontFamily = HeadingFontFamily,
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
@@ -145,7 +150,7 @@ fun AdvanceSalaryFormCard(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Staff & Employee Advance Requisition Voucher",
+                        text = if (isCurrent) "Staff & Employee Current Salary Requisition Voucher" else "Staff & Employee Advance Requisition Voucher",
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.White.copy(alpha = 0.85f)
@@ -153,7 +158,46 @@ fun AdvanceSalaryFormCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Application type selector: Advance Salary / Current Salary
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = !isCurrent,
+                    onClick = { onApplicationTypeChange("ADVANCE") },
+                    label = {
+                        Text(
+                            "Advance Salary",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("type_advance_chip")
+                )
+                FilterChip(
+                    selected = isCurrent,
+                    onClick = { onApplicationTypeChange("CURRENT_SALARY") },
+                    label = {
+                        Text(
+                            "Current Salary",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("type_current_chip")
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Application Date Picker
             Box(
@@ -298,28 +342,30 @@ fun AdvanceSalaryFormCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Previous Advance Taken Input
-            OutlinedTextField(
-                value = state.previousAdvancePendingInput,
-                onValueChange = onPreviousAdvancePendingChange,
-                label = { Text("Previous Advance Taken (৳) / পূর্বে নেওয়া অগ্রিম") },
-                placeholder = { Text("0 if no previous advance taken") },
-                leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("input_previous_advance"),
-                singleLine = true,
-                shape = RoundedCornerShape(10.dp)
-            )
+            // Previous Advance Taken Input (Advance mode only)
+            if (!isCurrent) {
+                OutlinedTextField(
+                    value = state.previousAdvancePendingInput,
+                    onValueChange = onPreviousAdvancePendingChange,
+                    label = { Text("Previous Advance Taken (৳) / পূর্বে নেওয়া অগ্রিম") },
+                    placeholder = { Text("0 if no previous advance taken") },
+                    leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("input_previous_advance"),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp)
+                )
+            }
 
             val maxEligibleAdvance = if (state.monthlySalary > 0.0) {
                 (state.monthlySalary - state.previousAdvancePending).coerceAtLeast(0.0)
             } else 0.0
-            val isOverLimit = state.monthlySalary > 0.0 && state.advanceAmount > maxEligibleAdvance
+            val isOverLimit = !isCurrent && state.monthlySalary > 0.0 && state.advanceAmount > maxEligibleAdvance
 
-            // Salary & Advance Limit Calculation Box
-            if (state.monthlySalary > 0.0) {
+            // Salary & Advance Limit Calculation Box (Advance mode only)
+            if (!isCurrent && state.monthlySalary > 0.0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -370,7 +416,7 @@ fun AdvanceSalaryFormCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "2. Advance Amount & Repayment Terms",
+                    text = if (isCurrent) "2. Salary Amount & Details" else "2. Advance Amount & Repayment Terms",
                     fontFamily = HeadingFontFamily,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
@@ -395,7 +441,7 @@ fun AdvanceSalaryFormCard(
             OutlinedTextField(
                 value = state.advanceAmountInput,
                 onValueChange = onAdvanceAmountChange,
-                label = { Text("Requested Advance Amount (৳) *") },
+                label = { Text(if (isCurrent) "Salary Amount (৳) *" else "Requested Advance Amount (৳) *") },
                 leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = if (isOverLimit) Color(0xFFC62828) else Color(0xFFC62828)) },
                 isError = isOverLimit,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -410,6 +456,24 @@ fun AdvanceSalaryFormCard(
                     errorBorderColor = Color(0xFFC62828)
                 )
             )
+
+            // Current mode: quick-fill the full monthly salary
+            if (isCurrent && state.monthlySalary > 0.0) {
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedButton(
+                    onClick = { onAdvanceAmountChange(state.monthlySalary.toLong().toString()) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(34.dp),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = "পূর্ণ বেতন বসান (৳ ${EnglishUtils.formatEnglishCurrency(state.monthlySalary)})",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
 
             // Over-limit Warning Card
             if (isOverLimit) {
@@ -481,7 +545,7 @@ fun AdvanceSalaryFormCard(
             }
 
             // Net Payable Salary Display Box
-            if (state.monthlySalary > 0.0 && !isOverLimit) {
+            if (!isCurrent && state.monthlySalary > 0.0 && !isOverLimit) {
                 val remainingSalary = (state.monthlySalary - state.previousAdvancePending - state.advanceAmount).coerceAtLeast(0.0)
                 Spacer(modifier = Modifier.height(6.dp))
                 Box(
@@ -524,67 +588,114 @@ fun AdvanceSalaryFormCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Reason for Advance (Editable + Dropdown)
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = state.reason,
-                    onValueChange = onReasonChange,
-                    label = { Text("Reason for Advance (Type or Select) *") },
-                    leadingIcon = { Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    trailingIcon = {
-                        IconButton(onClick = { showReasonDropdown = true }) {
-                            Icon(Icons.Default.ExpandMore, contentDescription = "Select Reason")
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("input_reason"),
-                    singleLine = false,
-                    maxLines = 2,
-                    shape = RoundedCornerShape(10.dp)
+            // Include-reason toggle: when unticked the voucher is made without a Reason row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onShowReasonChange(!state.showReason) }
+                    .testTag("toggle_show_reason"),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = state.showReason,
+                    onCheckedChange = onShowReasonChange
                 )
-
-                DropdownMenu(
-                    expanded = showReasonDropdown,
-                    onDismissRequest = { showReasonDropdown = false }
-                ) {
-                    presetReasons.forEach { reasonText ->
-                        DropdownMenuItem(
-                            text = { Text(reasonText) },
-                            onClick = {
-                                onReasonChange(reasonText)
-                                showReasonDropdown = false
-                            }
-                        )
-                    }
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                "+ Manage / Add Reasons",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        onClick = {
-                            showReasonDropdown = false
-                            showManageReasonsDialog = true
-                        }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Include Reason in Voucher",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (state.showReason) "Reason will be shown on the voucher" else "Voucher will be made without a Reason",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
+            if (state.showReason) {
+                Spacer(modifier = Modifier.height(6.dp))
+                // Reason for Advance (Editable + Dropdown)
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = state.reason,
+                        onValueChange = onReasonChange,
+                        label = { Text(if (isCurrent) "Reason (Type or Select)" else "Reason for Advance (Type or Select) *") },
+                        leadingIcon = { Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        trailingIcon = {
+                            IconButton(onClick = { showReasonDropdown = true }) {
+                                Icon(Icons.Default.ExpandMore, contentDescription = "Select Reason")
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("input_reason"),
+                        singleLine = false,
+                        maxLines = 2,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    DropdownMenu(
+                        expanded = showReasonDropdown,
+                        onDismissRequest = { showReasonDropdown = false }
+                    ) {
+                        presetReasons.forEach { reasonText ->
+                            DropdownMenuItem(
+                                text = { Text(reasonText) },
+                                onClick = {
+                                    onReasonChange(reasonText)
+                                    showReasonDropdown = false
+                                }
+                            )
+                        }
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "+ Manage / Add Reasons",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            onClick = {
+                                showReasonDropdown = false
+                                showManageReasonsDialog = true
+                            }
+                        )
+                    }
+                }
+
+            }
+
             Spacer(modifier = Modifier.height(10.dp))
 
-            OutlinedTextField(
-                value = state.deductionStartMonth,
-                onValueChange = onDeductionStartMonthChange,
-                label = { Text("Deduction Starts") },
-                placeholder = { Text("e.g. Next Month") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(10.dp)
-            )
+            if (isCurrent) {
+                OutlinedTextField(
+                    value = state.salaryMonth,
+                    onValueChange = onSalaryMonthChange,
+                    label = { Text("Salary Month") },
+                    placeholder = { Text("e.g. October 2026") },
+                    leadingIcon = { Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("input_salary_month"),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp)
+                )
+            } else {
+                OutlinedTextField(
+                    value = state.deductionStartMonth,
+                    onValueChange = onDeductionStartMonthChange,
+                    label = { Text("Deduction Starts") },
+                    placeholder = { Text("e.g. Next Month") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(18.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
