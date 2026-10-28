@@ -52,12 +52,14 @@ object AdvanceSalaryVoucherContent {
         }
 
         if (isCurrent(state)) {
-            rows += "Salary Amount" to amountStr
+            rows += "Net Salary Required" to amountStr
             rows += "In Words" to inWords
             if (state.previousAdvancePending > 0.0) {
-                val net = (state.advanceAmount - state.previousAdvancePending).coerceAtLeast(0.0)
                 rows += "Previously Taken" to "Tk. ${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}/-"
-                rows += "Net Payable" to "Tk. ${EnglishUtils.formatEnglishCurrency(net)}/-"
+            }
+            if (state.monthlySalary > 0) {
+                val remaining = (state.monthlySalary - state.previousAdvancePending - state.advanceAmount).coerceAtLeast(0.0)
+                rows += "Remaining Salary" to "Tk. ${EnglishUtils.formatEnglishCurrency(remaining)}/-"
             }
             rows += "Salary Month" to state.salaryMonth.ifBlank { "Current Month" }
             if (state.showReason) {

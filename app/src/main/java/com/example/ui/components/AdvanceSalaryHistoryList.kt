@@ -293,18 +293,7 @@ fun AdvanceSalaryHistoryCardItem(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Reason & Repayment summary
-            if (entity.applicationType == "CURRENT_SALARY" && entity.previousAdvancePending > 0) {
-                val net = (entity.advanceAmount - entity.previousAdvancePending).coerceAtLeast(0.0)
-                Text(
-                    text = "Prev Taken: Tk. ${EnglishUtils.formatEnglishCurrency(entity.previousAdvancePending)} • Net Payable: Tk. ${EnglishUtils.formatEnglishCurrency(net)}",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-            }
-
-            if (entity.applicationType != "CURRENT_SALARY" && (entity.monthlySalary > 0 || entity.previousAdvancePending > 0)) {
+            if (entity.monthlySalary > 0 || entity.previousAdvancePending > 0) {
                 val remaining = if (entity.monthlySalary > 0) {
                     (entity.monthlySalary - entity.previousAdvancePending - entity.advanceAmount).coerceAtLeast(0.0)
                 } else 0.0
@@ -315,7 +304,7 @@ fun AdvanceSalaryHistoryCardItem(
                     }
                     if (entity.previousAdvancePending > 0) {
                         if (isNotEmpty()) append(" • ")
-                        append("Prev Adv: Tk. ${EnglishUtils.formatEnglishCurrency(entity.previousAdvancePending)}")
+                        append("${if (entity.applicationType == "CURRENT_SALARY") "Prev Taken" else "Prev Adv"}: Tk. ${EnglishUtils.formatEnglishCurrency(entity.previousAdvancePending)}")
                     }
                     if (entity.monthlySalary > 0) {
                         if (isNotEmpty()) append(" • ")

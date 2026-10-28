@@ -291,7 +291,7 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
 
     fun fillMaxEligibleAdvance() {
         val current = _formState.value
-        if (current.applicationType == "ADVANCE" && current.monthlySalary > 0.0) {
+        if (current.monthlySalary > 0.0) {
             val maxEligible = (current.monthlySalary - current.previousAdvancePending).coerceAtLeast(0.0)
             val inputStr = if (maxEligible > 0) maxEligible.toLong().toString() else "0"
             updateAdvanceAmount(inputStr)
@@ -414,7 +414,7 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
                 if (notifyUser) {
                     viewModelScope.launch {
                         val maxFormatted = EnglishUtils.formatEnglishCurrency(maxEligible)
-                        _uiEvent.emit("Advance cannot exceed eligible limit of Tk. $maxFormatted (Salary Tk. ${EnglishUtils.formatEnglishCurrency(current.monthlySalary)} - Prev Advance Tk. ${EnglishUtils.formatEnglishCurrency(current.previousAdvancePending)})")
+                        _uiEvent.emit("${if (current.applicationType == "CURRENT_SALARY") "Salary" else "Advance"} cannot exceed eligible limit of Tk. $maxFormatted (Salary Tk. ${EnglishUtils.formatEnglishCurrency(current.monthlySalary)} - Prev Advance Tk. ${EnglishUtils.formatEnglishCurrency(current.previousAdvancePending)})")
                     }
                 }
                 return

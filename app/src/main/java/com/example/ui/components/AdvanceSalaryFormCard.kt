@@ -365,10 +365,10 @@ fun AdvanceSalaryFormCard(
             val maxEligibleAdvance = if (state.monthlySalary > 0.0) {
                 (state.monthlySalary - state.previousAdvancePending).coerceAtLeast(0.0)
             } else 0.0
-            val isOverLimit = !isCurrent && state.monthlySalary > 0.0 && state.advanceAmount > maxEligibleAdvance
+            val isOverLimit = state.monthlySalary > 0.0 && state.advanceAmount > maxEligibleAdvance
 
-            // Salary & Advance Limit Calculation Box (Advance mode only)
-            if (!isCurrent && state.monthlySalary > 0.0) {
+            // Salary & Limit Calculation Box (both modes)
+            if (state.monthlySalary > 0.0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -444,7 +444,7 @@ fun AdvanceSalaryFormCard(
             OutlinedTextField(
                 value = state.advanceAmountInput,
                 onValueChange = onAdvanceAmountChange,
-                label = { Text(if (isCurrent) "Salary Amount (৳) *" else "Requested Advance Amount (৳) *") },
+                label = { Text(if (isCurrent) "Net Salary Required (৳) / এখন যে বেতন লাগবে *" else "Requested Advance Amount (৳) *") },
                 leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = if (isOverLimit) Color(0xFFC62828) else Color(0xFFC62828)) },
                 isError = isOverLimit,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -461,17 +461,17 @@ fun AdvanceSalaryFormCard(
             )
 
             // Current mode: quick-fill the full monthly salary
-            if (isCurrent && state.monthlySalary > 0.0) {
+            if (isCurrent && state.monthlySalary > 0.0 && maxEligibleAdvance > 0.0) {
                 Spacer(modifier = Modifier.height(6.dp))
                 OutlinedButton(
-                    onClick = { onAdvanceAmountChange(state.monthlySalary.toLong().toString()) },
+                    onClick = { onAdvanceAmountChange(maxEligibleAdvance.toLong().toString()) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(34.dp),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
-                        text = "পূর্ণ বেতন বসান (৳ ${EnglishUtils.formatEnglishCurrency(state.monthlySalary)})",
+                        text = "বাকি বেতন বসান (৳ ${EnglishUtils.formatEnglishCurrency(maxEligibleAdvance)})",
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -490,7 +490,7 @@ fun AdvanceSalaryFormCard(
                         .padding(horizontal = 10.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        text = "⚠️ সর্বোচ্চ সীমা অতিক্রম করেছে! আপনি সর্বোচ্চ ৳ ${EnglishUtils.formatEnglishCurrency(maxEligibleAdvance)}/- অ্যাডভান্স নিতে পারবেন।",
+                        text = "⚠️ সর্বোচ্চ সীমা অতিক্রম করেছে! আপনি সর্বোচ্চ ৳ ${EnglishUtils.formatEnglishCurrency(maxEligibleAdvance)}/- ${if (isCurrent) "বেতন" else "অ্যাডভান্স"} নিতে পারবেন।",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFC62828)
@@ -548,7 +548,7 @@ fun AdvanceSalaryFormCard(
             }
 
             // Net Payable Salary Display Box
-            if (!isCurrent && state.monthlySalary > 0.0 && !isOverLimit) {
+            if (state.monthlySalary > 0.0 && !isOverLimit) {
                 val remainingSalary = (state.monthlySalary - state.previousAdvancePending - state.advanceAmount).coerceAtLeast(0.0)
                 Spacer(modifier = Modifier.height(6.dp))
                 Box(
@@ -573,7 +573,7 @@ fun AdvanceSalaryFormCard(
                             )
                             if (state.advanceAmount > 0.0) {
                                 Text(
-                                    text = "বেতন (৳${EnglishUtils.formatEnglishCurrency(state.monthlySalary)}) - পূর্বের অগ্রিম (৳${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}) - বর্তমান অগ্রিম (৳${EnglishUtils.formatEnglishCurrency(state.advanceAmount)})",
+                                    text = "বেতন (৳${EnglishUtils.formatEnglishCurrency(state.monthlySalary)}) - পূর্বের অগ্রিম (৳${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}) - ${if (isCurrent) "এখনকার বেতন" else "বর্তমান অগ্রিম"} (৳${EnglishUtils.formatEnglishCurrency(state.advanceAmount)})",
                                     fontSize = 10.5.sp,
                                     color = Color(0xFF388E3C)
                                 )
@@ -590,48 +590,6 @@ fun AdvanceSalaryFormCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            // Current mode: net payable after the previously taken amount
-            if (isCurrent && state.advanceAmount > 0.0 && state.previousAdvancePending > 0.0) {
-                val netPayable = (state.advanceAmount - state.previousAdvancePending).coerceAtLeast(0.0)
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFE8F5E9))
-                        .border(1.dp, Color(0xFFA5D6A7), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Net Payable / বাকি পাওনা:",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF2E7D32)
-                            )
-                            Text(
-                                text = "বেতন (৳${EnglishUtils.formatEnglishCurrency(state.advanceAmount)}) - আগে নেওয়া (৳${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)})",
-                                fontSize = 10.5.sp,
-                                color = Color(0xFF388E3C)
-                            )
-                        }
-                        Text(
-                            text = "৳ ${EnglishUtils.formatEnglishCurrency(netPayable)}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1B5E20)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
 
             // Include-reason toggle: when unticked the voucher is made without a Reason row
             Row(
