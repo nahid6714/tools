@@ -342,22 +342,25 @@ fun AdvanceSalaryFormCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Previous Advance Taken Input (Advance mode only)
-            if (!isCurrent) {
-                OutlinedTextField(
-                    value = state.previousAdvancePendingInput,
-                    onValueChange = onPreviousAdvancePendingChange,
-                    label = { Text("Previous Advance Taken (৳) / পূর্বে নেওয়া অগ্রিম") },
-                    placeholder = { Text("0 if no previous advance taken") },
-                    leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("input_previous_advance"),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp)
-                )
-            }
+            // Previously taken amount from the company (both modes)
+            OutlinedTextField(
+                value = state.previousAdvancePendingInput,
+                onValueChange = onPreviousAdvancePendingChange,
+                label = {
+                    Text(
+                        if (isCurrent) "Previously Taken from Company (৳) / আগে নেওয়া টাকা"
+                        else "Previous Advance Taken (৳) / পূর্বে নেওয়া অগ্রিম"
+                    )
+                },
+                placeholder = { Text("0 if nothing taken before") },
+                leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("input_previous_advance"),
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp)
+            )
 
             val maxEligibleAdvance = if (state.monthlySalary > 0.0) {
                 (state.monthlySalary - state.previousAdvancePending).coerceAtLeast(0.0)
@@ -587,6 +590,48 @@ fun AdvanceSalaryFormCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            // Current mode: net payable after the previously taken amount
+            if (isCurrent && state.advanceAmount > 0.0 && state.previousAdvancePending > 0.0) {
+                val netPayable = (state.advanceAmount - state.previousAdvancePending).coerceAtLeast(0.0)
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFE8F5E9))
+                        .border(1.dp, Color(0xFFA5D6A7), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Net Payable / বাকি পাওনা:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF2E7D32)
+                            )
+                            Text(
+                                text = "বেতন (৳${EnglishUtils.formatEnglishCurrency(state.advanceAmount)}) - আগে নেওয়া (৳${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)})",
+                                fontSize = 10.5.sp,
+                                color = Color(0xFF388E3C)
+                            )
+                        }
+                        Text(
+                            text = "৳ ${EnglishUtils.formatEnglishCurrency(netPayable)}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1B5E20)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Include-reason toggle: when unticked the voucher is made without a Reason row
             Row(

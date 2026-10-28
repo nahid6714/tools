@@ -43,4 +43,18 @@ class AdvanceSalaryTest {
         assertEquals(listOf("Salary Amount", "In Words", "Salary Month"), labels)
         assertEquals("CURRENT SALARY REQUISITION VOUCHER", AdvanceSalaryVoucherContent.title(state))
     }
+
+    @Test
+    fun `current salary shows previously taken and net payable`() {
+        val state = AdvanceSalaryFormState(
+            applicationType = "CURRENT_SALARY",
+            advanceAmount = 12000.0,
+            previousAdvancePending = 3000.0,
+            salaryMonth = "October 2026",
+            showReason = false
+        )
+        val rows = AdvanceSalaryVoucherContent.section2Rows(state)
+        assertEquals("Tk. 9,000/-", rows.first { it.first == "Net Payable" }.second)
+        assertEquals("Tk. 3,000/-", rows.first { it.first == "Previously Taken" }.second)
+    }
 }

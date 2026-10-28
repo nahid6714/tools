@@ -444,7 +444,7 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
                     installmentCount = current.installmentCount,
                     installmentAmountPerMonth = current.installmentAmountPerMonth,
                     deductionStartMonth = current.deductionStartMonth.trim(),
-                    previousAdvancePending = if (current.applicationType == "CURRENT_SALARY") 0.0 else current.previousAdvancePending,
+                    previousAdvancePending = current.previousAdvancePending,
                     guarantorOrRecommendedBy = "",
                     remarks = current.remarks.trim(),
                     status = current.status,

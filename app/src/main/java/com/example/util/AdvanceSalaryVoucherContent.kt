@@ -54,6 +54,11 @@ object AdvanceSalaryVoucherContent {
         if (isCurrent(state)) {
             rows += "Salary Amount" to amountStr
             rows += "In Words" to inWords
+            if (state.previousAdvancePending > 0.0) {
+                val net = (state.advanceAmount - state.previousAdvancePending).coerceAtLeast(0.0)
+                rows += "Previously Taken" to "Tk. ${EnglishUtils.formatEnglishCurrency(state.previousAdvancePending)}/-"
+                rows += "Net Payable" to "Tk. ${EnglishUtils.formatEnglishCurrency(net)}/-"
+            }
             rows += "Salary Month" to state.salaryMonth.ifBlank { "Current Month" }
             if (state.showReason) {
                 rows += "Reason" to state.reason.ifBlank { "Salary not yet received" }
