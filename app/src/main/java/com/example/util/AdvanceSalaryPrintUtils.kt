@@ -191,7 +191,7 @@ object AdvanceSalaryPrintUtils {
      * - Black badge: "ADVANCE & REPAYMENT TERMS"
      * - 5-Row dashed-divider table for Advance Amount, In Words, Reason, Repayment, Deduction Starts
      * - Undertaking statement
-     * - Two signatures at bottom: Applicant's Signature and Authorized Signature
+     * - Authorized Signature at bottom (Applicant's Signature removed)
      */
     private fun drawSingleVoucherOnCanvas(
         canvas: android.graphics.Canvas,
@@ -471,17 +471,10 @@ object AdvanceSalaryPrintUtils {
         canvas.drawText(declLines.first, centerX, line1Y, declTextPaint)
         canvas.drawText(declLines.second, centerX, line2Y, declTextPaint)
 
-        // 9. Signatures (Applicant's Signature on left, Authorized Signature on right)
+        // 9. Signatures (Authorized Signature only — Applicant's Signature removed)
         if (state.showSignatures) {
             val sigLineY = localStartY + voucherHeight - 40f
             val sigLineWidth = 115f
-
-            // Left: Applicant's Signature
-            val sigLeftStart = innerLeft + 8f
-            val sigLeftEnd = sigLeftStart + sigLineWidth
-            val sigLeftCenter = (sigLeftStart + sigLeftEnd) / 2f
-            canvas.drawLine(sigLeftStart, sigLineY, sigLeftEnd, sigLineY, sigLinePaint)
-            canvas.drawText("Applicant's Signature", sigLeftCenter, sigLineY + 15f, sigTextPaint)
 
             // Right: Authorized Signature
             val sigRightEnd = innerRight - 8f

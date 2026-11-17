@@ -731,7 +731,7 @@ fun AdvanceSalaryFormCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Applicant, Accounts, and Authorized signature lines",
+                        text = "Authorized signature line",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

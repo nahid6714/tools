@@ -327,6 +327,7 @@ fun AdvanceSalaryScreen(
                         onSearchQueryChange = { viewModel.setSearchQuery(it) },
                         onEditApplication = { entity ->
                             viewModel.loadApplicationForEditing(entity)
+                            viewModel.refreshDateToToday()
                             selectedTab = 0
                         },
                         onDeleteApplication = { id -> viewModel.deleteApplication(id) },

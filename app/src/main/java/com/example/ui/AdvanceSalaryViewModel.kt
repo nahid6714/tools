@@ -267,6 +267,11 @@ class AdvanceSalaryViewModel(application: Application) : AndroidViewModel(applic
         _formState.update { it.copy(dateString = date) }
     }
 
+    /** History pen (edit): the form opens with today's date, not the saved date. */
+    fun refreshDateToToday() {
+        _formState.update { it.copy(dateString = dateFormat.format(Date())) }
+    }
+
     fun updateApplicantName(name: String) {
         _formState.update { it.copy(applicantName = name) }
     }

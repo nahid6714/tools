@@ -298,17 +298,10 @@ object AdvanceSalaryImageExporter {
         canvas.drawText(declLines.first, centerX, line1Y, declTextPaint)
         canvas.drawText(declLines.second, centerX, line2Y, declTextPaint)
 
-        // 9. Signatures Row
+        // 9. Signatures Row (Authorized Signature only — Applicant's Signature removed)
         if (state.showSignatures) {
             val sigLineY = imageHeight - margin - 75f
             val sigLineWidth = 220f
-
-            // Left: Applicant's Signature
-            val sigLeftStart = tableLeft + 8f
-            val sigLeftEnd = sigLeftStart + sigLineWidth
-            val sigLeftCenter = (sigLeftStart + sigLeftEnd) / 2f
-            canvas.drawLine(sigLeftStart, sigLineY, sigLeftEnd, sigLineY, sigLinePaint)
-            canvas.drawText("Applicant's Signature", sigLeftCenter, sigLineY + 28f, sigTextPaint)
 
             // Right: Authorized Signature
             val sigRightEnd = tableRight - 8f
